@@ -278,6 +278,8 @@ function handlePropertiesUpdate(payload) {
 }
 
 // --- LÓGICA DE NEGOCIO ---
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 function reconcile() {
   isLoading.value = true;
   reconciliationReport.value = null;
@@ -285,7 +287,7 @@ function reconcile() {
   const currentNodes = getNodes();
   const currentEdges = getEdges();
 
-  let endpoint = 'http://localhost:8000/reconcile';
+  let endpoint = `${API_URL}/reconcile`;
   let body = {};
 
   if (activeModule.value === 'metallurgical') {
@@ -303,7 +305,7 @@ function reconcile() {
       }))
     };
   } else {
-    endpoint = 'http://localhost:8000/reconcile/water';
+    endpoint = `${API_URL}/reconcile/water`;
     body = {
       nodes: currentNodes.map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
       flows: currentEdges.map(f => ({
@@ -365,7 +367,7 @@ function handleVerifyEquations() {
   let exportObject = {};
 
   if (activeModule.value === 'metallurgical') {
-    endpoint = 'http://localhost:8000/preview-equations';
+    endpoint = `${API_URL}/preview-equations`;
     exportObject = {
       nodes: currentNodes.map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
       flows: currentEdges.map(f => ({
@@ -388,7 +390,7 @@ function handleVerifyEquations() {
       })),
     };
   } else {
-    endpoint = 'http://localhost:8000/preview-water-equations';
+    endpoint = `${API_URL}/preview-water-equations`;
     exportObject = {
       nodes: currentNodes.map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
       flows: currentEdges.map(f => ({
