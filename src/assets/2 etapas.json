@@ -1,0 +1,221 @@
+{
+  "nodes": [
+    {
+      "id": "1",
+      "type": "initial",
+      "data": {
+        "label": "Alimento",
+        "node_type": "initial"
+      },
+      "position": {
+        "x": 50,
+        "y": 200
+      },
+      "deletable": false
+    },
+    {
+      "id": "2",
+      "type": "initial",
+      "data": {
+        "label": "Concentrado",
+        "node_type": "concentrate"
+      },
+      "position": {
+        "x": 800,
+        "y": 100
+      },
+      "deletable": false,
+      "selected": false
+    },
+    {
+      "id": "3",
+      "type": "initial",
+      "data": {
+        "label": "Relave",
+        "node_type": "tailing"
+      },
+      "position": {
+        "x": 800,
+        "y": 300
+      },
+      "deletable": false
+    },
+    {
+      "id": "4",
+      "type": "process",
+      "data": {
+        "label": "Rougher",
+        "node_type": "process"
+      },
+      "position": {
+        "x": 400,
+        "y": 200
+      },
+      "selected": false
+    },
+    {
+      "id": "5",
+      "type": "process",
+      "data": {
+        "label": "Cleaner",
+        "node_type": "process"
+      },
+      "position": {
+        "x": 591.7944406643978,
+        "y": 180.2481281991473
+      },
+      "selected": false
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1-4",
+      "source": "1",
+      "target": "4",
+      "animated": true,
+      "data": {
+        "tonelaje": 100,
+        "tonelaje_error": 1,
+        "tonelaje_fixed": true,
+        "not_measured": false,
+        "corrected_tonelaje": 100,
+        "elementos": [
+          {
+            "name": "Cu",
+            "ley": 0.5,
+            "ley_error": 0.1,
+            "ley_fixed": true,
+            "not_measured": false,
+            "corrected_data": {
+              "ley_corregida": 0.5,
+              "ley_corregida_error": 0
+            }
+          }
+        ],
+        "corrected_tonelaje_error": 0
+      },
+      "selected": false
+    },
+    {
+      "id": "e4-3",
+      "source": "4",
+      "target": "3",
+      "animated": true,
+      "data": {
+        "tonelaje": 100,
+        "tonelaje_error": 1,
+        "tonelaje_fixed": false,
+        "not_measured": true,
+        "corrected_tonelaje": 98.39357429718876,
+        "elementos": [
+          {
+            "name": "Cu",
+            "ley": 0.1,
+            "ley_error": 0.1,
+            "ley_fixed": true,
+            "not_measured": false,
+            "corrected_data": {
+              "ley_corregida": 0.1,
+              "ley_corregida_error": 0
+            }
+          }
+        ],
+        "corrected_tonelaje_error": 0
+      },
+      "selected": false
+    },
+    {
+      "id": "e4-5-1752684386288",
+      "source": "4",
+      "sourceHandle": null,
+      "target": "5",
+      "targetHandle": null,
+      "animated": true,
+      "data": {
+        "tonelaje": 100,
+        "tonelaje_error": 1,
+        "tonelaje_fixed": false,
+        "not_measured": true,
+        "corrected_tonelaje": 99.99682970117307,
+        "elementos": [
+          {
+            "name": "Cu",
+            "ley": 13.89,
+            "ley_error": 0.1,
+            "ley_fixed": true,
+            "not_measured": false,
+            "corrected_data": {
+              "ley_corregida": 13.89,
+              "ley_corregida_error": 0
+            }
+          }
+        ],
+        "corrected_tonelaje_error": 0
+      },
+      "selected": false
+    },
+    {
+      "id": "e5-2-1752684389630",
+      "source": "5",
+      "sourceHandle": null,
+      "target": "2",
+      "targetHandle": null,
+      "animated": true,
+      "data": {
+        "tonelaje": 100,
+        "tonelaje_error": 1,
+        "tonelaje_fixed": false,
+        "not_measured": true,
+        "corrected_tonelaje": 1.6064257028112399,
+        "elementos": [
+          {
+            "name": "Cu",
+            "ley": 25,
+            "ley_error": 0.1,
+            "ley_fixed": true,
+            "not_measured": false,
+            "corrected_data": {
+              "ley_corregida": 25,
+              "ley_corregida_error": 0
+            }
+          }
+        ],
+        "corrected_tonelaje_error": 0
+      },
+      "selected": false
+    },
+    {
+      "id": "e5-4-1752684396357",
+      "source": "5",
+      "sourceHandle": null,
+      "target": "4",
+      "targetHandle": null,
+      "animated": true,
+      "data": {
+        "tonelaje": 100,
+        "tonelaje_error": 1,
+        "tonelaje_fixed": false,
+        "not_measured": true,
+        "corrected_tonelaje": 98.39040399836183,
+        "elementos": [
+          {
+            "name": "Cu",
+            "ley": 1,
+            "ley_error": 0.1,
+            "ley_fixed": false,
+            "not_measured": true,
+            "corrected_data": {
+              "ley_corregida": 13.708606400289627,
+              "ley_corregida_error": 0
+            }
+          }
+        ],
+        "corrected_tonelaje_error": 0
+      },
+      "selected": true
+    }
+  ],
+  "elementNames": [
+    "Cu"
+  ]
+}

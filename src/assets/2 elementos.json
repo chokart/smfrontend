@@ -1,0 +1,233 @@
+{
+  "nodes": [
+    {
+      "id": "1",
+      "type": "initial",
+      "data": {
+        "label": "Alimento",
+        "node_type": "initial"
+      },
+      "position": {
+        "x": 50,
+        "y": 200
+      },
+      "deletable": false
+    },
+    {
+      "id": "2",
+      "type": "initial",
+      "data": {
+        "label": "Concentrado Pb",
+        "node_type": "concentrate"
+      },
+      "position": {
+        "x": 800,
+        "y": 100
+      },
+      "deletable": false,
+      "selected": false
+    },
+    {
+      "id": "3",
+      "type": "initial",
+      "data": {
+        "label": "Relave",
+        "node_type": "tailing"
+      },
+      "position": {
+        "x": 800,
+        "y": 300
+      },
+      "deletable": false
+    },
+    {
+      "id": "4",
+      "type": "process",
+      "data": {
+        "label": "Celda 1",
+        "node_type": "process"
+      },
+      "position": {
+        "x": 400,
+        "y": 200
+      }
+    },
+    {
+      "id": "5",
+      "type": "initial",
+      "data": {
+        "label": "Concentrado Zn",
+        "node_type": "concentrate"
+      },
+      "position": {
+        "x": 480.5727538381571,
+        "y": 237.71569543989617
+      },
+      "selected": false
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1-4",
+      "source": "1",
+      "target": "4",
+      "animated": true,
+      "data": {
+        "tonelaje": 150,
+        "tonelaje_error": 1,
+        "tonelaje_fixed": true,
+        "not_measured": false,
+        "corrected_tonelaje": 150,
+        "elementos": [
+          {
+            "name": "Pb",
+            "ley": 8,
+            "ley_error": 0.1,
+            "ley_fixed": true,
+            "not_measured": false,
+            "corrected_data": {
+              "ley_corregida": 8,
+              "ley_corregida_error": 0
+            }
+          },
+          {
+            "name": "Zn",
+            "ley": 12,
+            "ley_error": 0.1,
+            "ley_fixed": true,
+            "not_measured": false,
+            "corrected_data": {
+              "ley_corregida": 12,
+              "ley_corregida_error": 0
+            }
+          }
+        ],
+        "corrected_tonelaje_error": 0
+      },
+      "selected": false
+    },
+    {
+      "id": "e4-2",
+      "source": "4",
+      "target": "2",
+      "animated": true,
+      "data": {
+        "tonelaje": 100,
+        "tonelaje_error": 1,
+        "tonelaje_fixed": false,
+        "not_measured": true,
+        "corrected_tonelaje": 15.03934280214449,
+        "elementos": [
+          {
+            "name": "Pb",
+            "ley": 75,
+            "ley_error": 0.1,
+            "ley_fixed": true,
+            "not_measured": false,
+            "corrected_data": {
+              "ley_corregida": 75,
+              "ley_corregida_error": 0
+            }
+          },
+          {
+            "name": "Zn",
+            "ley": 4,
+            "ley_error": 0.1,
+            "ley_fixed": true,
+            "not_measured": false,
+            "corrected_data": {
+              "ley_corregida": 4,
+              "ley_corregida_error": 0
+            }
+          }
+        ],
+        "corrected_tonelaje_error": 0
+      },
+      "selected": false
+    },
+    {
+      "id": "e4-3",
+      "source": "4",
+      "target": "3",
+      "animated": true,
+      "data": {
+        "tonelaje": 100,
+        "tonelaje_error": 1,
+        "tonelaje_fixed": false,
+        "not_measured": true,
+        "corrected_tonelaje": 104.85227891309171,
+        "elementos": [
+          {
+            "name": "Pb",
+            "ley": 0.4,
+            "ley_error": 0.1,
+            "ley_fixed": true,
+            "not_measured": false,
+            "corrected_data": {
+              "ley_corregida": 0.4,
+              "ley_corregida_error": 0
+            }
+          },
+          {
+            "name": "Zn",
+            "ley": 0.8,
+            "ley_error": 0.1,
+            "ley_fixed": true,
+            "not_measured": false,
+            "corrected_data": {
+              "ley_corregida": 0.8,
+              "ley_corregida_error": 0
+            }
+          }
+        ],
+        "corrected_tonelaje_error": 0
+      },
+      "selected": true
+    },
+    {
+      "id": "e4-5-1752682631970",
+      "source": "4",
+      "sourceHandle": null,
+      "target": "5",
+      "targetHandle": null,
+      "animated": true,
+      "data": {
+        "tonelaje": 100,
+        "tonelaje_error": 1,
+        "tonelaje_fixed": false,
+        "not_measured": true,
+        "corrected_tonelaje": 30.1083782847638,
+        "elementos": [
+          {
+            "name": "Pb",
+            "ley": 1,
+            "ley_error": 0.1,
+            "ley_fixed": true,
+            "not_measured": false,
+            "corrected_data": {
+              "ley_corregida": 1,
+              "ley_corregida_error": 0
+            }
+          },
+          {
+            "name": "Zn",
+            "ley": 55,
+            "ley_error": 0.1,
+            "ley_fixed": true,
+            "not_measured": false,
+            "corrected_data": {
+              "ley_corregida": 55,
+              "ley_corregida_error": 0
+            }
+          }
+        ],
+        "corrected_tonelaje_error": 0
+      },
+      "selected": false
+    }
+  ],
+  "elementNames": [
+    "Pb",
+    "Zn"
+  ]
+}

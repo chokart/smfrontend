@@ -1,0 +1,144 @@
+{
+  "nodes": [
+    {
+      "id": "1",
+      "type": "initial",
+      "data": {
+        "label": "Alimento",
+        "node_type": "initial"
+      },
+      "position": {
+        "x": 50,
+        "y": 200
+      },
+      "deletable": false
+    },
+    {
+      "id": "2",
+      "type": "initial",
+      "data": {
+        "label": "Concentrado",
+        "node_type": "concentrate"
+      },
+      "position": {
+        "x": 800,
+        "y": 100
+      },
+      "deletable": false
+    },
+    {
+      "id": "3",
+      "type": "initial",
+      "data": {
+        "label": "Relave",
+        "node_type": "tailing"
+      },
+      "position": {
+        "x": 800,
+        "y": 300
+      },
+      "deletable": false
+    },
+    {
+      "id": "4",
+      "type": "process",
+      "data": {
+        "label": "Celda 1",
+        "node_type": "process"
+      },
+      "position": {
+        "x": 400,
+        "y": 200
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1-4",
+      "source": "1",
+      "target": "4",
+      "animated": true,
+      "data": {
+        "tonelaje": 100,
+        "tonelaje_error": 1,
+        "tonelaje_fixed": false,
+        "not_measured": false,
+        "corrected_tonelaje": 100.00000450773375,
+        "elementos": [
+          {
+            "name": "Cu",
+            "ley": 1,
+            "ley_error": 0.1,
+            "ley_fixed": true,
+            "not_measured": false,
+            "corrected_data": {
+              "ley_corregida": 1,
+              "ley_corregida_error": 0
+            }
+          }
+        ],
+        "corrected_tonelaje_error": 0
+      },
+      "selected": false
+    },
+    {
+      "id": "e4-2",
+      "source": "4",
+      "target": "2",
+      "animated": true,
+      "data": {
+        "tonelaje": 100,
+        "tonelaje_error": 1,
+        "tonelaje_fixed": false,
+        "not_measured": true,
+        "corrected_tonelaje": 2.847571086089106,
+        "elementos": [
+          {
+            "name": "Cu",
+            "ley": 30,
+            "ley_error": 0.1,
+            "ley_fixed": false,
+            "not_measured": false,
+            "corrected_data": {
+              "ley_corregida": 30.000000070323484,
+              "ley_corregida_error": 0
+            }
+          }
+        ],
+        "corrected_tonelaje_error": 0
+      },
+      "selected": true
+    },
+    {
+      "id": "e4-3",
+      "source": "4",
+      "target": "3",
+      "animated": true,
+      "data": {
+        "tonelaje": 100,
+        "tonelaje_error": 1,
+        "tonelaje_fixed": false,
+        "not_measured": true,
+        "corrected_tonelaje": 97.15243342164464,
+        "elementos": [
+          {
+            "name": "Cu",
+            "ley": 0.15,
+            "ley_error": 0.1,
+            "ley_fixed": true,
+            "not_measured": false,
+            "corrected_data": {
+              "ley_corregida": 0.15,
+              "ley_corregida_error": 0
+            }
+          }
+        ],
+        "corrected_tonelaje_error": 0
+      },
+      "selected": false
+    }
+  ],
+  "elementNames": [
+    "Cu"
+  ]
+}
