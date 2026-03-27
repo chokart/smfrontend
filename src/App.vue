@@ -278,14 +278,13 @@ function handlePropertiesUpdate(payload) {
 }
 
 // --- LÓGICA DE NEGOCIO ---
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-console.log('--- DEPURACIÓN API ---');
-console.log('API_URL configurada:', API_URL);
-console.log('Protocolo actual:', window.location.protocol);
+// Si hay una variable de entorno se usa, de lo contrario en producción usa el dominio real y en desarrollo localhost.
+const API_URL = import.meta.env.VITE_API_URL || 
+                (import.meta.env.PROD ? 'https://api.suiteminerals.com' : 'http://localhost:8000');
 
-if (window.location.protocol === 'https:' && API_URL.startsWith('http:')) {
-  console.warn('¡ALERTA!: Estás en HTTPS pero llamando a una API en HTTP. Esto causará error "Failed to fetch" por seguridad del navegador.');
-}
+console.log('--- DEPURACIÓN API ---');
+console.log('Modo:', import.meta.env.PROD ? 'PRODUCCIÓN' : 'DESARROLLO');
+console.log('API_URL final:', API_URL);
 
 function reconcile() {
   isLoading.value = true;
