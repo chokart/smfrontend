@@ -279,7 +279,13 @@ function handlePropertiesUpdate(payload) {
 
 // --- LÓGICA DE NEGOCIO ---
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-console.log('Usando API_URL:', API_URL);
+console.log('--- DEPURACIÓN API ---');
+console.log('API_URL configurada:', API_URL);
+console.log('Protocolo actual:', window.location.protocol);
+
+if (window.location.protocol === 'https:' && API_URL.startsWith('http:')) {
+  console.warn('¡ALERTA!: Estás en HTTPS pero llamando a una API en HTTP. Esto causará error "Failed to fetch" por seguridad del navegador.');
+}
 
 function reconcile() {
   isLoading.value = true;
