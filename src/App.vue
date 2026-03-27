@@ -279,6 +279,7 @@ function handlePropertiesUpdate(payload) {
 
 // --- LÓGICA DE NEGOCIO ---
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+console.log('Usando API_URL:', API_URL);
 
 function reconcile() {
   isLoading.value = true;
@@ -288,6 +289,7 @@ function reconcile() {
   const currentEdges = getEdges();
 
   let endpoint = `${API_URL}/reconcile`;
+  console.log('Llamando a endpoint:', endpoint);
   let body = {};
 
   if (activeModule.value === 'metallurgical') {
