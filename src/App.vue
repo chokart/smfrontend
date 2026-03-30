@@ -18,6 +18,12 @@
         >
           <span class="icon">💧</span> Balance de Agua
         </button>
+        <button 
+          :class="{ active: activeModule === 'hydrocyclone' }" 
+          @click="switchModule('hydrocyclone')"
+        >
+          <span class="icon">🌀</span> Hidrociclones
+        </button>
       </nav>
       <div class="sidebar-footer">
         <p>Desarrollado por:</p>
@@ -60,7 +66,9 @@
       />
       
       <div class="main-content">
+        <HydrocycloneModel v-if="activeModule === 'hydrocyclone'" />
         <MetallurgicalDiagram 
+          v-else
           ref="diagramRef"
           :key="activeModule"
           :nodes="initialNodes" 
@@ -110,6 +118,7 @@
 
 <script setup>
 import { ref, nextTick, computed } from 'vue'
+import HydrocycloneModel from './components/HydrocycloneModel.vue'
 import MetallurgicalDiagram from './components/MetallurgicalDiagram.vue'
 import Toolbar from './components/Toolbar.vue'
 import PropertiesPanel from './components/PropertiesPanel.vue'
