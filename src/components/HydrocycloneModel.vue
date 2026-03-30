@@ -105,6 +105,18 @@
         </section>
       </div>
 
+      <!-- ALERTA DE DIAGNÓSTICO -->
+      <div v-if="results.diagnosis_message" :class="['diagnosis-alert', results.diagnosis_level]">
+        <div class="alert-icon">
+          <span v-if="results.diagnosis_level === 'success'">Check</span>
+          <span v-else-if="results.diagnosis_level === 'warning'">!</span>
+          <span v-else>X</span>
+        </div>
+        <div class="alert-content">
+          <strong>Diagnóstico de Datos:</strong> {{ results.diagnosis_message }}
+        </div>
+      </div>
+
       <div class="charts-grid">
         <section class="card chart-card">
           <h3>Curva de Partición (Eficiencia)</h3>
@@ -197,12 +209,17 @@ const removeSieve = (index) => sieves.value.splice(index, 1);
 const partitionChartData = computed(() => {
   if (!results.value) return { labels: [], datasets: [] };
   const pts = [...results.value.partition_curve].sort((a,b) => a.size - b.size);
+  const bypass = results.value.water_balance.bypass_Rf / 100;
+  
+  // Añadir punto artificial en 1 micra para mostrar la asíntota (Bypass)
+  const labels = [1, ...pts.map(p => p.size)];
+  
   return {
-    labels: pts.map(p => p.size),
+    labels: labels,
     datasets: [
-      { label: 'Ec (Corregida)', borderColor: '#2196F3', data: pts.map(p => p.corrected_recovery), tension: 0.4, fill: true, backgroundColor: 'rgba(33, 150, 243, 0.1)' },
-      { label: 'Ea (Ajustada)', borderColor: '#4CAF50', data: pts.map(p => p.adjusted_recovery), tension: 0.4 },
-      { label: 'Ea (Experimental)', borderColor: '#f44336', borderDash: [5,5], data: pts.map(p => p.actual_recovery), tension: 0.4 }
+      { label: 'Ec (Corregida)', borderColor: '#2196F3', data: [0, ...pts.map(p => p.corrected_recovery)], tension: 0.4, fill: true, backgroundColor: 'rgba(33, 150, 243, 0.1)' },
+      { label: 'Ea (Ajustada)', borderColor: '#4CAF50', data: [bypass, ...pts.map(p => p.adjusted_recovery)], tension: 0.4 },
+      { label: 'Bypass (Rf)', borderColor: '#ccc', borderDash: [2,2], data: labels.map(() => bypass), pointRadius: 0, fill: false }
     ]
   };
 });
@@ -311,4 +328,30 @@ td input:focus { border-color: #3f51b5; outline: none; background: #f5f7ff; }
 .eff { font-weight: bold; color: #1565c0; }
 
 .balance-table th { font-size: 0.75rem; text-transform: uppercase; vertical-align: middle; }
+
+/* DIAGNOSTIC ALERT */
+.diagnosis-alert {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  border-left: 5px solid;
+}
+.diagnosis-alert.success { background: #e8f5e9; color: #2e7d32; border-color: #4caf50; }
+.diagnosis-alert.warning { background: #fff3e0; color: #e65100; border-color: #ff9800; }
+.diagnosis-alert.error { background: #ffebee; color: #c62828; border-color: #f44336; }
+
+.alert-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px;
+  font-weight: bold;
+  background: rgba(255,255,255,0.5);
+}
+.alert-content { font-size: 0.95rem; }
 </style>
