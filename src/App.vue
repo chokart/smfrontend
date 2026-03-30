@@ -38,7 +38,7 @@
       <LoadingSpinner v-if="isLoading" />
       
       <!-- CABECERA SUPERIOR (TOOLBAR) -->
-      <div class="app-header">
+      <div class="app-header" v-if="activeModule !== 'hydrocyclone'">
         <Toolbar 
           @add-node="addNewNode" 
           @export="reconcile" 
@@ -78,7 +78,7 @@
         />
       </div>
       
-      <div class="summary-footer" :class="{ 'is-expanded': isSummaryExpanded }">
+      <div v-if="activeModule !== 'hydrocyclone'" class="summary-footer" :class="{ 'is-expanded': isSummaryExpanded }">
         <button @click="toggleSummaryExpansion" class="summary-toggle-button">
           {{ isSummaryExpanded ? '▼ Contraer' : '▲ Expandir' }}
         </button>

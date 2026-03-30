@@ -233,6 +233,9 @@ const calculate = async () => {
   loading.value = true;
   results.value = null;
   
+  const API_URL = import.meta.env.VITE_API_URL || 
+                  (import.meta.env.PROD ? 'https://api.suiteminerals.com' : 'http://localhost:8000');
+  
   const payload = {
     sieves: sieves.value,
     geometry: geometry,
@@ -242,7 +245,7 @@ const calculate = async () => {
   };
 
   try {
-    const response = await fetch('http://localhost:8000/model/hydrocyclone/rao-lynch', {
+    const response = await fetch(`${API_URL}/model/hydrocyclone/rao-lynch`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
