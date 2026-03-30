@@ -29,6 +29,16 @@
           <label>% Sólidos Descarga (%):</label>
           <input type="number" v-model="underflow_p_solids" step="0.1" />
         </div>
+        <div class="input-group">
+          <label>Flujo Alimento:</label>
+          <div class="flow-input">
+            <input type="number" v-model="feed_flow_rate" step="0.1" />
+            <select v-model="feed_flow_unit">
+              <option value="tph">tph (Sól)</option>
+              <option value="m3h">m³/h (Pul)</option>
+            </select>
+          </div>
+        </div>
         <div class="info-box">
           <p>Este módulo realiza una <strong>reconciliación de masa</strong> para ajustar tus datos experimentales y obtener curvas de eficiencia precisas.</p>
         </div>
@@ -103,6 +113,14 @@
           </div>
           <div class="stat-sub">Flujo UF: {{ results.water_balance.underflow_flow.toFixed(1) }} unidades</div>
         </section>
+        <section class="card result-card" v-if="results.tromp">
+          <h4>Parámetros de Tromp</h4>
+          <div class="stat">
+            <span class="label">Imperfección:</span> 
+            <span class="val">{{ results.tromp.imperfection.toFixed(3) }}</span>
+          </div>
+          <div class="stat-sub">d25c: {{ results.tromp.d25c.toFixed(1) }} | d75c: {{ results.tromp.d75c.toFixed(1) }}</div>
+        </section>
       </div>
 
       <!-- ALERTA DE DIAGNÓSTICO -->
@@ -117,9 +135,50 @@
         </div>
       </div>
 
+      <!-- BALANCE GLOBAL -->
+      <section class="card table-card" v-if="results.water_balance.global_balance">
+        <h3>Balance Global de Masa y Volumen</h3>
+        <div class="table-container">
+          <table class="global-balance-table">
+            <thead>
+              <tr>
+                <th>Corriente</th>
+                <th>% Sólidos</th>
+                <th>Masa Sól. [tph]</th>
+                <th>Masa Agua [tph]</th>
+                <th>Vol. Pulpa [m³/h]</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Alimento (Feed)</strong></td>
+                <td>{{ results.water_balance.global_balance.feed.p_solids.toFixed(1) }}%</td>
+                <td>{{ results.water_balance.global_balance.feed.mass_solids.toFixed(2) }}</td>
+                <td>{{ results.water_balance.global_balance.feed.mass_water.toFixed(2) }}</td>
+                <td>{{ results.water_balance.global_balance.feed.vol_pulp.toFixed(2) }}</td>
+              </tr>
+              <tr>
+                <td><strong>Rebose (Overflow)</strong></td>
+                <td>{{ results.water_balance.global_balance.overflow.p_solids.toFixed(1) }}%</td>
+                <td>{{ results.water_balance.global_balance.overflow.mass_solids.toFixed(2) }}</td>
+                <td>{{ results.water_balance.global_balance.overflow.mass_water.toFixed(2) }}</td>
+                <td>{{ results.water_balance.global_balance.overflow.vol_pulp.toFixed(2) }}</td>
+              </tr>
+              <tr>
+                <td><strong>Descarga (Underflow)</strong></td>
+                <td>{{ results.water_balance.global_balance.underflow.p_solids.toFixed(1) }}%</td>
+                <td>{{ results.water_balance.global_balance.underflow.mass_solids.toFixed(2) }}</td>
+                <td>{{ results.water_balance.global_balance.underflow.mass_water.toFixed(2) }}</td>
+                <td>{{ results.water_balance.global_balance.underflow.vol_pulp.toFixed(2) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <div class="charts-grid">
         <section class="card chart-card">
-          <h3>Curva de Partición (Eficiencia)</h3>
+          <h3>Curva de Tromp (Eficiencia)</h3>
           <div class="chart-wrapper">
             <Line :data="partitionChartData" :options="partitionChartOptions" />
           </div>
@@ -191,6 +250,8 @@ const feed_p_solids = ref(30);
 const overflow_p_solids = ref(15);
 const underflow_p_solids = ref(70);
 const solid_density = ref(2.65);
+const feed_flow_rate = ref(100);
+const feed_flow_unit = ref('tph');
 
 const pan_weights = reactive({ feed: 150, overflow: 300, underflow: 20 });
 const sieves = ref([
@@ -268,7 +329,9 @@ const calculate = async () => {
         pressure: pressure.value, solid_density: solid_density.value, 
         feed_p_solids: feed_p_solids.value,
         overflow_p_solids: overflow_p_solids.value,
-        underflow_p_solids: underflow_p_solids.value
+        underflow_p_solids: underflow_p_solids.value,
+        feed_flow_rate: feed_flow_rate.value,
+        feed_flow_unit: feed_flow_unit.value
       })
     });
     if (!response.ok) throw new Error('Error en el servidor');
@@ -294,6 +357,10 @@ const calculate = async () => {
 .input-group { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .input-group label { font-size: 0.9rem; color: #555; }
 .input-group input { width: 90px; padding: 6px; border-radius: 6px; border: 1px solid #ccc; text-align: right; }
+
+.flow-input { display: flex; gap: 5px; }
+.flow-input input { width: 70px; }
+.flow-input select { padding: 4px; border-radius: 6px; border: 1px solid #ccc; font-size: 0.8rem; }
 
 .info-box { background: #e8eaf6; padding: 12px; border-radius: 8px; margin-top: 20px; font-size: 0.85rem; color: #3f51b5; }
 
@@ -328,6 +395,11 @@ td input:focus { border-color: #3f51b5; outline: none; background: #f5f7ff; }
 .eff { font-weight: bold; color: #1565c0; }
 
 .balance-table th { font-size: 0.75rem; text-transform: uppercase; vertical-align: middle; }
+
+.global-balance-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.global-balance-table th, .global-balance-table td { padding: 12px; border: 1px solid #eee; text-align: right; }
+.global-balance-table th { background: #f5f7ff; color: #1a237e; text-align: center; }
+.global-balance-table td:first-child { text-align: left; background: #fafafa; }
 
 /* DIAGNOSTIC ALERT */
 .diagnosis-alert {
