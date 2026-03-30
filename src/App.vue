@@ -599,8 +599,8 @@ body {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  height: 100%;
-  overflow: hidden;
+  height: 100vh; /* Altura de la ventana completa */
+  overflow: hidden; /* Mantener hidden para el layout total */
   position: relative;
 }
 
@@ -619,6 +619,7 @@ body {
   position: relative;
   width: 100%;
   height: 100%;
+  overflow-y: auto; /* PERMITIR SCROLL VERTICAL */
   transition: height 0.4s ease-in-out;
   background-color: #ffffff;
 }
