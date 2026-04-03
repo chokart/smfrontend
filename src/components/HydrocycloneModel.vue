@@ -246,26 +246,33 @@
 
       <!-- 3. PARÁMETROS OPERATIVOS -->
       <div class="results-summary-grid results-section">
-        <section class="card result-card destaque">
-          <h4>Punto de Corte (d50 / d50c)</h4>
+        <section class="card result-card">
+          <h4>Punto de Corte (d50)</h4>
           <div class="stat">
-            <span class="val">{{ currentMetrics.d50.toFixed(1) }} / {{ currentMetrics.d50c.toFixed(1) }} µm</span>
+            <span class="val">{{ currentMetrics.d50.toFixed(1) }} µm</span>
           </div>
-          <div class="stat-sub">Basado en {{ activeTable === 'solids' ? '% Sólidos' : 'Reconciliación' }}</div>
+          <div class="stat-sub">Separación Real (Ea)</div>
+        </section>
+        <section class="card result-card destaque">
+          <h4>Corte Corregido (d50c)</h4>
+          <div class="stat">
+            <span class="val">{{ currentMetrics.d50c.toFixed(1) }} µm</span>
+          </div>
+          <div class="stat-sub">Eficiencia Centrífuga (Ec)</div>
         </section>
         <section class="card result-card">
           <h4>Bypass (Rf)</h4>
           <div class="stat">
             <span class="val">{{ currentMetrics.bypass_rf.toFixed(2) }} %</span>
           </div>
-          <div class="stat-sub">Eficiencia en Fondo</div>
+          <div class="stat-sub">Agua/Finos al Underflow</div>
         </section>
         <section class="card result-card">
           <h4>Recup. Sólidos (S)</h4>
           <div class="stat">
             <span class="val">{{ currentMetrics.solids_recovery_s.toFixed(2) }} %</span>
           </div>
-          <div class="stat-sub">Global a la Descarga</div>
+          <div class="stat-sub">Recuperación Global</div>
         </section>
       </div>
 
