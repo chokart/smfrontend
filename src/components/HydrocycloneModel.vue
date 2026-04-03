@@ -191,9 +191,27 @@
         </section>
       </div>
 
+      <!-- TABLAS DE BALANCE -->
       <section class="card table-card">
-        <h3>Balance de Masa Detallado (Experimental vs Ajustado)</h3>
-        <div class="table-container">
+        <div class="table-header-tabs">
+          <button 
+            :class="{ active: activeTable === 'reconciled' }" 
+            @click="activeTable = 'reconciled'"
+          >
+            Balance Reconciliado (Optimizado)
+          </button>
+          <button 
+            v-if="results.balance_solids_table"
+            :class="{ active: activeTable === 'solids' }" 
+            @click="activeTable = 'solids'"
+          >
+            Balance por % de Sólidos
+          </button>
+        </div>
+
+        <!-- TABLA RECONCILIADA -->
+        <div v-if="activeTable === 'reconciled'" class="table-container">
+          <h3 class="table-title">Balance de Masa Reconciliado (Experimental vs Ajustado)</h3>
           <table class="balance-table">
             <thead>
               <tr>
@@ -226,6 +244,32 @@
             </tbody>
           </table>
         </div>
+
+        <!-- TABLA POR SÓLIDOS -->
+        <div v-if="activeTable === 'solids'" class="table-container">
+          <h3 class="table-title">Balance por Porcentaje de Sólidos (Alimento Recalculado)</h3>
+          <p class="table-note">Nota: En este balance el alimento se reconstruye a partir de la recuperación teórica (S) obtenida por densidades.</p>
+          <table class="balance-table">
+            <thead>
+              <tr>
+                <th>Fracción</th>
+                <th>% Alimento (Calc)</th>
+                <th>% Rebose (OF)</th>
+                <th>% Descarga (UF)</th>
+                <th>Eficiencia (Ea)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in results.balance_solids_table" :key="row.size">
+                <td>{{ row.size }}</td>
+                <td class="adj">{{ row.feed_pct.toFixed(2) }}</td>
+                <td class="exp">{{ row.overflow_pct.toFixed(2) }}</td>
+                <td class="exp">{{ row.underflow_pct.toFixed(2) }}</td>
+                <td class="eff">{{ (row.recovery_underflow * 100).toFixed(2) }}%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
     </template>
   </div>
@@ -243,6 +287,7 @@ ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, LinearScale,
 
 const loading = ref(false);
 const results = ref(null);
+const activeTable = ref('reconciled');
 
 // Estado de entrada
 const pressure = ref(70);
@@ -400,6 +445,48 @@ td input:focus { border-color: #3f51b5; outline: none; background: #f5f7ff; }
 .global-balance-table th, .global-balance-table td { padding: 12px; border: 1px solid #eee; text-align: right; }
 .global-balance-table th { background: #f5f7ff; color: #1a237e; text-align: center; }
 .global-balance-table td:first-child { text-align: left; background: #fafafa; }
+
+/* TABS PARA TABLAS */
+.table-header-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 10px;
+}
+.table-header-tabs button {
+  padding: 10px 20px;
+  border: none;
+  background: #f5f5f5;
+  color: #666;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+.table-header-tabs button:hover {
+  background: #e8eaf6;
+}
+.table-header-tabs button.active {
+  background: #3f51b5;
+  color: #fff;
+}
+
+.table-title {
+  font-size: 1.1rem;
+  color: #1a237e;
+  margin-bottom: 15px;
+}
+.table-note {
+  font-size: 0.85rem;
+  color: #666;
+  font-style: italic;
+  margin-bottom: 15px;
+  background: #fff9c4;
+  padding: 8px 12px;
+  border-radius: 6px;
+  display: inline-block;
+}
 
 /* DIAGNOSTIC ALERT */
 .diagnosis-alert {
