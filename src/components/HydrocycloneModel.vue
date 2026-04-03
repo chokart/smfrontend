@@ -88,7 +88,162 @@
 
     <!-- RESULTADOS DEL ANÁLISIS -->
     <template v-if="results">
-      <div class="results-summary-grid">
+      
+      <!-- 1. TABLAS DE BALANCE -->
+      <section class="card table-card results-section">
+        <div class="table-header-tabs">
+          <button 
+            :class="{ active: activeTable === 'experimental' }" 
+            @click="activeTable = 'experimental'"
+          >
+            Datos Experimentales
+          </button>
+          <button 
+            :class="{ active: activeTable === 'reconciled' }" 
+            @click="activeTable = 'reconciled'"
+          >
+            Balance Reconciliado (Optimizado)
+          </button>
+          <button 
+            v-if="results.balance_solids_table"
+            :class="{ active: activeTable === 'solids' }" 
+            @click="activeTable = 'solids'"
+          >
+            Balance por % de Sólidos
+          </button>
+        </div>
+
+        <!-- TABLA EXPERIMENTAL -->
+        <div v-if="activeTable === 'experimental'" class="table-container">
+          <h3 class="table-title">Distribución Granulométrica Experimental</h3>
+          <table class="balance-table experimental-mode">
+            <thead>
+              <tr>
+                <th rowspan="2">Fracción</th>
+                <th colspan="3">Alimento (Feed)</th>
+                <th colspan="3">Rebose (Overflow)</th>
+                <th colspan="3">Descarga (Underflow)</th>
+              </tr>
+              <tr>
+                <th>Peso [g]</th>
+                <th>% Ret.</th>
+                <th>% Pas.</th>
+                <th>Peso [g]</th>
+                <th>% Ret.</th>
+                <th>% Pas.</th>
+                <th>Peso [g]</th>
+                <th>% Ret.</th>
+                <th>% Pas.</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in results.balance_table" :key="row.size" :class="{ 'total-row': row.size === 'TOTAL', 'pan-row-result': row.size === 'Fondo (Pan)' }">
+                <td>{{ row.size }}</td>
+                <td>{{ row.feed_w?.toFixed(1) }}</td>
+                <td>{{ row.feed_pct.toFixed(2) }}</td>
+                <td>{{ row.feed_pass?.toFixed(2) }}</td>
+                <td>{{ row.overflow_w?.toFixed(1) }}</td>
+                <td>{{ row.overflow_pct.toFixed(2) }}</td>
+                <td>{{ row.overflow_pass?.toFixed(2) }}</td>
+                <td>{{ row.underflow_w?.toFixed(1) }}</td>
+                <td>{{ row.underflow_pct.toFixed(2) }}</td>
+                <td>{{ row.underflow_pass?.toFixed(2) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- TABLA RECONCILIADA -->
+        <div v-if="activeTable === 'reconciled'" class="table-container">
+          <h3 class="table-title">Balance de Masa Reconciliado (Datos Ajustados)</h3>
+          <table class="balance-table reconciled-mode">
+            <thead>
+              <tr>
+                <th rowspan="2">Fracción</th>
+                <th colspan="2">Alimento (Adj)</th>
+                <th colspan="2">Rebose (Adj)</th>
+                <th colspan="2">Descarga (Adj)</th>
+                <th rowspan="2">Eficiencia (Ea)</th>
+              </tr>
+              <tr>
+                <th>% Ret.</th>
+                <th>% Pas.</th>
+                <th>% Ret.</th>
+                <th>% Pas.</th>
+                <th>% Ret.</th>
+                <th>% Pas.</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in results.balance_table" :key="row.size" :class="{ 'total-row': row.size === 'TOTAL' }">
+                <td>{{ row.size }}</td>
+                <td>{{ row.feed_pct_adj?.toFixed(2) }}</td>
+                <td>{{ row.feed_pass_adj?.toFixed(2) }}</td>
+                <td>{{ row.overflow_pct_adj?.toFixed(2) }}</td>
+                <td>{{ row.overflow_pass_adj?.toFixed(2) }}</td>
+                <td>{{ row.underflow_pct_adj?.toFixed(2) }}</td>
+                <td>{{ row.underflow_pass_adj?.toFixed(2) }}</td>
+                <td class="eff">{{ row.size === 'TOTAL' ? (row.recovery_underflow * 100).toFixed(2) + '% Global' : (row.recovery_underflow * 100).toFixed(2) + '%' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- TABLA POR SÓLIDOS -->
+        <div v-if="activeTable === 'solids'" class="table-container">
+          <h3 class="table-title">Balance por Porcentaje de Sólidos (Alimento Recalculado)</h3>
+          <table class="balance-table solids-mode">
+            <thead>
+              <tr>
+                <th rowspan="2">Fracción</th>
+                <th colspan="2">Alimento (Calc)</th>
+                <th colspan="2">Rebose (Exp)</th>
+                <th colspan="2">Descarga (Exp)</th>
+                <th rowspan="2">Eficiencia (Ea)</th>
+              </tr>
+              <tr>
+                <th>% Ret.</th>
+                <th>% Pas.</th>
+                <th>% Ret.</th>
+                <th>% Pas.</th>
+                <th>% Ret.</th>
+                <th>% Pas.</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in results.balance_solids_table" :key="row.size" :class="{ 'total-row': row.size === 'TOTAL' }">
+                <td>{{ row.size }}</td>
+                <td>{{ row.feed_pct.toFixed(2) }}</td>
+                <td>{{ row.feed_pass?.toFixed(2) }}</td>
+                <td>{{ row.overflow_pct.toFixed(2) }}</td>
+                <td>{{ row.overflow_pass?.toFixed(2) }}</td>
+                <td>{{ row.underflow_pct.toFixed(2) }}</td>
+                <td>{{ row.underflow_pass?.toFixed(2) }}</td>
+                <td class="eff">{{ row.size === 'TOTAL' ? (row.recovery_underflow * 100).toFixed(2) + '% Global' : (row.recovery_underflow * 100).toFixed(2) + '%' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 2. GRÁFICOS -->
+      <div class="charts-grid results-section">
+        <section class="card chart-card">
+          <h3>Curva de Tromp (Eficiencia)</h3>
+          <div class="chart-wrapper">
+            <Line :data="partitionChartData" :options="partitionChartOptions" />
+          </div>
+        </section>
+        <section class="card chart-card">
+          <h3>Distribución Granulométrica</h3>
+          <div class="chart-wrapper">
+            <Line :data="granulometryChartData" :options="granulometryChartOptions" />
+          </div>
+        </section>
+      </div>
+
+      <!-- 3. PARÁMETROS OPERATIVOS Y DIAGNÓSTICO -->
+      <div class="results-summary-grid results-section">
         <section class="card result-card">
           <h4>Punto de Corte (d50c)</h4>
           <div class="stat">
@@ -124,7 +279,7 @@
       </div>
 
       <!-- ALERTA DE DIAGNÓSTICO -->
-      <div v-if="results.diagnosis_message" :class="['diagnosis-alert', results.diagnosis_level]">
+      <div v-if="results.diagnosis_message" :class="['diagnosis-alert', results.diagnosis_level, 'results-section']">
         <div class="alert-icon">
           <span v-if="results.diagnosis_level === 'success'">Check</span>
           <span v-else-if="results.diagnosis_level === 'warning'">!</span>
@@ -136,7 +291,7 @@
       </div>
 
       <!-- BALANCE GLOBAL -->
-      <section class="card table-card" v-if="results.water_balance.global_balance">
+      <section class="card table-card results-section" v-if="results.water_balance.global_balance">
         <h3>Balance Global de Masa y Volumen</h3>
         <div class="table-container">
           <table class="global-balance-table">
@@ -176,101 +331,6 @@
         </div>
       </section>
 
-      <div class="charts-grid">
-        <section class="card chart-card">
-          <h3>Curva de Tromp (Eficiencia)</h3>
-          <div class="chart-wrapper">
-            <Line :data="partitionChartData" :options="partitionChartOptions" />
-          </div>
-        </section>
-        <section class="card chart-card">
-          <h3>Distribución Granulométrica</h3>
-          <div class="chart-wrapper">
-            <Line :data="granulometryChartData" :options="granulometryChartOptions" />
-          </div>
-        </section>
-      </div>
-
-      <!-- TABLAS DE BALANCE -->
-      <section class="card table-card">
-        <div class="table-header-tabs">
-          <button 
-            :class="{ active: activeTable === 'reconciled' }" 
-            @click="activeTable = 'reconciled'"
-          >
-            Balance Reconciliado (Optimizado)
-          </button>
-          <button 
-            v-if="results.balance_solids_table"
-            :class="{ active: activeTable === 'solids' }" 
-            @click="activeTable = 'solids'"
-          >
-            Balance por % de Sólidos
-          </button>
-        </div>
-
-        <!-- TABLA RECONCILIADA -->
-        <div v-if="activeTable === 'reconciled'" class="table-container">
-          <h3 class="table-title">Balance de Masa Reconciliado (Experimental vs Ajustado)</h3>
-          <table class="balance-table">
-            <thead>
-              <tr>
-                <th rowspan="2">Fracción</th>
-                <th colspan="2">% Alimento</th>
-                <th colspan="2">% Rebose (OF)</th>
-                <th colspan="2">% Descarga (UF)</th>
-                <th rowspan="2">Eficiencia (Ea)</th>
-              </tr>
-              <tr>
-                <th>Exp.</th>
-                <th>Adj.</th>
-                <th>Exp.</th>
-                <th>Adj.</th>
-                <th>Exp.</th>
-                <th>Adj.</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in results.balance_table" :key="row.size">
-                <td>{{ row.size }}</td>
-                <td class="exp">{{ row.feed_pct.toFixed(2) }}</td>
-                <td class="adj">{{ row.feed_pct_adj.toFixed(2) }}</td>
-                <td class="exp">{{ row.overflow_pct.toFixed(2) }}</td>
-                <td class="adj">{{ row.overflow_pct_adj.toFixed(2) }}</td>
-                <td class="exp">{{ row.underflow_pct.toFixed(2) }}</td>
-                <td class="adj">{{ row.underflow_pct_adj.toFixed(2) }}</td>
-                <td class="eff">{{ (row.recovery_underflow * 100).toFixed(2) }}%</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- TABLA POR SÓLIDOS -->
-        <div v-if="activeTable === 'solids'" class="table-container">
-          <h3 class="table-title">Balance por Porcentaje de Sólidos (Alimento Recalculado)</h3>
-          <p class="table-note">Nota: En este balance el alimento se reconstruye a partir de la recuperación teórica (S) obtenida por densidades.</p>
-          <table class="balance-table">
-            <thead>
-              <tr>
-                <th>Fracción</th>
-                <th>% Alimento (Calc)</th>
-                <th>% Rebose (OF)</th>
-                <th>% Descarga (UF)</th>
-                <th>Eficiencia (Ea)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in results.balance_solids_table" :key="row.size">
-                <td>{{ row.size }}</td>
-                <td class="adj">{{ row.feed_pct.toFixed(2) }}</td>
-                <td class="exp">{{ row.overflow_pct.toFixed(2) }}</td>
-                <td class="exp">{{ row.underflow_pct.toFixed(2) }}</td>
-                <td class="eff">{{ (row.recovery_underflow * 100).toFixed(2) }}%</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
     </template>
   </div>
 </template>
@@ -287,7 +347,7 @@ ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, LinearScale,
 
 const loading = ref(false);
 const results = ref(null);
-const activeTable = ref('reconciled');
+const activeTable = ref('experimental');
 
 // Estado de entrada
 const pressure = ref(70);
@@ -317,31 +377,41 @@ const partitionChartData = computed(() => {
   const pts = [...results.value.partition_curve].sort((a,b) => a.size - b.size);
   const bypass = results.value.water_balance.bypass_Rf / 100;
   
-  // Añadir punto artificial en 1 micra para mostrar la asíntota (Bypass)
   const labels = [1, ...pts.map(p => p.size)];
   
-  return {
-    labels: labels,
-    datasets: [
-      { label: 'Ec (Corregida)', borderColor: '#2196F3', data: [0, ...pts.map(p => p.corrected_recovery)], tension: 0.4, fill: true, backgroundColor: 'rgba(33, 150, 243, 0.1)' },
-      { label: 'Ea (Ajustada)', borderColor: '#4CAF50', data: [bypass, ...pts.map(p => p.adjusted_recovery)], tension: 0.4 },
-      { label: 'Bypass (Rf)', borderColor: '#ccc', borderDash: [2,2], data: labels.map(() => bypass), pointRadius: 0, fill: false }
-    ]
-  };
+  const datasets = [
+    { label: 'Ea (Reconciliado)', borderColor: '#4CAF50', data: [bypass, ...pts.map(p => p.adjusted_recovery)], tension: 0.4 },
+    { label: 'Ea (Experimental)', borderColor: '#f44336', backgroundColor: '#f44336', data: [null, ...pts.map(p => p.actual_recovery)], showLine: false, pointRadius: 5, pointStyle: 'rectRot' },
+    { label: 'Bypass (Rf)', borderColor: '#ccc', borderDash: [2,2], data: labels.map(() => bypass), pointRadius: 0, fill: false }
+  ];
+
+  if (pts[0].solids_recovery !== undefined) {
+    datasets.push({ label: 'Ea (% Sólidos)', borderColor: '#9C27B0', borderDash: [5, 5], data: [null, ...pts.map(p => p.solids_recovery)], tension: 0.4 });
+  }
+
+  return { labels, datasets };
 });
 
 const granulometryChartData = computed(() => {
   if (!results.value) return { labels: [], datasets: [] };
   const pts = [...results.value.granulometry_curve].sort((a,b) => a.size - b.size);
-  return {
-    labels: pts.map(p => p.size),
-    datasets: [
-      { label: 'Alimento (Adj)', borderColor: '#4CAF50', data: pts.map(p => p.feed_passing_adj), tension: 0.3 },
-      { label: 'Rebose (Adj)', borderColor: '#FF9800', data: pts.map(p => p.overflow_passing_adj), tension: 0.3 },
-      { label: 'Descarga (Adj)', borderColor: '#9C27B0', data: pts.map(p => p.underflow_passing_adj), tension: 0.3 },
-      { label: 'Alimento (Exp)', borderColor: '#4CAF50', borderDash: [2,2], data: pts.map(p => p.feed_passing), tension: 0.3, hidden: true }
-    ]
-  };
+  
+  const datasets = [
+    // Reconciliados (Líneas continuas)
+    { label: 'Alimento (Adj)', borderColor: '#4CAF50', data: pts.map(p => p.feed_passing_adj), tension: 0.3 },
+    { label: 'Rebose (Adj)', borderColor: '#FF9800', data: pts.map(p => p.overflow_passing_adj), tension: 0.3 },
+    { label: 'Descarga (Adj)', borderColor: '#9C27B0', data: pts.map(p => p.underflow_passing_adj), tension: 0.3 },
+    // Experimentales (Puntos)
+    { label: 'Alimento (Exp)', borderColor: '#4CAF50', backgroundColor: '#4CAF50', data: pts.map(p => p.feed_passing), showLine: false, pointRadius: 4, pointStyle: 'circle' },
+    { label: 'Rebose (Exp)', borderColor: '#FF9800', backgroundColor: '#FF9800', data: pts.map(p => p.overflow_passing), showLine: false, pointRadius: 4, pointStyle: 'triangle' },
+    { label: 'Descarga (Exp)', borderColor: '#9C27B0', backgroundColor: '#9C27B0', data: pts.map(p => p.underflow_passing), showLine: false, pointRadius: 4, pointStyle: 'rect' }
+  ];
+
+  if (pts[0].feed_passing_sol !== undefined) {
+    datasets.push({ label: 'Alimento (% Sól)', borderColor: '#4CAF50', borderDash: [5, 5], data: pts.map(p => p.feed_passing_sol), tension: 0.3, pointRadius: 0 });
+  }
+
+  return { labels: pts.map(p => p.size), datasets };
 });
 
 const partitionChartOptions = {
@@ -381,6 +451,12 @@ const calculate = async () => {
     });
     if (!response.ok) throw new Error('Error en el servidor');
     results.value = await response.json();
+    
+    setTimeout(() => {
+      const resultsEl = document.querySelector('.results-section');
+      if (resultsEl) resultsEl.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+
   } catch (error) {
     alert("Error: " + error.message);
   } finally {
@@ -424,7 +500,9 @@ td input:focus { border-color: #3f51b5; outline: none; background: #f5f7ff; }
 .btn-calculate { width: 100%; padding: 16px; background: #3f51b5; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 12px rgba(63, 81, 181, 0.3); }
 .btn-calculate:hover { background: #303f9f; }
 
-.results-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px; }
+.results-section { margin-top: 32px; border-top: 1px solid #eee; padding-top: 24px; }
+
+.results-summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
 .result-card { text-align: center; }
 .result-card h4 { margin: 0 0 10px; color: #777; font-size: 0.9rem; text-transform: uppercase; }
 .result-card .val { font-size: 1.4rem; font-weight: 800; color: #1a237e; }
@@ -440,6 +518,10 @@ td input:focus { border-color: #3f51b5; outline: none; background: #f5f7ff; }
 .eff { font-weight: bold; color: #1565c0; }
 
 .balance-table th { font-size: 0.75rem; text-transform: uppercase; vertical-align: middle; }
+
+/* FILAS ESPECIALES */
+.total-row { background: #e8eaf6 !important; font-weight: bold; color: #1a237e; border-top: 2px solid #3f51b5; }
+.pan-row-result { background: #fafafa; font-style: italic; }
 
 .global-balance-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
 .global-balance-table th, .global-balance-table td { padding: 12px; border: 1px solid #eee; text-align: right; }
@@ -513,4 +595,9 @@ td input:focus { border-color: #3f51b5; outline: none; background: #f5f7ff; }
   background: rgba(255,255,255,0.5);
 }
 .alert-content { font-size: 0.95rem; }
+
+@media (max-width: 1100px) {
+  .results-summary-grid { grid-template-columns: repeat(2, 1fr); }
+  .charts-grid { grid-template-columns: 1fr; }
+}
 </style>
