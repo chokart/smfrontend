@@ -367,14 +367,27 @@ const partitionChartData = computed(() => {
 const granulometryChartData = computed(() => {
   if (!results.value) return { labels: [], datasets: [] };
   const pts = [...results.value.granulometry_curve].sort((a,b) => a.size - b.size);
-  return {
-    labels: pts.map(p => p.size),
-    datasets: [
-      { label: 'Alim (Adj)', borderColor: '#4CAF50', data: pts.map(p => p.feed_passing_adj), tension: 0.3 },
-      { label: 'Reb (Adj)', borderColor: '#FF9800', data: pts.map(p => p.overflow_passing_adj), tension: 0.3 },
-      { label: 'Des (Adj)', borderColor: '#9C27B0', data: pts.map(p => p.underflow_passing_adj), tension: 0.3 }
-    ]
-  };
+  
+  const datasets = [
+    // RECONCILIADOS (Líneas Continuas)
+    { label: 'Alim (Adj)', borderColor: '#4CAF50', data: pts.map(p => p.feed_passing_adj), tension: 0.3, pointRadius: 0 },
+    { label: 'Reb (Adj)', borderColor: '#FF9800', data: pts.map(p => p.overflow_passing_adj), tension: 0.3, pointRadius: 0 },
+    { label: 'Des (Adj)', borderColor: '#9C27B0', data: pts.map(p => p.underflow_passing_adj), tension: 0.3, pointRadius: 0 },
+    
+    // EXPERIMENTALES (Solo Puntos)
+    { label: 'Alim (Exp)', borderColor: '#4CAF50', backgroundColor: '#4CAF50', data: pts.map(p => p.feed_passing), showLine: false, pointRadius: 4, pointStyle: 'circle' },
+    { label: 'Reb (Exp)', borderColor: '#FF9800', backgroundColor: '#FF9800', data: pts.map(p => p.overflow_passing), showLine: false, pointRadius: 4, pointStyle: 'triangle' },
+    { label: 'Des (Exp)', borderColor: '#9C27B0', backgroundColor: '#9C27B0', data: pts.map(p => p.underflow_passing), showLine: false, pointRadius: 4, pointStyle: 'rect' }
+  ];
+
+  // POR SÓLIDOS (Líneas Discontinuas)
+  if (pts.length > 0 && pts[0].feed_passing_sol !== undefined && pts[0].feed_passing_sol !== null) {
+    datasets.push({ label: 'Alim (%Sól)', borderColor: '#4CAF50', borderDash: [5, 5], data: pts.map(p => p.feed_passing_sol), tension: 0.3, pointRadius: 0 });
+    datasets.push({ label: 'Reb (%Sól)', borderColor: '#FF9800', borderDash: [5, 5], data: pts.map(p => p.overflow_passing_sol), tension: 0.3, pointRadius: 0 });
+    datasets.push({ label: 'Des (%Sól)', borderColor: '#9C27B0', borderDash: [5, 5], data: pts.map(p => p.underflow_passing_sol), tension: 0.3, pointRadius: 0 });
+  }
+
+  return { labels: pts.map(p => p.size), datasets };
 });
 
 const partitionChartOptions = { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'logarithmic' }, y: { min: 0, max: 1.1 } } };
