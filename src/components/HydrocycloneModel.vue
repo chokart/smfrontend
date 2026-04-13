@@ -344,14 +344,26 @@ const solid_density = ref(2.65);
 const feed_flow_rate = ref(100);
 const feed_flow_unit = ref('tph');
 
-const pan_weights = reactive({ feed: 150, overflow: 300, underflow: 20 });
+const pan_weights = reactive({ feed: 305.76, overflow: 188.54, underflow: 117.22 });
 const sieves = ref([
-  { mesh_size: 1000, weight_feed: 10, weight_overflow: 0, weight_underflow: 20 },
-  { mesh_size: 500, weight_feed: 50, weight_overflow: 5, weight_underflow: 100 },
-  { mesh_size: 250, weight_feed: 120, weight_overflow: 15, weight_underflow: 250 },
-  { mesh_size: 150, weight_feed: 200, weight_overflow: 60, weight_underflow: 180 },
-  { mesh_size: 75, weight_feed: 150, weight_overflow: 150, weight_underflow: 80 },
-  { mesh_size: 37, weight_feed: 80, weight_overflow: 200, weight_underflow: 30 }
+  { mesh_size: 12700, weight_feed: 18.17, weight_overflow: 0, weight_underflow: 18.17 },
+  { mesh_size: 9500, weight_feed: 41.49, weight_overflow: 0, weight_underflow: 41.49 },
+  { mesh_size: 6700, weight_feed: 40.76, weight_overflow: 0, weight_underflow: 40.76 },
+  { mesh_size: 4750, weight_feed: 37.01, weight_overflow: 0, weight_underflow: 37.01 },
+  { mesh_size: 3350, weight_feed: 38.53, weight_overflow: 0, weight_underflow: 38.53 },
+  { mesh_size: 2360, weight_feed: 44.14, weight_overflow: 0, weight_underflow: 44.14 },
+  { mesh_size: 1700, weight_feed: 51.21, weight_overflow: 0, weight_underflow: 51.21 },
+  { mesh_size: 1180, weight_feed: 66.98, weight_overflow: 0, weight_underflow: 66.98 },
+  { mesh_size: 850, weight_feed: 78.83, weight_overflow: 0, weight_underflow: 78.83 },
+  { mesh_size: 600, weight_feed: 100.61, weight_overflow: 0.1, weight_underflow: 100.51 },
+  { mesh_size: 425, weight_feed: 122.86, weight_overflow: 1.94, weight_underflow: 120.92 },
+  { mesh_size: 300, weight_feed: 142.11, weight_overflow: 10.9, weight_underflow: 131.2 },
+  { mesh_size: 212, weight_feed: 143.62, weight_overflow: 27.23, weight_underflow: 116.4 },
+  { mesh_size: 150, weight_feed: 125.60, weight_overflow: 39.81, weight_underflow: 85.79 },
+  { mesh_size: 106, weight_feed: 98.97, weight_overflow: 42.06, weight_underflow: 56.9 },
+  { mesh_size: 75, weight_feed: 73.25, weight_overflow: 36.81, weight_underflow: 36.44 },
+  { mesh_size: 53, weight_feed: 53.99, weight_overflow: 29.86, weight_underflow: 24.14 },
+  { mesh_size: 38, weight_feed: 38.98, weight_overflow: 22.75, weight_underflow: 16.23 }
 ]);
 
 const addSieve = () => sieves.value.push({ mesh_size: 0, weight_feed: 0, weight_overflow: 0, weight_underflow: 0 });
