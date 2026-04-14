@@ -1,7 +1,13 @@
 <template>
   <div class="hydrocyclone-container">
     <div class="header-section">
-      <h2>Análisis de Funcionamiento de Hidrociclones</h2>
+      <div class="header-main">
+        <h2>Análisis de Funcionamiento de Hidrociclones</h2>
+        <div class="mode-selector">
+          <button :class="{ active: mode === 'analysis' }" @click="mode = 'analysis'">Análisis Experimental</button>
+          <button :class="{ active: mode === 'simulation' }" @click="mode = 'simulation'">Simulación Predictiva</button>
+        </div>
+      </div>
       <p class="subtitle">Balance de Masa, Eficiencia de Clasificación y Distribución Granulométrica</p>
     </div>
 
@@ -14,19 +20,23 @@
           <input type="number" v-model="pressure" step="1" />
         </div>
         <div class="input-group">
-          <label>Densidad Sólidos (ρs) [g/cm³]:</label>
+          <label>Densidad Sólidos (ρs):</label>
           <input type="number" v-model="solid_density" step="0.01" />
         </div>
         <div class="input-group">
-          <label>% Sólidos Alimento (%):</label>
+          <label>Densidad Líquido (ρl):</label>
+          <input type="number" v-model="liquid_density" step="0.01" />
+        </div>
+        <div class="input-group">
+          <label>% Sólidos Alim:</label>
           <input type="number" v-model="feed_p_solids" step="0.1" />
         </div>
         <div class="input-group">
-          <label>% Sólidos Rebose (%):</label>
+          <label>% Sólidos Reb:</label>
           <input type="number" v-model="overflow_p_solids" step="0.1" />
         </div>
         <div class="input-group">
-          <label>% Sólidos Descarga (%):</label>
+          <label>% Sólidos Desc:</label>
           <input type="number" v-model="underflow_p_solids" step="0.1" />
         </div>
         <div class="input-group">
@@ -39,14 +49,59 @@
             </select>
           </div>
         </div>
-        <div class="info-box">
-          <p>Este módulo realiza una <strong>reconciliación de masa</strong> para ajustar tus datos experimentales y obtener curvas de eficiencia precisas.</p>
+
+        <div class="geometry-section">
+          <h3>2. Geometría (Plitt)</h3>
+          <div class="input-group">
+            <label>Dc (Ciclón) [cm]:</label>
+            <input type="number" v-model="geometry.Dc" step="0.1" />
+          </div>
+          <div class="input-group">
+            <label>Di (Entrada) [cm]:</label>
+            <input type="number" v-model="geometry.Di" step="0.1" />
+          </div>
+          <div class="input-group">
+            <label>Do (Vortex) [cm]:</label>
+            <input type="number" v-model="geometry.Do" step="0.1" />
+          </div>
+          <div class="input-group">
+            <label>Du (Apex) [cm]:</label>
+            <input type="number" v-model="geometry.Du" step="0.1" />
+          </div>
+          <div class="input-group">
+            <label>h (V-A) [cm]:</label>
+            <input type="number" v-model="geometry.h" step="0.1" />
+          </div>
+        </div>
+
+        <div class="advanced-toggle">
+          <details>
+            <summary>Constantes de Calibración</summary>
+            <div class="plitt-params-grid">
+              <div class="input-group mini">
+                <label>F1 (d50c):</label>
+                <input type="number" v-model="plittParams.F1" step="0.01" />
+              </div>
+              <div class="input-group mini">
+                <label>F2 (Cap):</label>
+                <input type="number" v-model="plittParams.F2" step="0.01" />
+              </div>
+              <div class="input-group mini">
+                <label>F3 (Split):</label>
+                <input type="number" v-model="plittParams.F3" step="0.01" />
+              </div>
+              <div class="input-group mini">
+                <label>F4 (Sharp):</label>
+                <input type="number" v-model="plittParams.F4" step="0.01" />
+              </div>
+            </div>
+          </details>
         </div>
       </section>
 
       <!-- Sección de Granulometría (Mallas) -->
       <section class="card sieves">
-        <h3>2. Datos de Mallas y Pesos</h3>
+        <h3>3. Datos de Mallas y Pesos</h3>
         <div class="table-container">
           <table>
             <thead>
@@ -62,15 +117,15 @@
               <tr v-for="(sieve, index) in sieves" :key="index">
                 <td><input type="number" v-model="sieve.mesh_size" /></td>
                 <td><input type="number" v-model="sieve.weight_feed" /></td>
-                <td><input type="number" v-model="sieve.weight_overflow" /></td>
-                <td><input type="number" v-model="sieve.weight_underflow" /></td>
+                <td><input type="number" v-model="sieve.weight_overflow" :disabled="mode === 'simulation'" :class="{ disabled: mode === 'simulation' }" /></td>
+                <td><input type="number" v-model="sieve.weight_underflow" :disabled="mode === 'simulation'" :class="{ disabled: mode === 'simulation' }" /></td>
                 <td><button @click="removeSieve(index)" class="btn-remove" title="Eliminar">×</button></td>
               </tr>
               <tr class="pan-row">
                 <td><strong>Fondo (Pan)</strong></td>
                 <td><input type="number" v-model="pan_weights.feed" /></td>
-                <td><input type="number" v-model="pan_weights.overflow" /></td>
-                <td><input type="number" v-model="pan_weights.underflow" /></td>
+                <td><input type="number" v-model="pan_weights.overflow" :disabled="mode === 'simulation'" :class="{ disabled: mode === 'simulation' }" /></td>
+                <td><input type="number" v-model="pan_weights.underflow" :disabled="mode === 'simulation'" :class="{ disabled: mode === 'simulation' }" /></td>
                 <td></td>
               </tr>
             </tbody>
@@ -82,7 +137,7 @@
 
     <div class="actions">
       <button @click="calculate" :disabled="loading" class="btn-calculate">
-        {{ loading ? 'Procesando...' : 'Analizar Funcionamiento' }}
+        {{ loading ? 'Procesando...' : (mode === 'simulation' ? 'Ejecutar Simulación' : 'Analizar Funcionamiento') }}
       </button>
     </div>
 
@@ -247,19 +302,43 @@
       <!-- 3. PARÁMETROS OPERATIVOS -->
       <div class="results-summary-grid results-section">
         <section class="card result-card">
-          <h4>Punto de Corte (d50)</h4>
+          <h4>Separación Real (d50)</h4>
           <div class="stat">
             <span class="val">{{ currentMetrics.d50.toFixed(1) }} µm</span>
           </div>
-          <div class="stat-sub">Separación Real (Ea)</div>
+          <div class="stat-sub">Basado en Ea Experimental</div>
         </section>
+        
         <section class="card result-card destaque">
           <h4>Corte Corregido (d50c)</h4>
-          <div class="stat">
-            <span class="val">{{ currentMetrics.d50c.toFixed(1) }} µm</span>
+          <div class="stat-group">
+            <div class="stat-item">
+              <span class="val">{{ currentMetrics.d50c.toFixed(1) }} µm</span>
+              <span class="lab">Exp</span>
+            </div>
+            <div class="stat-item plitt" v-if="plittMetrics">
+              <span class="val">{{ plittMetrics.d50c_calc.toFixed(1) }} µm</span>
+              <span class="lab">Plitt</span>
+            </div>
           </div>
           <div class="stat-sub">Eficiencia Centrífuga (Ec)</div>
         </section>
+
+        <section class="card result-card">
+          <h4>Presión (P)</h4>
+          <div class="stat-group">
+            <div class="stat-item">
+              <span class="val">{{ pressure }}</span>
+              <span class="lab">Oper</span>
+            </div>
+            <div class="stat-item plitt" v-if="plittMetrics">
+              <span class="val">{{ plittMetrics.p_calc.toFixed(1) }}</span>
+              <span class="lab">Plitt</span>
+            </div>
+          </div>
+          <div class="stat-sub">Unidad: kPa</div>
+        </section>
+
         <section class="card result-card">
           <h4>Bypass (Rf)</h4>
           <div class="stat">
@@ -267,12 +346,28 @@
           </div>
           <div class="stat-sub">Agua/Finos al Underflow</div>
         </section>
+
         <section class="card result-card">
-          <h4>Recup. Sólidos (S)</h4>
-          <div class="stat">
-            <span class="val">{{ currentMetrics.solids_recovery_s.toFixed(2) }} %</span>
+          <h4>División de Flujo (S)</h4>
+          <div class="stat-group">
+            <div class="stat-item">
+              <span class="val">{{ currentMetrics.solids_recovery_s.toFixed(2) }} %</span>
+              <span class="lab">Sol</span>
+            </div>
+            <div class="stat-item plitt" v-if="plittMetrics">
+              <span class="val">{{ (plittMetrics.s_calc * 100).toFixed(2) }} %</span>
+              <span class="lab">Plitt</span>
+            </div>
           </div>
-          <div class="stat-sub">Recuperación Global</div>
+          <div class="stat-sub">Recuperación Volumétrica / Sólidos</div>
+        </section>
+
+        <section class="card result-card" v-if="plittMetrics">
+          <h4>Parámetro Agudeza (m)</h4>
+          <div class="stat">
+            <span class="val">{{ plittMetrics.m_calc.toFixed(2) }}</span>
+          </div>
+          <div class="stat-sub">Pendiente de Plitt</div>
         </section>
       </div>
 
@@ -327,6 +422,7 @@ import { Line } from 'vue-chartjs';
 ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, LinearScale, LogarithmicScale, CategoryScale, Filler);
 
 const loading = ref(false);
+const mode = ref('analysis'); // 'analysis' o 'simulation'
 const results = ref(null);
 const activeTable = ref('experimental');
 
@@ -336,13 +432,43 @@ const currentMetrics = computed(() => {
   return results.value.reconciled_metrics || { d50: 0, d50c: 0, bypass_rf: 0, solids_recovery_s: 0 };
 });
 
+const plittMetrics = computed(() => {
+  if (!results.value?.reconciled_metrics) return null;
+  const m = results.value.reconciled_metrics;
+  return {
+    d50c_calc: results.value.d50c_adjusted || 0,
+    p_calc: m.p_plitt || 0,
+    m_calc: m.m_plitt || 0,
+    s_calc: m.s_plitt || 0
+  };
+});
+
 const pressure = ref(70);
 const feed_p_solids = ref(30);
 const overflow_p_solids = ref(15);
 const underflow_p_solids = ref(70);
 const solid_density = ref(2.65);
+const liquid_density = ref(1.0);
 const feed_flow_rate = ref(100);
 const feed_flow_unit = ref('tph');
+
+// Geometría de Plitt (Valores por defecto típicos para un ciclón de 10" o similar)
+const geometry = reactive({
+  Dc: 25.0,  // Diámetro Ciclón (cm)
+  Di: 6.5,   // Diámetro Entrada (cm)
+  Do: 8.5,   // Vortex Finder (cm)
+  Du: 4.5,   // Apex (cm)
+  h: 80.0,   // Distancia Vortex-Apex (cm)
+  alpha: 20.0 // Ángulo del cono
+});
+
+// Parámetros de Plitt (Valores estándar de la literatura)
+const plittParams = reactive({
+  F1: 50.5,
+  F2: 1.88,
+  F3: 18.8,
+  F4: 1.58
+});
 
 const pan_weights = reactive({ feed: 305.76, overflow: 188.54, underflow: 117.22 });
 const sieves = ref([
@@ -375,10 +501,23 @@ const partitionChartData = computed(() => {
   const bypass = results.value.water_balance.bypass_Rf / 100;
   const labels = [1, ...pts.map(p => p.size)];
   const datasets = [
-    { label: 'Ea (Reconciliado)', borderColor: '#4CAF50', data: [bypass, ...pts.map(p => p.adjusted_recovery)], tension: 0.4 },
     { label: 'Ea (Exp)', borderColor: '#f44336', backgroundColor: '#f44336', data: [null, ...pts.map(p => p.actual_recovery)], showLine: false, pointRadius: 5, pointStyle: 'rectRot' },
+    { label: 'Ea (Reconciliado)', borderColor: '#4CAF50', data: [bypass, ...pts.map(p => p.adjusted_recovery)], tension: 0.4 },
     { label: 'Bypass (Rf)', borderColor: '#ccc', borderDash: [2,2], data: labels.map(() => bypass), pointRadius: 0, fill: false }
   ];
+
+  // Curva de Plitt (Teórica)
+  if (pts[0].plitt_recovery !== undefined) {
+    datasets.push({ 
+      label: 'Plitt (Teórico)', 
+      borderColor: '#2196F3', 
+      borderDash: [5, 2],
+      data: [bypass, ...pts.map(p => p.plitt_recovery)], 
+      tension: 0.4,
+      pointRadius: 0
+    });
+  }
+
   if (pts[0].solids_recovery !== undefined) datasets.push({ label: 'Ea (% Sól)', borderColor: '#9C27B0', borderDash: [5, 5], data: [null, ...pts.map(p => p.solids_recovery)], tension: 0.4 });
   return { labels, datasets };
 });
@@ -409,8 +548,8 @@ const granulometryChartData = computed(() => {
   return { labels: pts.map(p => p.size), datasets };
 });
 
-const partitionChartOptions = { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'logarithmic' }, y: { min: 0, max: 1.1 } } };
-const granulometryChartOptions = { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'logarithmic' }, y: { min: 0, max: 100 } } };
+const partitionChartOptions = { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'logarithmic', title: { display: true, text: 'Tamaño (µm)' } }, y: { min: 0, max: 1.1, title: { display: true, text: 'Recuperación al Underflow (Ea)' } } } };
+const granulometryChartOptions = { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'logarithmic', title: { display: true, text: 'Tamaño (µm)' } }, y: { min: 0, max: 100, title: { display: true, text: '% Pasante Acumulado' } } } };
 
 const calculate = async () => {
   loading.value = true;
@@ -420,10 +559,14 @@ const calculate = async () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        mode: mode.value,
         sieves: sieves.value, pan_feed: pan_weights.feed, pan_overflow: pan_weights.overflow, pan_underflow: pan_weights.underflow,
-        pressure: pressure.value, solid_density: solid_density.value, feed_p_solids: feed_p_solids.value,
+        pressure: pressure.value, solid_density: solid_density.value, liquid_density: liquid_density.value,
+        feed_p_solids: feed_p_solids.value,
         overflow_p_solids: overflow_p_solids.value, underflow_p_solids: underflow_p_solids.value,
-        feed_flow_rate: feed_flow_rate.value, feed_flow_unit: feed_flow_unit.value
+        feed_flow_rate: feed_flow_rate.value, feed_flow_unit: feed_flow_unit.value,
+        geometry: geometry,
+        plitt_params: plittParams
       })
     });
     results.value = await res.json();
@@ -435,7 +578,11 @@ const calculate = async () => {
 <style scoped>
 .hydrocyclone-container { padding: 24px; max-width: 1300px; margin: 0 auto; font-family: 'Segoe UI', sans-serif; }
 .header-section { margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+.header-main { display: flex; justify-content: space-between; align-items: center; }
 .header-section h2 { color: #1a237e; margin: 0; }
+.mode-selector { display: flex; background: #f5f5f5; padding: 4px; border-radius: 10px; border: 1px solid #ddd; }
+.mode-selector button { padding: 8px 16px; border: none; background: transparent; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: #777; transition: all 0.3s; }
+.mode-selector button.active { background: #fff; color: #3f51b5; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
 .subtitle { color: #666; margin: 5px 0 0; }
 .grid-layout { display: grid; grid-template-columns: 350px 1fr; gap: 24px; margin-bottom: 24px; }
 .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
@@ -443,6 +590,7 @@ const calculate = async () => {
 .input-group { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .input-group label { font-size: 0.9rem; color: #555; }
 .input-group input { width: 90px; padding: 6px; border-radius: 6px; border: 1px solid #ccc; text-align: right; }
+.input-group input.disabled { background: #f0f0f0; color: #aaa; cursor: not-allowed; border-color: #eee; }
 .flow-input { display: flex; gap: 5px; }
 .flow-input input { width: 70px; }
 .flow-input select { padding: 4px; border-radius: 6px; border: 1px solid #ccc; font-size: 0.8rem; }
@@ -464,6 +612,19 @@ td input:focus { border-color: #3f51b5; outline: none; background: #f5f7ff; }
 .result-card { text-align: center; }
 .result-card h4 { margin: 0 0 10px; color: #777; font-size: 0.9rem; text-transform: uppercase; }
 .result-card .val { font-size: 1.4rem; font-weight: 800; color: #1a237e; }
+.stat-group { display: flex; justify-content: space-around; align-items: center; margin: 10px 0; }
+.stat-item { display: flex; flex-direction: column; align-items: center; }
+.stat-item.plitt { border-left: 1px solid #eee; padding-left: 15px; }
+.stat-item .lab { font-size: 0.7rem; color: #999; text-transform: uppercase; font-weight: bold; margin-top: 4px; }
+.stat-item .val { font-size: 1.2rem; }
+.stat-item.plitt .val { color: #2196F3; }
+.geometry-section { margin-top: 25px; padding-top: 20px; border-top: 1px dashed #ddd; }
+.advanced-toggle { margin-top: 15px; }
+.advanced-toggle summary { font-size: 0.85rem; color: #3f51b5; cursor: pointer; font-weight: 600; outline: none; }
+.plitt-params-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; background: #f9f9f9; padding: 10px; border-radius: 8px; }
+.input-group.mini { margin-bottom: 5px; }
+.input-group.mini label { font-size: 0.75rem; }
+.input-group.mini input { width: 60px; padding: 4px; font-size: 0.8rem; }
 .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
 .chart-wrapper { height: 380px; }
 .balance-table tr:hover { background: #f5f7ff; }
