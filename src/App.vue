@@ -78,7 +78,7 @@
         />
       </div>
       
-      <div v-if="activeModule !== 'hydrocyclone'" class="summary-footer" :class="{ 'is-expanded': isSummaryExpanded }">
+      <div v-if="activeModule !== 'hydrocyclone' && activeModule !== 'pulp'" class="summary-footer" :class="{ 'is-expanded': isSummaryExpanded }">
         <button @click="toggleSummaryExpansion" class="summary-toggle-button">
           {{ isSummaryExpanded ? '▼ Contraer' : '▲ Expandir' }}
         </button>
@@ -694,6 +694,18 @@ body {
     right: 0;
     margin-top: 10px;
     box-sizing: border-box;
+  }
+  .summary-footer {
+    max-height: 250px;
+  }
+  .summary-footer.is-expanded {
+    max-height: 70vh;
+  }
+}
+</style>    max-height: 70vh;
+  }
+}
+</style>zing: border-box;
   }
   .summary-footer {
     max-height: 250px;
