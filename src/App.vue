@@ -44,7 +44,7 @@
       <LoadingSpinner v-if="isLoading" />
       
       <!-- CABECERA SUPERIOR (TOOLBAR) -->
-      <div class="app-header" v-if="activeModule !== 'hydrocyclone'">
+      <div class="app-header" v-if="activeModule !== 'hydrocyclone' && activeModule !== 'pulp'">
         <Toolbar 
           @add-node="addNewNode" 
           @export="reconcile" 
@@ -702,18 +702,6 @@ body {
     right: 0;
     margin-top: 10px;
     box-sizing: border-box;
-  }
-  .summary-footer {
-    max-height: 250px;
-  }
-  .summary-footer.is-expanded {
-    max-height: 70vh;
-  }
-}
-</style>    max-height: 70vh;
-  }
-}
-</style>zing: border-box;
   }
   .summary-footer {
     max-height: 250px;
