@@ -125,11 +125,13 @@ const results = ref(null)
 const loading = ref(false)
 const error = ref(null)
 
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://api.suiteminerals.com' : 'http://localhost:8000');
+
 const calculate = async () => {
   loading.value = true
   error.value = null
   try {
-    const response = await fetch('http://localhost:8000/pulp-calculate', {
+    const response = await fetch(`${API_URL}/pulp-calculate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form)
