@@ -24,6 +24,12 @@
         >
           <span class="icon">🌀</span> Hidrociclones
         </button>
+        <button 
+          :class="{ active: activeModule === 'pulp' }" 
+          @click="switchModule('pulp')"
+        >
+          <span class="icon">🧪</span> Cálculo de Pulpa
+        </button>
       </nav>
       <div class="sidebar-footer">
         <p>Desarrollado por:</p>
@@ -67,6 +73,7 @@
       
       <div class="main-content">
         <HydrocycloneModel v-if="activeModule === 'hydrocyclone'" />
+        <PulpCalculator v-else-if="activeModule === 'pulp'" />
         <MetallurgicalDiagram 
           v-else
           ref="diagramRef"
@@ -119,6 +126,7 @@
 <script setup>
 import { ref, nextTick, computed } from 'vue'
 import HydrocycloneModel from './components/HydrocycloneModel.vue'
+import PulpCalculator from './components/PulpCalculator.vue'
 import MetallurgicalDiagram from './components/MetallurgicalDiagram.vue'
 import Toolbar from './components/Toolbar.vue'
 import PropertiesPanel from './components/PropertiesPanel.vue'
