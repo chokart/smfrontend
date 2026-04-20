@@ -250,6 +250,7 @@ function onConnect(connection) {
   const newEdge = {
     id: `e${connection.source}-${connection.target}-${Date.now()}`,
     ...connection,
+    type: 'custom',
     animated: true,
     data: createDefaultFlowData(),
   }

@@ -1,6 +1,7 @@
 <script setup>
 import { Handle, Position, VueFlow, useVueFlow } from '@vue-flow/core'
 import { ref, nextTick } from 'vue'
+import CustomEdge from './CustomEdge.vue'
 
 const props = defineProps({
   nodes: { type: Array, default: () => [] },
@@ -117,6 +118,10 @@ const getNodeStyle = (node) => {
           {{ data.label }}
           <Handle type="source" :position="Position.Right" />
         </div>
+      </template>
+
+      <template #edge-custom="props">
+        <CustomEdge v-bind="props" @click="onEdgeClick({ edge: props })" />
       </template>
     </VueFlow>
   </div>
