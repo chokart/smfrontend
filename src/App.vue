@@ -228,9 +228,9 @@ function initDefaultDiagram() {
       { id: '4', type: 'process', data: { label: 'Celda 1', node_type: 'process' }, position: { x: 400, y: 200 } },
     ]
     initialEdges.value = [
-      { id: 'e1-4', source: '1', target: '4', animated: true, data: createDefaultFlowData() },
-      { id: 'e4-2', source: '4', target: '2', animated: true, data: createDefaultFlowData() },
-      { id: 'e4-3', source: '4', target: '3', animated: true, data: createDefaultFlowData() },
+      { id: 'e1-4', source: '1', target: '4', type: 'custom', animated: true, data: createDefaultFlowData() },
+      { id: 'e4-2', source: '4', target: '2', type: 'custom', animated: true, data: createDefaultFlowData() },
+      { id: 'e4-3', source: '4', target: '3', type: 'custom', animated: true, data: createDefaultFlowData() },
     ]
   }
 }
