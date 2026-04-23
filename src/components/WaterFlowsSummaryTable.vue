@@ -27,6 +27,7 @@
             <div class="measured">{{ (flow.data?.tonelaje_pulpa || 0).toFixed(2) }}</div>
             <div v-if="flow.data?.corrected_data" class="corrected">
               {{ flow.data.corrected_data.tonelaje_pulpa_corregido.toFixed(2) }}
+              <span class="error-val">±{{ flow.data.corrected_data.tonelaje_pulpa_error.toFixed(2) }}</span>
             </div>
           </td>
 
@@ -35,6 +36,7 @@
             <div class="measured">{{ (flow.data?.porcentaje_solidos || 0).toFixed(1) }}%</div>
             <div v-if="flow.data?.corrected_data" class="corrected">
               {{ flow.data.corrected_data.porcentaje_solidos_corregido.toFixed(1) }}%
+              <span class="error-val">±{{ flow.data.corrected_data.porcentaje_solidos_error.toFixed(1) }}</span>
             </div>
           </td>
 
@@ -110,6 +112,12 @@ function getNodeLabel(nodeId) {
   font-weight: bold;
   font-size: 0.95rem;
   margin-top: 2px;
+}
+.error-val {
+  font-size: 0.75rem;
+  color: #666;
+  font-weight: normal;
+  margin-left: 4px;
 }
 .highlight-s { color: #827717; font-weight: bold; }
 .highlight-w { color: #0277BD; font-weight: bold; }

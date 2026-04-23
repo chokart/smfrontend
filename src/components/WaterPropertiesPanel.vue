@@ -60,10 +60,10 @@
         <div v-if="localData.corrected_data" class="results-section">
           <div class="section-title">Resultados Ajustados</div>
           <div class="result-item">
-            <span>Pulpa:</span> <strong>{{ localData.corrected_data.tonelaje_pulpa_corregido.toFixed(2) }}</strong>
+            <span>Pulpa:</span> <strong>{{ localData.corrected_data.tonelaje_pulpa_corregido.toFixed(2) }} <small>± {{ localData.corrected_data.tonelaje_pulpa_error.toFixed(2) }}</small></strong>
           </div>
           <div class="result-item">
-            <span>% Sólidos:</span> <strong>{{ localData.corrected_data.porcentaje_solidos_corregido.toFixed(2) }}%</strong>
+            <span>% Sólidos:</span> <strong>{{ localData.corrected_data.porcentaje_solidos_corregido.toFixed(2) }}% <small>± {{ localData.corrected_data.porcentaje_solidos_error.toFixed(2) }}</small></strong>
           </div>
           <div class="result-item highlight">
             <span>Agua:</span> <strong>{{ localData.corrected_data.tonelaje_agua_calculado.toFixed(2) }} tph</strong>
