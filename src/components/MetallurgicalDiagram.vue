@@ -10,7 +10,7 @@ const props = defineProps({
 
 const emit = defineEmits(['element-click', 'connect'])
 
-const { nodes: flowNodes, edges: flowEdges, addNodes, addEdges, fitView, onPaneReady } = useVueFlow()
+const { nodes: flowNodes, edges: flowEdges, addNodes, addEdges, fitView, onPaneReady, zoomIn, zoomOut } = useVueFlow()
 const vueFlowInstance = ref(null)
 
 onPaneReady((instance) => {
@@ -38,7 +38,9 @@ defineExpose({
   getEdges: () => flowEdges.value, // Return reactive value
   nodes: flowNodes, // Expose ref directly
   edges: flowEdges, // Expose ref directly
-  fitView: () => fitView()
+  fitView: () => fitView(),
+  zoomIn: () => zoomIn(),
+  zoomOut: () => zoomOut()
 })
 
 const getNodeStyle = (node) => {
@@ -71,7 +73,7 @@ const getNodeStyle = (node) => {
 </script>
 
 <template>
-  <div style="height: 100%; width: 100%;">
+  <div style="height: 100%; width: 100%; position: relative;">
     <VueFlow 
       :nodes="nodes" 
       :edges="edges"
@@ -124,10 +126,54 @@ const getNodeStyle = (node) => {
         <CustomEdge v-bind="props" @click="onEdgeClick({ edge: props })" />
       </template>
     </VueFlow>
+
+    <!-- BOTONES DE ZOOM -->
+    <div class="zoom-controls">
+      <button @click="zoomIn" class="zoom-btn" title="Aumentar zoom">+</button>
+      <button @click="zoomOut" class="zoom-btn" title="Reducir zoom">-</button>
+      <button @click="fitView" class="zoom-btn" title="Ajustar vista">⛶</button>
+    </div>
   </div>
 </template>
 
 <style>
 @import '@vue-flow/core/dist/style.css';
 @import '@vue-flow/core/dist/theme-default.css';
+
+.zoom-controls {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 50;
+}
+
+.zoom-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background: white;
+  color: #333;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  transition: all 0.2s;
+}
+
+.zoom-btn:hover {
+  background: #f0f0f0;
+  border-color: #999;
+}
+
+.zoom-btn:active {
+  background: #e0e0e0;
+  transform: translateY(1px);
+}
 </style>
