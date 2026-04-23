@@ -45,8 +45,18 @@ const labelStyle = {
     >
       <div v-if="'tonelaje_pulpa' in data">
         <strong style="color: #007bff;">Flujo de Agua</strong>
-        <div style="margin-top: 4px;"><strong>Tp:</strong> {{ Number(data.tonelaje_pulpa).toFixed(2) }} t/h</div>
-        <div><strong>%S:</strong> {{ Number(data.porcentaje_solidos).toFixed(2) }} %</div>
+        <template v-if="data.corrected_data">
+          <div style="margin-top: 4px;"><strong>Pulpa:</strong> {{ Number(data.corrected_data.tonelaje_pulpa_corregido).toFixed(2) }} t/h</div>
+          <div><strong>%S:</strong> {{ Number(data.corrected_data.porcentaje_solidos_corregido).toFixed(2) }} %</div>
+          <div><strong>Agua:</strong> {{ Number(data.corrected_data.tonelaje_agua_calculado).toFixed(2) }} t/h</div>
+          <div><strong>Sólido:</strong> {{ Number(data.corrected_data.tonelaje_solido_calculado).toFixed(2) }} t/h</div>
+        </template>
+        <template v-else>
+          <div style="margin-top: 4px;"><strong>Pulpa:</strong> {{ Number(data.tonelaje_pulpa).toFixed(2) }} t/h</div>
+          <div><strong>%S:</strong> {{ Number(data.porcentaje_solidos).toFixed(2) }} %</div>
+          <div><strong>Agua:</strong> {{ (Number(data.tonelaje_pulpa) * (1 - Number(data.porcentaje_solidos) / 100)).toFixed(2) }} t/h</div>
+          <div><strong>Sólido:</strong> {{ (Number(data.tonelaje_pulpa) * (Number(data.porcentaje_solidos) / 100)).toFixed(2) }} t/h</div>
+        </template>
       </div>
       <div v-else-if="'tonelaje' in data">
         <strong style="color: #28a745;">Flujo de Sólidos</strong>
