@@ -215,9 +215,9 @@ function initDefaultDiagram() {
       { id: '4', type: 'product', data: { label: 'Producto 2', node_type: 'product' }, position: { x: 800, y: 300 }, deletable: false },
     ]
     initialEdges.value = [
-      { id: 'e1-2', source: '1', target: '2', animated: true, data: createDefaultFlowData() },
-      { id: 'e2-3', source: '2', target: '3', animated: true, data: createDefaultFlowData() },
-      { id: 'e2-4', source: '2', target: '4', animated: true, data: createDefaultFlowData() },
+      { id: 'e1-2', source: '1', target: '2', type: 'custom', animated: true, data: createDefaultFlowData() },
+      { id: 'e2-3', source: '2', target: '3', type: 'custom', animated: true, data: createDefaultFlowData() },
+      { id: 'e2-4', source: '2', target: '4', type: 'custom', animated: true, data: createDefaultFlowData() },
     ]
   } else {
     // Default Metallurgical Diagram
