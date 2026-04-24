@@ -44,15 +44,14 @@ const labelStyle = {
       class="nodrag nopan custom-edge-label"
     >
       <div v-if="'tonelaje_pulpa' in data">
-        <strong style="color: #007bff; font-size: 10.5px;">Agua</strong>
         <template v-if="data.corrected_data">
-          <div style="margin-top: 2px;"><strong>Ton:</strong> {{ Number(data.tonelaje_pulpa).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_pulpa_corregido).toFixed(2) }}</span></div>
+          <div><strong>Ton:</strong> {{ Number(data.tonelaje_pulpa).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_pulpa_corregido).toFixed(2) }}</span></div>
           <div><strong>%Sol:</strong> {{ Number(data.porcentaje_solidos).toFixed(1) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.porcentaje_solidos_corregido).toFixed(1) }}</span></div>
           <div><strong>T.Agua:</strong> {{ (Number(data.tonelaje_pulpa) * (1 - Number(data.porcentaje_solidos) / 100)).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_agua_calculado).toFixed(2) }}</span></div>
           <div><strong>T.Sol:</strong> {{ (Number(data.tonelaje_pulpa) * (Number(data.porcentaje_solidos) / 100)).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_solido_calculado).toFixed(2) }}</span></div>
         </template>
         <template v-else>
-          <div style="margin-top: 2px;"><strong>Ton:</strong> {{ Number(data.tonelaje_pulpa).toFixed(2) }} t/h</div>
+          <div><strong>Ton:</strong> {{ Number(data.tonelaje_pulpa).toFixed(2) }} t/h</div>
           <div><strong>%Sol:</strong> {{ Number(data.porcentaje_solidos).toFixed(1) }} %</div>
           <div><strong>T.Agua:</strong> {{ (Number(data.tonelaje_pulpa) * (1 - Number(data.porcentaje_solidos) / 100)).toFixed(2) }} t/h</div>
           <div><strong>T.Sol:</strong> {{ (Number(data.tonelaje_pulpa) * (Number(data.porcentaje_solidos) / 100)).toFixed(2) }} t/h</div>
