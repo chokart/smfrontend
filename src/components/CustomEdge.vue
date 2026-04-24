@@ -58,15 +58,14 @@ const labelStyle = {
         </template>
       </div>
       <div v-else-if="'tonelaje' in data">
-        <strong style="color: #28a745; font-size: 10.5px;">Sólidos</strong>
         <template v-if="data.corrected_tonelaje != null">
-          <div style="margin-top: 2px;"><strong>Ton:</strong> {{ Number(data.tonelaje).toFixed(2) }} <span style="color: #28a745;">➔ {{ Number(data.corrected_tonelaje).toFixed(2) }}</span></div>
+          <div><strong>Ton:</strong> {{ Number(data.tonelaje).toFixed(2) }} <span style="color: #28a745;">➔ {{ Number(data.corrected_tonelaje).toFixed(2) }}</span></div>
           <div v-for="el in (data.elementos || [])" :key="el.name">
             <strong>{{ el.name }}:</strong> {{ Number(el.ley).toFixed(2) }} <span v-if="el.corrected_data" style="color: #28a745;">➔ {{ Number(el.corrected_data.ley_corregida).toFixed(2) }}</span>
           </div>
         </template>
         <template v-else>
-          <div style="margin-top: 2px;"><strong>Ton:</strong> {{ Number(data.tonelaje).toFixed(2) }} t/h</div>
+          <div><strong>Ton:</strong> {{ Number(data.tonelaje).toFixed(2) }} t/h</div>
           <div v-for="el in (data.elementos || [])" :key="el.name">
             <strong>{{ el.name }}:</strong> {{ Number(el.ley).toFixed(2) }} %
           </div>
