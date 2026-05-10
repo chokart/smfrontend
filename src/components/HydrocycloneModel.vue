@@ -126,6 +126,45 @@
         </div>
       </section>
 
+      <section class="card table-card results-section" style="margin-top: 20px;" v-if="results.global_flow_balance">
+        <h3 class="table-title">Balance de Flujos Globales</h3>
+        <div class="table-container">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th rowspan="2">Corriente</th>
+                <th colspan="3" class="header-mesh">BALANCE MALLAS [tph]</th>
+                <th colspan="3" class="header-solids">BALANCE SÓLIDOS [tph]</th>
+              </tr>
+              <tr>
+                <th>Pulpa (Mineral)</th><th>Sólidos</th><th>Agua</th>
+                <th>Pulpa (Mineral)</th><th>Sólidos</th><th>Agua</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="stream in ['feed', 'overflow', 'underflow']" :key="stream">
+                <td class="size-col">{{ stream === 'feed' ? 'Alimento' : stream === 'overflow' ? 'OverFlow' : 'UnderFlow' }}</td>
+                <td class="bal-mesh">{{ results.global_flow_balance[stream].pulp_mesh.toFixed(2) }}</td>
+                <td class="bal-mesh">{{ results.global_flow_balance[stream].solids_mesh.toFixed(2) }}</td>
+                <td class="bal-mesh">{{ results.global_flow_balance[stream].water_mesh.toFixed(2) }}</td>
+                <td class="bal-solids">{{ results.global_flow_balance[stream].pulp_solids.toFixed(2) }}</td>
+                <td class="bal-solids">{{ results.global_flow_balance[stream].solids_solids.toFixed(2) }}</td>
+                <td class="bal-solids">{{ results.global_flow_balance[stream].water_solids.toFixed(2) }}</td>
+              </tr>
+              <tr style="font-weight: bold; background-color: #f9f9f9; color: #333;">
+                <td class="size-col">Suma (OF + UF)</td>
+                <td class="bal-mesh">{{ (results.global_flow_balance.overflow.pulp_mesh + results.global_flow_balance.underflow.pulp_mesh).toFixed(2) }}</td>
+                <td class="bal-mesh">{{ (results.global_flow_balance.overflow.solids_mesh + results.global_flow_balance.underflow.solids_mesh).toFixed(2) }}</td>
+                <td class="bal-mesh">{{ (results.global_flow_balance.overflow.water_mesh + results.global_flow_balance.underflow.water_mesh).toFixed(2) }}</td>
+                <td class="bal-solids">{{ (results.global_flow_balance.overflow.pulp_solids + results.global_flow_balance.underflow.pulp_solids).toFixed(2) }}</td>
+                <td class="bal-solids">{{ (results.global_flow_balance.overflow.solids_solids + results.global_flow_balance.underflow.solids_solids).toFixed(2) }}</td>
+                <td class="bal-solids">{{ (results.global_flow_balance.overflow.water_solids + results.global_flow_balance.underflow.water_solids).toFixed(2) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <div class="charts-grid">
         <section class="card chart-card">
           <h3>Curvas de Partición</h3>
