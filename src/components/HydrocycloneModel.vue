@@ -2,9 +2,9 @@
   <div class="hydrocyclone-container">
     <div class="header-section">
       <div class="header-main">
-        <h2>Módulo de Hidrociclones (Balance Dual & CIMM)</h2>
+        <h2>Módulo de Hidrociclones (Balance Dual)</h2>
       </div>
-      <p class="subtitle">Balance simultáneo por Mallas y por Sólidos, y Simulación CIMM</p>
+      <p class="subtitle">Balance simultáneo por Mallas y por Sólidos</p>
     </div>
 
     <div class="grid-layout">
@@ -41,33 +41,11 @@
             </select>
           </div>
         </div>
-
-        <div class="geometry-section">
-          <h3>2. Geometría del Ciclón</h3>
-          <div class="input-group"><label>Dc (Ciclón) [cm]:</label><input type="number" v-model="geometry.Dc" step="0.1" /></div>
-          <div class="input-group"><label>Di (Entrada) [cm]:</label><input type="number" v-model="geometry.Di" step="0.1" /></div>
-          <div class="input-group"><label>Do (Vortex) [cm]:</label><input type="number" v-model="geometry.Do" step="0.1" /></div>
-          <div class="input-group"><label>Du (Apex) [cm]:</label><input type="number" v-model="geometry.Du" step="0.1" /></div>
-          <div class="input-group"><label>h (Altura Libre) [cm]:</label><input type="number" v-model="geometry.h" step="0.1" /></div>
-        </div>
-
-        <div class="advanced-toggle">
-          <details>
-            <summary>Constantes de Calibración (CIMM)</summary>
-            <div class="plitt-params-grid">
-              <div class="input-group mini" v-for="key in ['a1', 'a2', 'a3', 'a4', 'l_const']" :key="key">
-                <label>{{ key }}:</label>
-                <input type="number" v-model="plittParams[key]" step="0.001" />
-              </div>
-            </div>
-            <button @click="calibrateModel" class="btn-calibrate-auto" :disabled="loading">✨ Calibrar con Bal. Mallas</button>
-          </details>
-        </div>
       </section>
 
       <!-- 2. DATOS DE MALLAS -->
       <section class="card sieves">
-        <h3>3. Distribución Granulométrica (Pesos en gramos)</h3>
+        <h3>2. Distribución Granulométrica (Pesos en gramos)</h3>
         <div class="table-container">
           <table>
             <thead>
@@ -103,13 +81,13 @@
 
     <div class="actions">
       <button @click="calculate" :disabled="loading" class="btn-calculate">
-        {{ loading ? 'Procesando...' : 'Ejecutar Balances y Simulación' }}
+        {{ loading ? 'Procesando...' : 'Ejecutar Balances' }}
       </button>
     </div>
 
     <template v-if="results">
       <section class="card table-card results-section">
-        <h3 class="table-title">Resultados de Balances y Predicción CIMM</h3>
+        <h3 class="table-title">Resultados de Balances</h3>
         <div class="table-container">
           <table class="comparison-table">
             <thead>
@@ -118,13 +96,11 @@
                 <th colspan="3" class="header-real">REAL (Medido) [%]</th>
                 <th colspan="4" class="header-mesh">BALANCE MALLAS [%]</th>
                 <th colspan="4" class="header-solids">BALANCE SÓLIDOS [%]</th>
-                <th colspan="1" class="header-sim">CIMM</th>
               </tr>
               <tr>
                 <th>F</th><th>OF</th><th>UF</th>
                 <th>F*</th><th>OF*</th><th>UF*</th><th>Ea</th>
                 <th>F*</th><th>OF*</th><th>UF*</th><th>Ea</th>
-                <th>Ea</th>
               </tr>
             </thead>
             <tbody>
@@ -144,8 +120,6 @@
                 <td class="bal-solids">{{ row.overflow_pct_solids.toFixed(1) }}</td>
                 <td class="bal-solids">{{ row.underflow_pct_solids.toFixed(1) }}</td>
                 <td class="bal-solids rec">{{ (row.recovery_solids * 100).toFixed(1) }}</td>
-                <!-- Simulado -->
-                <td class="bal-sim rec">{{ (row.recovery_sim * 100).toFixed(1) }}</td>
               </tr>
             </tbody>
           </table>
@@ -192,9 +166,6 @@ const solid_density = ref(2.80);
 const feed_flow_rate = ref(162.3);
 const feed_flow_unit = ref('tph');
 
-const geometry = reactive({ Dc: 50.8, Di: 8.89, Do: 19.05, Du: 9.32, h: 190.5, alpha: 20.0 });
-const plittParams = reactive({ a1: 9.68, a2: 1.401, a3: 54.95, a4: 0.523, l_const: 0.950 });
-
 const pan_weights = reactive({ feed: 300.0, overflow: 180.0, underflow: 120.0 });
 const sieves = ref([
   { mesh_size: 2000, weight_feed: 50.0, weight_overflow: 0.0, weight_underflow: 50.0 },
@@ -230,8 +201,7 @@ const partitionChartData = computed(() => {
     labels: [1, ...pts.map(p => p.size)],
     datasets: [
       { label: 'Bal. Mallas', borderColor: '#4CAF50', data: [bypass_mesh, ...pts.map(p => p.adjusted_recovery_mesh)], tension: 0.4 },
-      { label: 'Bal. Sólidos', borderColor: '#FF9800', data: [bypass_solids, ...pts.map(p => p.adjusted_recovery_solids)], tension: 0.4 },
-      { label: 'Simulado (CIMM)', borderColor: '#2196F3', borderDash: [5, 2], data: [bypass_mesh, ...pts.map(p => p.plitt_recovery)], tension: 0.4, pointRadius: 0 }
+      { label: 'Bal. Sólidos', borderColor: '#FF9800', data: [bypass_solids, ...pts.map(p => p.adjusted_recovery_solids)], tension: 0.4 }
     ]
   };
 });
@@ -245,26 +215,12 @@ const calculate = async () => {
     const res = await fetch(`${API_URL}/model/hydrocyclone/plitt`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sieves: sieves.value, pan_feed: pan_weights.feed, pan_overflow: pan_weights.overflow, pan_underflow: pan_weights.underflow, pressure: pressure.value, solid_density: solid_density.value, feed_p_solids: feed_p_solids.value, overflow_p_solids: overflow_p_solids.value, underflow_p_solids: underflow_p_solids.value, feed_flow_rate: feed_flow_rate.value, feed_flow_unit: feed_flow_unit.value, geometry, plitt_params: plittParams })
+      body: JSON.stringify({ sieves: sieves.value, pan_feed: pan_weights.feed, pan_overflow: pan_weights.overflow, pan_underflow: pan_weights.underflow, pressure: pressure.value, solid_density: solid_density.value, feed_p_solids: feed_p_solids.value, overflow_p_solids: overflow_p_solids.value, underflow_p_solids: underflow_p_solids.value, feed_flow_rate: feed_flow_rate.value, feed_flow_unit: feed_flow_unit.value })
     });
     results.value = await res.json();
   } catch (e) { alert("Error: " + e.message); } finally { loading.value = false; }
 };
 
-const calibrateModel = async () => {
-  loading.value = true;
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-  try {
-    const res = await fetch(`${API_URL}/model/hydrocyclone/calibrate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sieves: sieves.value, pan_feed: pan_weights.feed, pan_overflow: pan_weights.overflow, pan_underflow: pan_weights.underflow, pressure: pressure.value, solid_density: solid_density.value, feed_p_solids: feed_p_solids.value, overflow_p_solids: overflow_p_solids.value, underflow_p_solids: underflow_p_solids.value, feed_flow_rate: feed_flow_rate.value, feed_flow_unit: feed_flow_unit.value, geometry, plitt_params: plittParams })
-    });
-    const newParams = await res.json();
-    Object.assign(plittParams, newParams);
-    alert("Calibración completada usando el Balance por Mallas.");
-  } catch (e) { alert("Error: " + e.message); } finally { loading.value = false; }
-};
 </script>
 
 <style scoped>
@@ -274,19 +230,14 @@ const calibrateModel = async () => {
 .card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 .input-group { display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center; }
 .input-group input { width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; text-align: right; }
-.geometry-section { margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 15px; }
-.plitt-params-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f9f9f9; padding: 10px; border-radius: 8px; margin: 10px 0; }
-.btn-calibrate-auto { width: 100%; padding: 10px; background: #e8f5e9; color: #2e7d32; border: 1px solid #2e7d32; border-radius: 6px; cursor: pointer; font-weight: bold; }
 .btn-calculate { width: 100%; padding: 15px; background: #3f51b5; color: #fff; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; }
 .comparison-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .comparison-table th, .comparison-table td { padding: 6px 8px; border: 1px solid #eee; text-align: center; }
 .header-real { background: #f5f5f5; color: #555; }
 .header-mesh { background: #e8f5e9; color: #2e7d32; }
 .header-solids { background: #fff3e0; color: #e65100; }
-.header-sim { background: #e3f2fd; color: #1565c0; }
 .bal-mesh { background: #f1f8e9; }
 .bal-solids { background: #fff8e1; }
-.bal-sim { background: #e3f2fd; }
 .rec { font-weight: bold; }
 .charts-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; margin-top: 20px; }
 .metrics-comparison-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
