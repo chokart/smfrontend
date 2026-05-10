@@ -212,7 +212,7 @@ const calculate = async () => {
   loading.value = true;
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
   try {
-    const res = await fetch(`${API_URL}/model/hydrocyclone/plitt`, {
+    const res = await fetch(`${API_URL}/model/hydrocyclone/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sieves: sieves.value, pan_feed: pan_weights.feed, pan_overflow: pan_weights.overflow, pan_underflow: pan_weights.underflow, pressure: pressure.value, solid_density: solid_density.value, feed_p_solids: feed_p_solids.value, overflow_p_solids: overflow_p_solids.value, underflow_p_solids: underflow_p_solids.value, feed_flow_rate: feed_flow_rate.value, feed_flow_unit: feed_flow_unit.value })
