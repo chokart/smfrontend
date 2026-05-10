@@ -2,13 +2,9 @@
   <div class="hydrocyclone-container">
     <div class="header-section">
       <div class="header-main">
-        <h2>Módulo de Hidrociclones (Modelo CIMM)</h2>
-        <div class="mode-selector">
-          <button :class="{ active: mode === 'analysis' }" @click="mode = 'analysis'">Análisis Experimental</button>
-          <button :class="{ active: mode === 'simulation' }" @click="mode = 'simulation'">Simulación Predictiva</button>
-        </div>
+        <h2>Módulo de Hidrociclones (Balance Dual & CIMM)</h2>
       </div>
-      <p class="subtitle">Predicción y Calibración según Modelo CIMM/Moly-Cop</p>
+      <p class="subtitle">Balance simultáneo por Mallas y por Sólidos, y Simulación CIMM</p>
     </div>
 
     <div class="grid-layout">
@@ -28,6 +24,14 @@
           <input type="number" v-model="feed_p_solids" step="0.1" />
         </div>
         <div class="input-group">
+          <label>% Sólidos OF:</label>
+          <input type="number" v-model="overflow_p_solids" step="0.1" />
+        </div>
+        <div class="input-group">
+          <label>% Sólidos UF:</label>
+          <input type="number" v-model="underflow_p_solids" step="0.1" />
+        </div>
+        <div class="input-group">
           <label>Flujo Alimento:</label>
           <div class="flow-input">
             <input type="number" v-model="feed_flow_rate" step="0.1" />
@@ -40,55 +44,38 @@
 
         <div class="geometry-section">
           <h3>2. Geometría del Ciclón</h3>
-          <div class="input-group">
-            <label>Dc (Ciclón) [cm]:</label>
-            <input type="number" v-model="geometry.Dc" step="0.1" />
-          </div>
-          <div class="input-group">
-            <label>Di (Entrada) [cm]:</label>
-            <input type="number" v-model="geometry.Di" step="0.1" />
-          </div>
-          <div class="input-group">
-            <label>Do (Vortex) [cm]:</label>
-            <input type="number" v-model="geometry.Do" step="0.1" />
-          </div>
-          <div class="input-group">
-            <label>Du (Apex) [cm]:</label>
-            <input type="number" v-model="geometry.Du" step="0.1" />
-          </div>
-          <div class="input-group">
-            <label>h (Altura Libre) [cm]:</label>
-            <input type="number" v-model="geometry.h" step="0.1" />
-          </div>
+          <div class="input-group"><label>Dc (Ciclón) [cm]:</label><input type="number" v-model="geometry.Dc" step="0.1" /></div>
+          <div class="input-group"><label>Di (Entrada) [cm]:</label><input type="number" v-model="geometry.Di" step="0.1" /></div>
+          <div class="input-group"><label>Do (Vortex) [cm]:</label><input type="number" v-model="geometry.Do" step="0.1" /></div>
+          <div class="input-group"><label>Du (Apex) [cm]:</label><input type="number" v-model="geometry.Du" step="0.1" /></div>
+          <div class="input-group"><label>h (Altura Libre) [cm]:</label><input type="number" v-model="geometry.h" step="0.1" /></div>
         </div>
 
         <div class="advanced-toggle">
           <details>
-            <summary>Constantes de Calibración</summary>
+            <summary>Constantes de Calibración (CIMM)</summary>
             <div class="plitt-params-grid">
               <div class="input-group mini" v-for="key in ['a1', 'a2', 'a3', 'a4', 'l_const']" :key="key">
                 <label>{{ key }}:</label>
                 <input type="number" v-model="plittParams[key]" step="0.001" />
               </div>
             </div>
-            <button @click="calibrateModel" class="btn-calibrate-auto" :disabled="loading">
-              ✨ Calibrar con Datos Reales
-            </button>
+            <button @click="calibrateModel" class="btn-calibrate-auto" :disabled="loading">✨ Calibrar con Bal. Mallas</button>
           </details>
         </div>
       </section>
 
       <!-- 2. DATOS DE MALLAS -->
       <section class="card sieves">
-        <h3>3. Distribución Granulométrica</h3>
+        <h3>3. Distribución Granulométrica (Pesos en gramos)</h3>
         <div class="table-container">
           <table>
             <thead>
               <tr>
                 <th>Malla [µm]</th>
-                <th>Alimento [g]</th>
-                <th>OF [g] (Exp)</th>
-                <th>UF [g] (Exp)</th>
+                <th>Alimento</th>
+                <th>OverFlow</th>
+                <th>UnderFlow</th>
                 <th></th>
               </tr>
             </thead>
@@ -96,15 +83,15 @@
               <tr v-for="(sieve, index) in sieves" :key="index">
                 <td><input type="number" v-model="sieve.mesh_size" /></td>
                 <td><input type="number" v-model="sieve.weight_feed" /></td>
-                <td><input type="number" v-model="sieve.weight_overflow" :disabled="mode === 'simulation'" /></td>
-                <td><input type="number" v-model="sieve.weight_underflow" :disabled="mode === 'simulation'" /></td>
+                <td><input type="number" v-model="sieve.weight_overflow" /></td>
+                <td><input type="number" v-model="sieve.weight_underflow" /></td>
                 <td><button @click="removeSieve(index)" class="btn-remove">×</button></td>
               </tr>
               <tr class="pan-row">
                 <td>Fondo (Pan)</td>
                 <td><input type="number" v-model="pan_weights.feed" /></td>
-                <td><input type="number" v-model="pan_weights.overflow" :disabled="mode === 'simulation'" /></td>
-                <td><input type="number" v-model="pan_weights.underflow" :disabled="mode === 'simulation'" /></td>
+                <td><input type="number" v-model="pan_weights.overflow" /></td>
+                <td><input type="number" v-model="pan_weights.underflow" /></td>
                 <td></td>
               </tr>
             </tbody>
@@ -116,52 +103,58 @@
 
     <div class="actions">
       <button @click="calculate" :disabled="loading" class="btn-calculate">
-        {{ loading ? 'Procesando...' : (mode === 'simulation' ? 'Ejecutar Simulación' : 'Analizar y Comparar') }}
+        {{ loading ? 'Procesando...' : 'Ejecutar Balances y Simulación' }}
       </button>
     </div>
 
-    <!-- RESULTADOS UNIFICADOS -->
     <template v-if="results">
-      
-      <!-- TABLA COMPARATIVA ÚNICA -->
       <section class="card table-card results-section">
-        <h3 class="table-title">Resultados: Reconciliado (Real) vs. Predicho (Modelo CIMM)</h3>
+        <h3 class="table-title">Resultados de Balances y Predicción CIMM</h3>
         <div class="table-container">
           <table class="comparison-table">
             <thead>
               <tr>
                 <th rowspan="2">Fracción</th>
-                <th colspan="3" class="header-real">REAL (Reconciliado) [%]</th>
-                <th colspan="3" class="header-sim">SIMULADO (Modelo) [%]</th>
-                <th colspan="2">Eficiencia (Ea)</th>
+                <th colspan="3" class="header-real">REAL (Medido) [%]</th>
+                <th colspan="4" class="header-mesh">BALANCE MALLAS [%]</th>
+                <th colspan="4" class="header-solids">BALANCE SÓLIDOS [%]</th>
+                <th colspan="1" class="header-sim">CIMM</th>
               </tr>
               <tr>
-                <th>Alim</th><th>OF</th><th>UF</th>
-                <th>Alim</th><th>OF</th><th>UF</th>
-                <th>Real</th><th>Sim</th>
+                <th>F</th><th>OF</th><th>UF</th>
+                <th>F*</th><th>OF*</th><th>UF*</th><th>Ea</th>
+                <th>F*</th><th>OF*</th><th>UF*</th><th>Ea</th>
+                <th>Ea</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="row in results.comparison_table" :key="row.size">
                 <td class="size-col">{{ row.size }}</td>
-                <td>{{ row.feed_pct_real.toFixed(2) }}</td>
-                <td>{{ row.overflow_pct_real.toFixed(2) }}</td>
-                <td>{{ row.underflow_pct_real.toFixed(2) }}</td>
-                <td class="sim-cell">{{ row.feed_pct_sim.toFixed(2) }}</td>
-                <td class="sim-cell">{{ row.overflow_pct_sim.toFixed(2) }}</td>
-                <td class="sim-cell">{{ row.underflow_pct_sim.toFixed(2) }}</td>
-                <td class="rec-real">{{ (row.recovery_real * 100).toFixed(1) }}%</td>
-                <td class="rec-sim">{{ (row.recovery_sim * 100).toFixed(1) }}%</td>
+                <!-- Real -->
+                <td>{{ row.feed_pct_real.toFixed(1) }}</td>
+                <td>{{ row.overflow_pct_real.toFixed(1) }}</td>
+                <td>{{ row.underflow_pct_real.toFixed(1) }}</td>
+                <!-- Bal Mallas -->
+                <td class="bal-mesh">{{ row.feed_pct_mesh.toFixed(1) }}</td>
+                <td class="bal-mesh">{{ row.overflow_pct_mesh.toFixed(1) }}</td>
+                <td class="bal-mesh">{{ row.underflow_pct_mesh.toFixed(1) }}</td>
+                <td class="bal-mesh rec">{{ (row.recovery_mesh * 100).toFixed(1) }}</td>
+                <!-- Bal Solidos -->
+                <td class="bal-solids">{{ row.feed_pct_solids.toFixed(1) }}</td>
+                <td class="bal-solids">{{ row.overflow_pct_solids.toFixed(1) }}</td>
+                <td class="bal-solids">{{ row.underflow_pct_solids.toFixed(1) }}</td>
+                <td class="bal-solids rec">{{ (row.recovery_solids * 100).toFixed(1) }}</td>
+                <!-- Simulado -->
+                <td class="bal-sim rec">{{ (row.recovery_sim * 100).toFixed(1) }}</td>
               </tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      <!-- GRÁFICOS Y MÉTRICAS -->
       <div class="charts-grid">
         <section class="card chart-card">
-          <h3>Curva de Tromp (Eficiencia)</h3>
+          <h3>Curvas de Partición</h3>
           <div class="chart-wrapper"><Line :data="partitionChartData" :options="partitionChartOptions" /></div>
         </section>
         <section class="card chart-card">
@@ -170,8 +163,8 @@
             <div class="m-card" v-for="m in displayMetrics" :key="m.label">
               <span class="m-lab">{{ m.label }}</span>
               <div class="m-vals">
-                <div class="m-val real"><span>Real:</span> <strong>{{ m.real }}</strong></div>
-                <div class="m-val sim"><span>Sim:</span> <strong>{{ m.sim }}</strong></div>
+                <div class="m-val mesh"><span>Mallas:</span> <strong>{{ m.mesh }}</strong></div>
+                <div class="m-val solids"><span>Sólidos:</span> <strong>{{ m.solids }}</strong></div>
               </div>
             </div>
           </div>
@@ -189,13 +182,13 @@ import { Line } from 'vue-chartjs';
 ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, LinearScale, LogarithmicScale, CategoryScale, Filler);
 
 const loading = ref(false);
-const mode = ref('analysis');
 const results = ref(null);
 
 const pressure = ref(55.0);
 const feed_p_solids = ref(62.2);
+const overflow_p_solids = ref(45.0);
+const underflow_p_solids = ref(75.0);
 const solid_density = ref(2.80);
-const liquid_density = ref(1.0);
 const feed_flow_rate = ref(162.3);
 const feed_flow_unit = ref('tph');
 
@@ -218,23 +211,27 @@ const removeSieve = (index) => sieves.value.splice(index, 1);
 
 const displayMetrics = computed(() => {
   if (!results.value) return [];
-  const r = results.value.reconciled_metrics;
+  const m = results.value.metrics_mesh;
+  const s = results.value.metrics_solids;
   return [
-    { label: 'Corte d50c [µm]', real: r.d50c.toFixed(1), sim: results.value.d50c_adjusted.toFixed(1) },
-    { label: 'Presión [kPa]', real: pressure.value, sim: r.p_plitt.toFixed(1) },
-    { label: 'Bypass Rf [%]', real: r.bypass_rf.toFixed(2), sim: (r.s_plitt/(1+r.s_plitt)*plittParams.l_const*100).toFixed(2) },
-    { label: 'Rec. Sólidos [%]', real: r.solids_recovery_s.toFixed(2), sim: ((r.s_plitt/(1+r.s_plitt))*100).toFixed(2) }
+    { label: 'Corte d50c [µm]', mesh: m.d50c.toFixed(1), solids: s.d50c.toFixed(1) },
+    { label: 'Bypass Rf [%]', mesh: m.bypass_rf.toFixed(2), solids: s.bypass_rf.toFixed(2) },
+    { label: 'Rec. Sólidos (Split) [%]', mesh: m.solids_recovery_s.toFixed(2), solids: s.solids_recovery_s.toFixed(2) },
+    { label: 'Corte d50 [µm]', mesh: m.d50.toFixed(1), solids: s.d50.toFixed(1) }
   ];
 });
 
 const partitionChartData = computed(() => {
   if (!results.value) return { labels: [], datasets: [] };
   const pts = [...results.value.partition_curve].sort((a,b) => a.size - b.size);
+  const bypass_mesh = results.value.metrics_mesh.bypass_rf / 100;
+  const bypass_solids = results.value.metrics_solids.bypass_rf / 100;
   return {
     labels: [1, ...pts.map(p => p.size)],
     datasets: [
-      { label: 'Real (Reconciliado)', borderColor: '#4CAF50', data: [results.value.water_balance.bypass_Rf/100, ...pts.map(p => p.adjusted_recovery)], tension: 0.4 },
-      { label: 'Simulado (Plitt)', borderColor: '#2196F3', borderDash: [5, 2], data: [results.value.water_balance.bypass_Rf/100, ...pts.map(p => p.plitt_recovery)], tension: 0.4, pointRadius: 0 }
+      { label: 'Bal. Mallas', borderColor: '#4CAF50', data: [bypass_mesh, ...pts.map(p => p.adjusted_recovery_mesh)], tension: 0.4 },
+      { label: 'Bal. Sólidos', borderColor: '#FF9800', data: [bypass_solids, ...pts.map(p => p.adjusted_recovery_solids)], tension: 0.4 },
+      { label: 'Simulado (CIMM)', borderColor: '#2196F3', borderDash: [5, 2], data: [bypass_mesh, ...pts.map(p => p.plitt_recovery)], tension: 0.4, pointRadius: 0 }
     ]
   };
 });
@@ -248,7 +245,7 @@ const calculate = async () => {
     const res = await fetch(`${API_URL}/model/hydrocyclone/plitt`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: mode.value, sieves: sieves.value, pan_feed: pan_weights.feed, pan_overflow: pan_weights.overflow, pan_underflow: pan_weights.underflow, pressure: pressure.value, solid_density: solid_density.value, feed_p_solids: feed_p_solids.value, feed_flow_rate: feed_flow_rate.value, feed_flow_unit: feed_flow_unit.value, geometry, plitt_params: plittParams })
+      body: JSON.stringify({ sieves: sieves.value, pan_feed: pan_weights.feed, pan_overflow: pan_weights.overflow, pan_underflow: pan_weights.underflow, pressure: pressure.value, solid_density: solid_density.value, feed_p_solids: feed_p_solids.value, overflow_p_solids: overflow_p_solids.value, underflow_p_solids: underflow_p_solids.value, feed_flow_rate: feed_flow_rate.value, feed_flow_unit: feed_flow_unit.value, geometry, plitt_params: plittParams })
     });
     results.value = await res.json();
   } catch (e) { alert("Error: " + e.message); } finally { loading.value = false; }
@@ -261,21 +258,18 @@ const calibrateModel = async () => {
     const res = await fetch(`${API_URL}/model/hydrocyclone/calibrate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sieves: sieves.value, pan_feed: pan_weights.feed, pan_overflow: pan_weights.overflow, pan_underflow: pan_weights.underflow, pressure: pressure.value, solid_density: solid_density.value, feed_p_solids: feed_p_solids.value, feed_flow_rate: feed_flow_rate.value, feed_flow_unit: feed_flow_unit.value, geometry, plitt_params: plittParams })
+      body: JSON.stringify({ sieves: sieves.value, pan_feed: pan_weights.feed, pan_overflow: pan_weights.overflow, pan_underflow: pan_weights.underflow, pressure: pressure.value, solid_density: solid_density.value, feed_p_solids: feed_p_solids.value, overflow_p_solids: overflow_p_solids.value, underflow_p_solids: underflow_p_solids.value, feed_flow_rate: feed_flow_rate.value, feed_flow_unit: feed_flow_unit.value, geometry, plitt_params: plittParams })
     });
     const newParams = await res.json();
     Object.assign(plittParams, newParams);
-    alert("Calibración completada con éxito. Las constantes han sido actualizadas.");
+    alert("Calibración completada usando el Balance por Mallas.");
   } catch (e) { alert("Error: " + e.message); } finally { loading.value = false; }
 };
 </script>
 
 <style scoped>
-.hydrocyclone-container { padding: 20px; max-width: 1400px; margin: 0 auto; font-family: 'Segoe UI', sans-serif; background: #fcfcfc; }
+.hydrocyclone-container { padding: 20px; max-width: 1500px; margin: 0 auto; font-family: 'Segoe UI', sans-serif; background: #fcfcfc; }
 .header-main { display: flex; justify-content: space-between; align-items: center; }
-.mode-selector { display: flex; background: #eee; padding: 4px; border-radius: 8px; }
-.mode-selector button { border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; }
-.mode-selector button.active { background: #fff; color: #3f51b5; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 .grid-layout { display: grid; grid-template-columns: 380px 1fr; gap: 20px; margin: 20px 0; }
 .card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 .input-group { display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center; }
@@ -284,18 +278,22 @@ const calibrateModel = async () => {
 .plitt-params-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f9f9f9; padding: 10px; border-radius: 8px; margin: 10px 0; }
 .btn-calibrate-auto { width: 100%; padding: 10px; background: #e8f5e9; color: #2e7d32; border: 1px solid #2e7d32; border-radius: 6px; cursor: pointer; font-weight: bold; }
 .btn-calculate { width: 100%; padding: 15px; background: #3f51b5; color: #fff; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; }
-.comparison-table { width: 100%; border-collapse: collapse; }
-.comparison-table th, .comparison-table td { padding: 10px; border: 1px solid #eee; text-align: center; }
-.header-real { background: #e8f5e9; color: #2e7d32; }
+.comparison-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.comparison-table th, .comparison-table td { padding: 6px 8px; border: 1px solid #eee; text-align: center; }
+.header-real { background: #f5f5f5; color: #555; }
+.header-mesh { background: #e8f5e9; color: #2e7d32; }
+.header-solids { background: #fff3e0; color: #e65100; }
 .header-sim { background: #e3f2fd; color: #1565c0; }
-.sim-cell { background: #f5faff; color: #1565c0; }
-.rec-real { font-weight: bold; color: #2e7d32; }
-.rec-sim { font-weight: bold; color: #1565c0; border-left: 2px solid #ddd; }
+.bal-mesh { background: #f1f8e9; }
+.bal-solids { background: #fff8e1; }
+.bal-sim { background: #e3f2fd; }
+.rec { font-weight: bold; }
 .charts-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; margin-top: 20px; }
 .metrics-comparison-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 .m-card { background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #3f51b5; }
 .m-vals { margin-top: 10px; font-size: 0.9rem; }
-.m-val.real { color: #2e7d32; }
-.m-val.sim { color: #1565c0; }
+.m-val.mesh { color: #2e7d32; }
+.m-val.solids { color: #e65100; }
 .chart-wrapper { height: 400px; }
+.table-container { overflow-x: auto; }
 </style>
