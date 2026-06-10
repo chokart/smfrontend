@@ -327,21 +327,21 @@ const handlePaste = (event) => {
 
 const displayMetrics = computed(() => {
   if (!results.value) return [];
-  const m = results.value.metrics_mesh;
-  const s = results.value.metrics_solids;
+  const m = results.value.metrics_mesh || { d50c: 0, bypass_rf: 0, solids_recovery_s: 0, d50: 0 };
+  const s = results.value.metrics_solids || { d50c: 0, bypass_rf: 0, solids_recovery_s: 0, d50: 0 };
   return [
-    { label: 'Corte d50c [µm]', mesh: m.d50c.toFixed(1), solids: s.d50c.toFixed(1) },
-    { label: 'Bypass Rf [%]', mesh: m.bypass_rf.toFixed(2), solids: s.bypass_rf.toFixed(2) },
-    { label: 'Rec. Sólidos (Split) [%]', mesh: m.solids_recovery_s.toFixed(2), solids: s.solids_recovery_s.toFixed(2) },
-    { label: 'Corte d50 [µm]', mesh: m.d50.toFixed(1), solids: s.d50.toFixed(1) }
+    { label: 'Corte d50c [µm]', mesh: m.d50c?.toFixed(1) || '0.0', solids: s.d50c?.toFixed(1) || '0.0' },
+    { label: 'Bypass Rf [%]', mesh: m.bypass_rf?.toFixed(2) || '0.00', solids: s.bypass_rf?.toFixed(2) || '0.00' },
+    { label: 'Rec. Sólidos (Split) [%]', mesh: m.solids_recovery_s?.toFixed(2) || '0.00', solids: s.solids_recovery_s?.toFixed(2) || '0.00' },
+    { label: 'Corte d50 [µm]', mesh: m.d50?.toFixed(1) || '0.0', solids: s.d50?.toFixed(1) || '0.0' }
   ];
 });
 
 const partitionChartData = computed(() => {
   if (!results.value || !results.value.partition_curve) return { labels: [], datasets: [] };
   const pts = [...results.value.partition_curve].sort((a,b) => a.size - b.size);
-  const bypass_mesh = results.value.metrics_mesh.bypass_rf / 100;
-  const bypass_solids = results.value.metrics_solids.bypass_rf / 100;
+  const bypass_mesh = (results.value.metrics_mesh?.bypass_rf || 0) / 100;
+  const bypass_solids = (results.value.metrics_solids?.bypass_rf || 0) / 100;
   return {
     labels: [1, ...pts.map(p => p.size)],
     datasets: [
