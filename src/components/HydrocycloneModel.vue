@@ -209,35 +209,12 @@
           </table>
         </div>
       </section>
-
-      <div class="charts-grid">
-        <section class="card chart-card">
-          <h3>Curvas de Partición</h3>
-          <div class="chart-wrapper"><Line :data="partitionChartData" :options="partitionChartOptions" /></div>
-        </section>
-        <section class="card chart-card">
-          <h3>Métricas Comparativas</h3>
-          <div class="metrics-comparison-grid">
-            <div class="m-card" v-for="m in displayMetrics" :key="m.label">
-              <span class="m-lab">{{ m.label }}</span>
-              <div class="m-vals">
-                <div class="m-val mesh"><span>Mallas:</span> <strong>{{ m.mesh }}</strong></div>
-                <div class="m-val solids"><span>Sólidos:</span> <strong>{{ m.solids }}</strong></div>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
     </template>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue';
-import { Chart as ChartJS, Title, Tooltip, Legend, LineElement, PointElement, LinearScale, LogarithmicScale, CategoryScale, Filler } from 'chart.js';
-import { Line } from 'vue-chartjs';
-
-ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, LinearScale, LogarithmicScale, CategoryScale, Filler);
+import { ref, reactive } from 'vue';
 
 const loading = ref(false);
 const results = ref(null);
@@ -286,7 +263,6 @@ const handlePaste = (event) => {
     if (columns.length >= 4) {
       const cleanNum = (str) => {
         if (!str) return NaN;
-        // Manejar formatos: "1.234,56" -> "1234.56" o "1,234.56" -> "1234.56"
         let s = str.trim();
         if (s.includes(',') && s.includes('.')) {
            if (s.indexOf(',') > s.indexOf('.')) s = s.replace(/\./g, '').replace(',', '.');
@@ -325,34 +301,6 @@ const handlePaste = (event) => {
   }
 };
 
-const displayMetrics = computed(() => {
-  if (!results.value) return [];
-  const m = results.value.metrics_mesh || { d50c: 0, bypass_rf: 0, solids_recovery_s: 0, d50: 0 };
-  const s = results.value.metrics_solids || { d50c: 0, bypass_rf: 0, solids_recovery_s: 0, d50: 0 };
-  return [
-    { label: 'Corte d50c [µm]', mesh: m.d50c?.toFixed(1) || '0.0', solids: s.d50c?.toFixed(1) || '0.0' },
-    { label: 'Bypass Rf [%]', mesh: m.bypass_rf?.toFixed(2) || '0.00', solids: s.bypass_rf?.toFixed(2) || '0.00' },
-    { label: 'Rec. Sólidos (Split) [%]', mesh: m.solids_recovery_s?.toFixed(2) || '0.00', solids: s.solids_recovery_s?.toFixed(2) || '0.00' },
-    { label: 'Corte d50 [µm]', mesh: m.d50?.toFixed(1) || '0.0', solids: s.d50?.toFixed(1) || '0.0' }
-  ];
-});
-
-const partitionChartData = computed(() => {
-  if (!results.value || !results.value.partition_curve) return { labels: [], datasets: [] };
-  const pts = [...results.value.partition_curve].sort((a,b) => a.size - b.size);
-  const bypass_mesh = (results.value.metrics_mesh?.bypass_rf || 0) / 100;
-  const bypass_solids = (results.value.metrics_solids?.bypass_rf || 0) / 100;
-  return {
-    labels: [1, ...pts.map(p => p.size)],
-    datasets: [
-      { label: 'Bal. Mallas', borderColor: '#4CAF50', data: [bypass_mesh, ...pts.map(p => p.adjusted_recovery_mesh)], tension: 0.4 },
-      { label: 'Bal. Sólidos', borderColor: '#FF9800', data: [bypass_solids, ...pts.map(p => p.adjusted_recovery_solids)], tension: 0.4 }
-    ]
-  };
-});
-
-const partitionChartOptions = { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'logarithmic' }, y: { min: 0, max: 1.1 } } };
-
 const calculate = async () => {
   loading.value = true;
   const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://api.suiteminerals.com' : 'https://smbackend.onrender.com');
@@ -384,13 +332,6 @@ const calculate = async () => {
 .bal-mesh { background: #f1f8e9; }
 .bal-solids { background: #fff8e1; }
 .rec { font-weight: bold; }
-.charts-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; margin-top: 20px; }
-.metrics-comparison-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-.m-card { background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #3f51b5; }
-.m-vals { margin-top: 10px; font-size: 0.9rem; }
-.m-val.mesh { color: #2e7d32; }
-.m-val.solids { color: #e65100; }
-.chart-wrapper { height: 400px; }
 .table-container { overflow-x: auto; }
 
 /* Nuevos Estilos para Pegado desde Excel */
