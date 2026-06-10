@@ -44,8 +44,11 @@
       </section>
 
       <!-- 2. DATOS DE MALLAS -->
-      <section class="card sieves">
-        <h3>2. Distribución Granulométrica (Pesos en gramos)</h3>
+      <section class="card sieves" @paste="handlePaste">
+        <div class="card-header-flex">
+          <h3>2. Distribución Granulométrica (Pesos en gramos)</h3>
+          <span class="paste-hint">💡 Puedes pegar datos desde Excel aquí</span>
+        </div>
         <div class="table-container">
           <table>
             <thead>
@@ -75,7 +78,10 @@
             </tbody>
           </table>
         </div>
-        <button @click="addSieve" class="btn-add">+ Agregar Malla</button>
+        <div class="table-actions">
+          <button @click="addSieve" class="btn-add">+ Agregar Malla</button>
+          <button @click="clearSieves" class="btn-clear">Limpiar Tabla</button>
+        </div>
       </section>
     </div>
 
@@ -219,6 +225,67 @@ const sieves = ref([
 const addSieve = () => sieves.value.push({ mesh_size: 0, weight_feed: 0, weight_overflow: 0, weight_underflow: 0 });
 const removeSieve = (index) => sieves.value.splice(index, 1);
 
+const clearSieves = () => {
+  sieves.value = [];
+  pan_weights.feed = 0;
+  pan_weights.overflow = 0;
+  pan_weights.underflow = 0;
+};
+
+const handlePaste = (event) => {
+  const pasteData = event.clipboardData.getData('text');
+  if (!pasteData.includes('\t')) return; // Solo procesar si parece venir de Excel (tabuladores)
+  
+  event.preventDefault();
+  const rows = pasteData.split(/\r?\n/).filter(row => row.trim() !== "");
+  
+  const newSieves = [];
+  const newPan = { feed: 0, overflow: 0, underflow: 0 };
+
+  rows.forEach((row) => {
+    const columns = row.split('\t');
+    if (columns.length >= 4) {
+      const cleanNum = (str) => {
+        if (!str) return NaN;
+        // Manejar formatos: "1.234,56" -> "1234.56" o "1,234.56" -> "1234.56"
+        let s = str.trim();
+        if (s.includes(',') && s.includes('.')) {
+           if (s.indexOf(',') > s.indexOf('.')) s = s.replace(/\./g, '').replace(',', '.');
+           else s = s.replace(/,/g, '');
+        } else {
+           s = s.replace(',', '.');
+        }
+        return parseFloat(s);
+      };
+      
+      const val0 = cleanNum(columns[0]);
+      const w_f = cleanNum(columns[1]);
+      const w_o = cleanNum(columns[2]);
+      const w_u = cleanNum(columns[3]);
+
+      if (!isNaN(val0)) {
+        newSieves.push({ mesh_size: val0, weight_feed: w_f || 0, weight_overflow: w_o || 0, weight_underflow: w_u || 0 });
+      } else {
+        const label = columns[0].toLowerCase();
+        if (label.includes('pan') || label.includes('fondo')) {
+          newPan.feed = w_f || 0;
+          newPan.overflow = w_o || 0;
+          newPan.underflow = w_u || 0;
+        }
+      }
+    }
+  });
+
+  if (newSieves.length > 0) {
+    sieves.value = newSieves;
+    if (newPan.feed || newPan.overflow || newPan.underflow) {
+      pan_weights.feed = newPan.feed;
+      pan_weights.overflow = newPan.overflow;
+      pan_weights.underflow = newPan.underflow;
+    }
+  }
+};
+
 const displayMetrics = computed(() => {
   if (!results.value) return [];
   const m = results.value.metrics_mesh;
@@ -286,4 +353,15 @@ const calculate = async () => {
 .m-val.solids { color: #e65100; }
 .chart-wrapper { height: 400px; }
 .table-container { overflow-x: auto; }
+
+/* Nuevos Estilos para Pegado desde Excel */
+.card-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+.card-header-flex h3 { margin: 0; }
+.paste-hint { font-size: 0.8rem; color: #666; background: #eef; padding: 4px 8px; border-radius: 4px; border: 1px dashed #3f51b5; }
+.table-actions { display: flex; gap: 10px; margin-top: 15px; }
+.btn-add { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+.btn-clear { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
+.btn-remove { background: none; border: none; color: #ff4d4f; font-size: 1.2rem; cursor: pointer; }
+.btn-add:hover { background: #c8e6c9; }
+.btn-clear:hover { background: #ffa39e; color: #fff; }
 </style>
