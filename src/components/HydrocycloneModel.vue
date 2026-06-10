@@ -338,7 +338,7 @@ const displayMetrics = computed(() => {
 });
 
 const partitionChartData = computed(() => {
-  if (!results.value) return { labels: [], datasets: [] };
+  if (!results.value || !results.value.partition_curve) return { labels: [], datasets: [] };
   const pts = [...results.value.partition_curve].sort((a,b) => a.size - b.size);
   const bypass_mesh = results.value.metrics_mesh.bypass_rf / 100;
   const bypass_solids = results.value.metrics_solids.bypass_rf / 100;
