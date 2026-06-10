@@ -93,7 +93,7 @@
 
     <template v-if="results">
       <section class="card table-card results-section">
-        <h3 class="table-title">Resultados de Balances</h3>
+        <h3 class="table-title">Resultados de Balances (Distribución %)</h3>
         <div class="table-container">
           <table class="comparison-table">
             <thead>
@@ -126,6 +126,45 @@
                 <td class="bal-solids">{{ row.overflow_pct_solids.toFixed(1) }}</td>
                 <td class="bal-solids">{{ row.underflow_pct_solids.toFixed(1) }}</td>
                 <td class="bal-solids rec">{{ (row.recovery_solids * 100).toFixed(1) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card table-card results-section" style="margin-top: 20px;" v-if="results.mass_balance_table">
+        <h3 class="table-title">Balance de Masa por Malla [tph]</h3>
+        <div class="table-container">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th rowspan="2">Fracción</th>
+                <th colspan="3" class="header-mesh">BALANCE MALLAS [tph]</th>
+                <th colspan="3" class="header-solids">BALANCE SÓLIDOS [tph]</th>
+              </tr>
+              <tr>
+                <th>F</th><th>OF</th><th>UF</th>
+                <th>F</th><th>OF</th><th>UF</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in results.mass_balance_table" :key="row.size">
+                <td class="size-col">{{ row.size }}</td>
+                <td class="bal-mesh">{{ row.feed_tph_mesh.toFixed(2) }}</td>
+                <td class="bal-mesh">{{ row.overflow_tph_mesh.toFixed(2) }}</td>
+                <td class="bal-mesh">{{ row.underflow_tph_mesh.toFixed(2) }}</td>
+                <td class="bal-solids">{{ row.feed_tph_solids.toFixed(2) }}</td>
+                <td class="bal-solids">{{ row.overflow_tph_solids.toFixed(2) }}</td>
+                <td class="bal-solids">{{ row.underflow_tph_solids.toFixed(2) }}</td>
+              </tr>
+              <tr style="font-weight: bold; background-color: #f9f9f9;">
+                <td class="size-col">TOTAL (tph)</td>
+                <td class="bal-mesh">{{ results.mass_balance_table.reduce((a, b) => a + b.feed_tph_mesh, 0).toFixed(2) }}</td>
+                <td class="bal-mesh">{{ results.mass_balance_table.reduce((a, b) => a + b.overflow_tph_mesh, 0).toFixed(2) }}</td>
+                <td class="bal-mesh">{{ results.mass_balance_table.reduce((a, b) => a + b.underflow_tph_mesh, 0).toFixed(2) }}</td>
+                <td class="bal-solids">{{ results.mass_balance_table.reduce((a, b) => a + b.feed_tph_solids, 0).toFixed(2) }}</td>
+                <td class="bal-solids">{{ results.mass_balance_table.reduce((a, b) => a + b.overflow_tph_solids, 0).toFixed(2) }}</td>
+                <td class="bal-solids">{{ results.mass_balance_table.reduce((a, b) => a + b.underflow_tph_solids, 0).toFixed(2) }}</td>
               </tr>
             </tbody>
           </table>
