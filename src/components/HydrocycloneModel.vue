@@ -305,7 +305,7 @@ const handlePaste = (event) => {
 
 const calculate = async () => {
   loading.value = true;
-  const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://api.suiteminerals.com' : 'https://smbackend.onrender.com');
+  const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://apism.suiteminerals.com' : 'http://localhost:8000');
   try {
     const res = await fetch(`${API_URL}/model/hydrocyclone/analyze`, {
       method: 'POST',

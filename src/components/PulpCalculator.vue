@@ -125,7 +125,7 @@ const results = ref(null)
 const loading = ref(false)
 const error = ref(null)
 
-const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://api.suiteminerals.com' : 'http://localhost:8000');
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://apism.suiteminerals.com' : 'http://localhost:8000');
 
 const calculate = async () => {
   loading.value = true

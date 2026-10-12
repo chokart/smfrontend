@@ -298,7 +298,7 @@ function handlePropertiesUpdate(payload) {
 // --- LÓGICA DE NEGOCIO ---
 // Si hay una variable de entorno se usa, de lo contrario en producción usa el dominio real y en desarrollo localhost.
 const API_URL = import.meta.env.VITE_API_URL || 
-                (import.meta.env.PROD ? 'https://api.suiteminerals.com' : 'http://localhost:8000');
+                (import.meta.env.PROD ? 'https://apism.suiteminerals.com' : 'http://localhost:8000');
 
 console.log('--- DEPURACIÓN API ---');
 console.log('Modo:', import.meta.env.PROD ? 'PRODUCCIÓN' : 'DESARROLLO');
