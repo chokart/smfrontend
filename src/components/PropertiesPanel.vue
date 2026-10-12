@@ -21,6 +21,25 @@
             <option value="tailing">Relave</option>
           </select>
         </div>
+        <div class="section-title">Puntos de Conexión</div>
+        <div class="form-group">
+          <label>Punto de Ingreso (i):</label>
+          <select v-model="localData.targetPosition" @change="update">
+            <option value="left">Izquierda (Left) ⬅️</option>
+            <option value="top">Arriba (Top) ⬆️</option>
+            <option value="right">Derecha (Right) ➡️</option>
+            <option value="bottom">Abajo (Bottom) ⬇️</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Punto de Salida (s):</label>
+          <select v-model="localData.sourcePosition" @change="update">
+            <option value="right">Derecha (Right) ➡️</option>
+            <option value="bottom">Abajo (Bottom) ⬇️</option>
+            <option value="left">Izquierda (Left) ⬅️</option>
+            <option value="top">Arriba (Top) ⬆️</option>
+          </select>
+        </div>
       </div>
 
       <!-- CONFIGURACIÓN DE FLUJO -->
