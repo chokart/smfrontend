@@ -19,12 +19,6 @@
           <span class="icon">💧</span> Balance de Agua
         </button>
         <button 
-          :class="{ active: activeModule === 'hydrocyclone' }" 
-          @click="switchModule('hydrocyclone')"
-        >
-          <span class="icon">🌀</span> Hidrociclones
-        </button>
-        <button 
           :class="{ active: activeModule === 'pulp' }" 
           @click="switchModule('pulp')"
         >
@@ -44,7 +38,7 @@
       <LoadingSpinner v-if="isLoading" />
       
       <!-- CABECERA SUPERIOR (TOOLBAR) -->
-      <div class="app-header" v-if="activeModule !== 'hydrocyclone' && activeModule !== 'pulp'">
+      <div class="app-header" v-if="activeModule !== 'pulp'">
         <Toolbar 
           @add-node="addNewNode" 
           @export="reconcile" 
@@ -72,8 +66,7 @@
       />
       
       <div class="main-content">
-        <HydrocycloneModel v-if="activeModule === 'hydrocyclone'" />
-        <PulpCalculator v-else-if="activeModule === 'pulp'" />
+        <PulpCalculator v-if="activeModule === 'pulp'" />
         <MetallurgicalDiagram 
           v-else
           ref="diagramRef"
@@ -85,7 +78,7 @@
         />
       </div>
       
-      <div v-if="activeModule !== 'hydrocyclone' && activeModule !== 'pulp'" class="summary-footer" :class="{ 'is-expanded': isSummaryExpanded }">
+      <div v-if="activeModule !== 'pulp'" class="summary-footer" :class="{ 'is-expanded': isSummaryExpanded }">
         <button @click="toggleSummaryExpansion" class="summary-toggle-button">
           {{ isSummaryExpanded ? '▼ Contraer' : '▲ Expandir' }}
         </button>
@@ -125,7 +118,6 @@
 
 <script setup>
 import { ref, nextTick, computed } from 'vue'
-import HydrocycloneModel from './components/HydrocycloneModel.vue'
 import PulpCalculator from './components/PulpCalculator.vue'
 import MetallurgicalDiagram from './components/MetallurgicalDiagram.vue'
 import Toolbar from './components/Toolbar.vue'
