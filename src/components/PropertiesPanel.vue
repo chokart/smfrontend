@@ -124,13 +124,19 @@ const localData = ref({})
 
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
-    localData.value = JSON.parse(JSON.stringify(newVal.data))
+    localData.value = JSON.parse(JSON.stringify(newVal.data || {}))
+    if (newVal.position) {
+      if (!localData.value.targetPosition) localData.value.targetPosition = newVal.targetPosition || 'left'
+      if (!localData.value.sourcePosition) localData.value.sourcePosition = newVal.sourcePosition || 'right'
+    }
   }
 }, { immediate: true, deep: true })
 
 function update() {
   const updatedElement = {
     ...props.modelValue,
+    targetPosition: localData.value.targetPosition,
+    sourcePosition: localData.value.sourcePosition,
     data: { ...localData.value }
   }
   emit('update:modelValue', updatedElement)

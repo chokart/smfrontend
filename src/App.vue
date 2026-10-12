@@ -218,10 +218,10 @@ function initDefaultDiagram() {
   id = 5
   if (activeModule.value === 'water') {
     initialNodes.value = [
-      { id: '1', type: 'initial', data: { label: 'Alimento', node_type: 'initial' }, position: { x: 50, y: 200 } },
-      { id: '2', type: 'process', data: { label: 'Cajón 1', node_type: 'process' }, position: { x: 400, y: 200 } },
-      { id: '3', type: 'product', data: { label: 'Producto 1', node_type: 'product' }, position: { x: 800, y: 100 } },
-      { id: '4', type: 'product', data: { label: 'Producto 2', node_type: 'product' }, position: { x: 800, y: 300 } },
+      { id: '1', type: 'initial', data: { label: 'Alimento', node_type: 'initial', sourcePosition: 'right' }, position: { x: 50, y: 200 }, sourcePosition: 'right' },
+      { id: '2', type: 'process', data: { label: 'Cajón 1', node_type: 'process', sourcePosition: 'right', targetPosition: 'left' }, position: { x: 400, y: 200 }, sourcePosition: 'right', targetPosition: 'left' },
+      { id: '3', type: 'product', data: { label: 'Producto 1', node_type: 'product', targetPosition: 'left' }, position: { x: 800, y: 100 }, targetPosition: 'left' },
+      { id: '4', type: 'product', data: { label: 'Producto 2', node_type: 'product', targetPosition: 'left' }, position: { x: 800, y: 300 }, targetPosition: 'left' },
     ]
     initialEdges.value = [
       { id: 'e1-2', source: '1', target: '2', type: 'custom', animated: true, data: createDefaultFlowData() },
@@ -231,10 +231,10 @@ function initDefaultDiagram() {
   } else {
     // Default Metallurgical Diagram
     initialNodes.value = [
-      { id: '1', type: 'initial', data: { label: 'Alimento', node_type: 'initial' }, position: { x: 50, y: 200 } },
-      { id: '2', type: 'concentrate', data: { label: 'Concentrado', node_type: 'concentrate' }, position: { x: 800, y: 100 } },
-      { id: '3', type: 'tailing', data: { label: 'Relave', node_type: 'tailing' }, position: { x: 800, y: 300 } },
-      { id: '4', type: 'process', data: { label: 'Celda 1', node_type: 'process' }, position: { x: 400, y: 200 } },
+      { id: '1', type: 'initial', data: { label: 'Alimento', node_type: 'initial', sourcePosition: 'right' }, position: { x: 50, y: 200 }, sourcePosition: 'right' },
+      { id: '2', type: 'concentrate', data: { label: 'Concentrado', node_type: 'concentrate', targetPosition: 'left' }, position: { x: 800, y: 100 }, targetPosition: 'left' },
+      { id: '3', type: 'tailing', data: { label: 'Relave', node_type: 'tailing', targetPosition: 'left' }, position: { x: 800, y: 300 }, targetPosition: 'left' },
+      { id: '4', type: 'process', data: { label: 'Celda 1', node_type: 'process', sourcePosition: 'right', targetPosition: 'left' }, position: { x: 400, y: 200 }, sourcePosition: 'right', targetPosition: 'left' },
     ]
     initialEdges.value = [
       { id: 'e1-4', source: '1', target: '4', type: 'custom', animated: true, data: createDefaultFlowData() },
@@ -277,8 +277,10 @@ function addNewNode() {
   const newNode = {
     id: `${id++}`,
     type: 'process',
-    data: { label: `${labelPrefix} ${id - 4}`, node_type: 'process' },
+    data: { label: `${labelPrefix} ${id - 4}`, node_type: 'process', sourcePosition: 'right', targetPosition: 'left' },
     position: { x: Math.random() * 400 + 200, y: Math.random() * 200 + 100 },
+    sourcePosition: 'right',
+    targetPosition: 'left'
   }
   if (diagramRef.value) {
     diagramRef.value.addNode(newNode);
@@ -297,10 +299,20 @@ function handlePropertiesUpdate(payload) {
     return;
   }
   if (selectedElement.value) {
-    // Ideally we should update the store node/edge directly.
-    // Since selectedElement is likely a reference to the reactive object from the store (via getNodes/getEdges),
-    // modifying it here should be fine.
     selectedElement.value.data = payload.data;
+    if (payload.position) {
+      if (payload.data.targetPosition) {
+        selectedElement.value.targetPosition = payload.data.targetPosition;
+      }
+      if (payload.data.sourcePosition) {
+        selectedElement.value.sourcePosition = payload.data.sourcePosition;
+      }
+      if (diagramRef.value && diagramRef.value.updateNodeInternals) {
+        nextTick(() => {
+          diagramRef.value.updateNodeInternals([payload.id]);
+        });
+      }
+    }
   }
 }
 

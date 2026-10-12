@@ -1,6 +1,6 @@
 <script setup>
 import { Handle, Position, VueFlow, useVueFlow } from '@vue-flow/core'
-import { ref } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import CustomEdge from './CustomEdge.vue'
 
 const props = defineProps({
@@ -10,12 +10,27 @@ const props = defineProps({
 
 const emit = defineEmits(['element-click', 'connect'])
 
-const { nodes: flowNodes, edges: flowEdges, addNodes, addEdges, removeNodes, removeEdges, fitView, onPaneReady, zoomIn, zoomOut } = useVueFlow()
+const { 
+  nodes: flowNodes, 
+  edges: flowEdges, 
+  addNodes, 
+  addEdges, 
+  removeNodes, 
+  removeEdges, 
+  updateNodeInternals, 
+  fitView, 
+  onPaneReady, 
+  zoomIn, 
+  zoomOut 
+} = useVueFlow()
 const vueFlowInstance = ref(null)
 
 onPaneReady((instance) => {
   vueFlowInstance.value = instance
   instance.fitView()
+  nextTick(() => {
+    updateNodeInternals()
+  })
 })
 
 function onEdgeClick({ edge }) {
@@ -36,6 +51,7 @@ defineExpose({
   addEdges: (edges) => addEdges(edges),
   removeNodes: (nodeIds) => removeNodes(nodeIds),
   removeEdges: (edgeIds) => removeEdges(edgeIds),
+  updateNodeInternals: (nodeIds) => updateNodeInternals(nodeIds),
   getNodes: () => flowNodes.value,
   getEdges: () => flowEdges.value,
   nodes: flowNodes,
@@ -62,15 +78,55 @@ const rotatePosition = (current, defaultPos = 'left') => {
   return order[(idx + 1) % order.length]
 }
 
-const handleRotateIn = (nodeData, event) => {
+const handleRotateIn = (nodeId, nodeData, event) => {
   if (event) event.stopPropagation()
-  nodeData.targetPosition = rotatePosition(nodeData.targetPosition, 'left')
+  const nextPos = rotatePosition(nodeData.targetPosition, 'left')
+  nodeData.targetPosition = nextPos
+  const node = flowNodes.value.find(n => n.id === nodeId)
+  if (node) {
+    node.targetPosition = nextPos
+    if (!node.data) node.data = {}
+    node.data.targetPosition = nextPos
+  }
+  nextTick(() => {
+    updateNodeInternals([nodeId])
+  })
 }
 
-const handleRotateOut = (nodeData, event) => {
+const handleRotateOut = (nodeId, nodeData, event) => {
   if (event) event.stopPropagation()
-  nodeData.sourcePosition = rotatePosition(nodeData.sourcePosition, 'right')
+  const nextPos = rotatePosition(nodeData.sourcePosition, 'right')
+  nodeData.sourcePosition = nextPos
+  const node = flowNodes.value.find(n => n.id === nodeId)
+  if (node) {
+    node.sourcePosition = nextPos
+    if (!node.data) node.data = {}
+    node.data.sourcePosition = nextPos
+  }
+  nextTick(() => {
+    updateNodeInternals([nodeId])
+  })
 }
+
+// Vigilar cambios reactivos en las posiciones de conexión para actualizar bordes y flujos en tiempo real
+watch(
+  () => flowNodes.value.map(n => `${n.id}:${n.data?.targetPosition || ''}:${n.data?.sourcePosition || ''}:${n.targetPosition || ''}:${n.sourcePosition || ''}`),
+  (newVal, oldVal) => {
+    if (!oldVal) return
+    const changedIds = []
+    newVal.forEach((val, idx) => {
+      if (val !== oldVal[idx]) {
+        const id = val.split(':')[0]
+        changedIds.push(id)
+      }
+    })
+    if (changedIds.length > 0) {
+      nextTick(() => {
+        updateNodeInternals(changedIds)
+      })
+    }
+  }
+)
 
 const hasInputHandle = (nodeType) => {
   return nodeType !== 'initial'
@@ -124,7 +180,7 @@ const getNodeStyle = (node) => {
       <template 
         v-for="nodeSlot in ['initial', 'concentrate', 'tailing', 'product', 'process']" 
         :key="nodeSlot"
-        #[`node-${nodeSlot}`]="{ data, ...rest }"
+        #[`node-${nodeSlot}`]="{ id: nodeId, data, ...rest }"
       >
         <div class="custom-diagram-node" :style="getNodeStyle({ data, ...rest })">
           <!-- PUNTO DE INGRESO (i): Solo si recibe flujos (proceso, concentrado, relave, producto) -->
@@ -147,7 +203,7 @@ const getNodeStyle = (node) => {
               type="button" 
               class="rotate-btn btn-in" 
               title="Mover punto de ingreso (i) de posición" 
-              @click.stop="handleRotateIn(data, $event)"
+              @click.stop="handleRotateIn(nodeId, data, $event)"
             >
               ⟳ i
             </button>
@@ -156,7 +212,7 @@ const getNodeStyle = (node) => {
               type="button" 
               class="rotate-btn btn-out" 
               title="Mover punto de salida (s) de posición" 
-              @click.stop="handleRotateOut(data, $event)"
+              @click.stop="handleRotateOut(nodeId, data, $event)"
             >
               ⟳ s
             </button>
@@ -267,13 +323,16 @@ const getNodeStyle = (node) => {
   border: 2px solid #ffffff !important;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25) !important;
   cursor: crosshair !important;
-  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+  transition: box-shadow 0.15s ease !important;
   z-index: 30 !important;
 }
 
 .custom-handle:hover {
-  transform: scale(1.25) !important;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35) !important;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45) !important;
+}
+
+.custom-handle:hover .handle-letter {
+  transform: scale(1.2);
 }
 
 .handle-in {
