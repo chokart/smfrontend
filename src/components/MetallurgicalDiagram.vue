@@ -10,7 +10,7 @@ const props = defineProps({
 
 const emit = defineEmits(['element-click', 'connect'])
 
-const { nodes: flowNodes, edges: flowEdges, addNodes, addEdges, fitView, onPaneReady, zoomIn, zoomOut } = useVueFlow()
+const { nodes: flowNodes, edges: flowEdges, addNodes, addEdges, removeNodes, removeEdges, fitView, onPaneReady, zoomIn, zoomOut } = useVueFlow()
 const vueFlowInstance = ref(null)
 
 onPaneReady((instance) => {
@@ -34,6 +34,8 @@ function onConnect(params) {
 defineExpose({
   addNode: (node) => addNodes(node),
   addEdges: (edges) => addEdges(edges),
+  removeNodes: (nodeIds) => removeNodes(nodeIds),
+  removeEdges: (edgeIds) => removeEdges(edgeIds),
   getNodes: () => flowNodes.value,
   getEdges: () => flowEdges.value,
   nodes: flowNodes,

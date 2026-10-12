@@ -59,11 +59,13 @@
         v-if="activeModule === 'metallurgical'"
         :modelValue="selectedElement" 
         @update:modelValue="handlePropertiesUpdate"
+        @delete="handleDeleteSelected"
       />
       <WaterPropertiesPanel 
         v-if="activeModule === 'water'"
         :modelValue="selectedElement" 
         @update:modelValue="handlePropertiesUpdate"
+        @delete="handleDeleteSelected"
       />
       
       <div class="main-content">
@@ -216,10 +218,10 @@ function initDefaultDiagram() {
   id = 5
   if (activeModule.value === 'water') {
     initialNodes.value = [
-      { id: '1', type: 'initial', data: { label: 'Alimento', node_type: 'initial' }, position: { x: 50, y: 200 }, deletable: false },
+      { id: '1', type: 'initial', data: { label: 'Alimento', node_type: 'initial' }, position: { x: 50, y: 200 } },
       { id: '2', type: 'process', data: { label: 'Cajón 1', node_type: 'process' }, position: { x: 400, y: 200 } },
-      { id: '3', type: 'product', data: { label: 'Producto 1', node_type: 'product' }, position: { x: 800, y: 100 }, deletable: false },
-      { id: '4', type: 'product', data: { label: 'Producto 2', node_type: 'product' }, position: { x: 800, y: 300 }, deletable: false },
+      { id: '3', type: 'product', data: { label: 'Producto 1', node_type: 'product' }, position: { x: 800, y: 100 } },
+      { id: '4', type: 'product', data: { label: 'Producto 2', node_type: 'product' }, position: { x: 800, y: 300 } },
     ]
     initialEdges.value = [
       { id: 'e1-2', source: '1', target: '2', type: 'custom', animated: true, data: createDefaultFlowData() },
@@ -229,9 +231,9 @@ function initDefaultDiagram() {
   } else {
     // Default Metallurgical Diagram
     initialNodes.value = [
-      { id: '1', type: 'initial', data: { label: 'Alimento', node_type: 'initial' }, position: { x: 50, y: 200 }, deletable: false },
-      { id: '2', type: 'initial', data: { label: 'Concentrado', node_type: 'concentrate' }, position: { x: 800, y: 100 }, deletable: false },
-      { id: '3', type: 'initial', data: { label: 'Relave', node_type: 'tailing' }, position: { x: 800, y: 300 }, deletable: false },
+      { id: '1', type: 'initial', data: { label: 'Alimento', node_type: 'initial' }, position: { x: 50, y: 200 } },
+      { id: '2', type: 'concentrate', data: { label: 'Concentrado', node_type: 'concentrate' }, position: { x: 800, y: 100 } },
+      { id: '3', type: 'tailing', data: { label: 'Relave', node_type: 'tailing' }, position: { x: 800, y: 300 } },
       { id: '4', type: 'process', data: { label: 'Celda 1', node_type: 'process' }, position: { x: 400, y: 200 } },
     ]
     initialEdges.value = [
@@ -299,6 +301,23 @@ function handlePropertiesUpdate(payload) {
     // Since selectedElement is likely a reference to the reactive object from the store (via getNodes/getEdges),
     // modifying it here should be fine.
     selectedElement.value.data = payload.data;
+  }
+}
+
+function handleDeleteSelected(element) {
+  const elem = element || selectedElement.value;
+  if (!elem) return;
+  const isNode = !!elem.position;
+  const label = elem.data ? (elem.data.label || (isNode ? 'Nodo' : 'Flujo')) : (isNode ? 'Nodo' : 'Flujo');
+  if (confirm(`¿Deseas eliminar "${label}"?`)) {
+    if (diagramRef.value) {
+      if (isNode) {
+        diagramRef.value.removeNodes([elem.id]);
+      } else {
+        diagramRef.value.removeEdges([elem.id]);
+      }
+    }
+    selectedElement.value = null;
   }
 }
 

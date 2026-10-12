@@ -94,6 +94,16 @@
             </div>
           </div>
         </div>
+
+        <div class="panel-footer-actions">
+          <button 
+            type="button" 
+            class="btn-delete-element"
+            @click="$emit('delete', modelValue)"
+          >
+            🗑️ Eliminar {{ title }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -106,7 +116,7 @@ const props = defineProps({
   modelValue: Object
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'delete'])
 
 const isNode = computed(() => props.modelValue && props.modelValue.position)
 const title = computed(() => isNode.value ? 'Nodo' : 'Flujo')
@@ -228,5 +238,33 @@ function update() {
 .highlight {
   color: #0d47a1;
   font-weight: bold;
+}
+
+.panel-footer-actions {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.btn-delete-element {
+  width: 100%;
+  padding: 9px 12px;
+  background-color: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-delete-element:hover {
+  background-color: #fecaca;
+  color: #b91c1c;
 }
 </style>
