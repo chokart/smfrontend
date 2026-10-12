@@ -109,6 +109,7 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
+import { api } from '../services/api'
 
 const form = reactive({
   rho_solid: 2.7,
@@ -125,24 +126,11 @@ const results = ref(null)
 const loading = ref(false)
 const error = ref(null)
 
-const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://apism.suiteminerals.com' : 'http://localhost:8000');
-
 const calculate = async () => {
   loading.value = true
   error.value = null
   try {
-    const response = await fetch(`${API_URL}/pulp-calculate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form)
-    })
-    
-    if (!response.ok) {
-      const data = await response.json()
-      throw new Error(data.detail || 'Error en el cálculo')
-    }
-    
-    results.value = await response.json()
+    results.value = await api.calculatePulp(form)
   } catch (e) {
     error.value = e.message
     results.value = null

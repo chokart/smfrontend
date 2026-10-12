@@ -130,6 +130,7 @@ import ElementConfigPanel from './components/ElementConfigPanel.vue'
 import LoadingSpinner from './components/LoadingSpinner.vue'
 import ReporteModal from './components/ReporteModal.vue'
 import EquationsModal from './components/EquationsModal.vue'
+import api from './services/api'
 
 // --- ESTADO REACTIVO PRINCIPAL ---
 const activeModule = ref('metallurgical') // 'metallurgical' | 'water'
@@ -288,65 +289,49 @@ function handlePropertiesUpdate(payload) {
 }
 
 // --- LÓGICA DE NEGOCIO ---
-// Si hay una variable de entorno se usa, de lo contrario en producción usa el dominio real y en desarrollo localhost.
-const API_URL = import.meta.env.VITE_API_URL || 
-                (import.meta.env.PROD ? 'https://apism.suiteminerals.com' : 'http://localhost:8000');
-
-console.log('--- DEPURACIÓN API ---');
-console.log('Modo:', import.meta.env.PROD ? 'PRODUCCIÓN' : 'DESARROLLO');
-console.log('API_URL final:', API_URL);
-
-function reconcile() {
+async function reconcile() {
   isLoading.value = true;
   reconciliationReport.value = null;
 
   const currentNodes = getNodes();
   const currentEdges = getEdges();
 
-  let endpoint = `${API_URL}/reconcile`;
-  console.log('Llamando a endpoint:', endpoint);
-  let body = {};
+  try {
+    let data;
+    if (activeModule.value === 'metallurgical') {
+      const body = {
+        nodes: currentNodes.map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
+        flows: currentEdges.map(f => ({
+          id: f.id, source: f.source, target: f.target,
+          data: {
+            tonelaje: f.data.tonelaje,
+            tonelaje_error: f.data.tonelaje_error,
+            tonelaje_fixed: f.data.tonelaje_fixed,
+            not_measured: f.data.not_measured,
+            elementos: f.data.elementos.map(el => ({ ...el }))
+          }
+        }))
+      };
+      data = await api.reconcile(body);
+    } else {
+      const body = {
+        nodes: currentNodes.map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
+        flows: currentEdges.map(f => ({
+          id: f.id, source: f.source, target: f.target,
+          data: {
+            tonelaje_pulpa: f.data.tonelaje_pulpa,
+            tonelaje_pulpa_error: f.data.tonelaje_pulpa_error,
+            tonelaje_pulpa_fixed: f.data.tonelaje_pulpa_fixed,
+            not_measured: f.data.not_measured,
+            porcentaje_solidos: f.data.porcentaje_solidos,
+            porcentaje_solidos_error: f.data.porcentaje_solidos_error,
+            porcentaje_solidos_fixed: f.data.porcentaje_solidos_fixed
+          }
+        }))
+      };
+      data = await api.reconcileWater(body);
+    }
 
-  if (activeModule.value === 'metallurgical') {
-    body = {
-      nodes: currentNodes.map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
-      flows: currentEdges.map(f => ({
-        id: f.id, source: f.source, target: f.target,
-        data: {
-          tonelaje: f.data.tonelaje,
-          tonelaje_error: f.data.tonelaje_error,
-          tonelaje_fixed: f.data.tonelaje_fixed,
-          not_measured: f.data.not_measured,
-          elementos: f.data.elementos.map(el => ({ ...el }))
-        }
-      }))
-    };
-  } else {
-    endpoint = `${API_URL}/reconcile/water`;
-    body = {
-      nodes: currentNodes.map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
-      flows: currentEdges.map(f => ({
-        id: f.id, source: f.source, target: f.target,
-        data: {
-          tonelaje_pulpa: f.data.tonelaje_pulpa,
-          tonelaje_pulpa_error: f.data.tonelaje_pulpa_error,
-          tonelaje_pulpa_fixed: f.data.tonelaje_pulpa_fixed,
-          not_measured: f.data.not_measured,
-          porcentaje_solidos: f.data.porcentaje_solidos,
-          porcentaje_solidos_error: f.data.porcentaje_solidos_error,
-          porcentaje_solidos_fixed: f.data.porcentaje_solidos_fixed
-        }
-      }))
-    };
-  }
-
-  fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  .then(res => res.ok ? res.json() : res.json().then(e => { throw new Error(e.detail) }))
-  .then(data => {
     data.flows.forEach(rf => {
       const flow = currentEdges.find(e => e.id === rf.id);
       if (flow) {
@@ -363,12 +348,14 @@ function reconcile() {
     });
     reconciliationReport.value = data.report;
     alert(`Reconciliación de ${activeModule.value === 'water' ? 'Agua' : 'Leyes'} completada.`);
-  })
-  .catch(err => alert(`Error: ${err.message}`))
-  .finally(() => isLoading.value = false);
+  } catch (err) {
+    alert(`Error: ${err.message}`);
+  } finally {
+    isLoading.value = false;
+  }
 }
 
-function handleVerifyEquations() {
+async function handleVerifyEquations() {
   if (activeModule.value === 'metallurgical' && elementNames.value.length === 0) {
     alert('Por favor, configure al menos un elemento antes de verificar las ecuaciones.');
     return;
@@ -380,78 +367,61 @@ function handleVerifyEquations() {
   const currentNodes = getNodes();
   const currentEdges = getEdges();
 
-  let endpoint = '';
-  let exportObject = {};
-
-  if (activeModule.value === 'metallurgical') {
-    endpoint = `${API_URL}/preview-equations`;
-    exportObject = {
-      nodes: currentNodes.map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
-      flows: currentEdges.map(f => ({
-        id: f.id,
-        source: f.source,
-        target: f.target,
-        data: {
-          tonelaje: f.data.tonelaje,
-          tonelaje_error: f.data.tonelaje_error,
-          tonelaje_fixed: f.data.tonelaje_fixed,
-          not_measured: f.data.not_measured,
-          elementos: f.data.elementos.map(el => ({
-            name: el.name,
-            ley: el.ley,
-            ley_error: el.ley_error,
-            ley_fixed: el.ley_fixed,
-            not_measured: el.not_measured,
-          })),
-        },
-      })),
-    };
-  } else {
-    endpoint = `${API_URL}/preview-water-equations`;
-    exportObject = {
-      nodes: currentNodes.map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
-      flows: currentEdges.map(f => ({
-        id: f.id,
-        source: f.source,
-        target: f.target,
-        data: {
-          tonelaje_pulpa: f.data.tonelaje_pulpa,
-          tonelaje_pulpa_error: f.data.tonelaje_pulpa_error,
-          tonelaje_pulpa_fixed: f.data.tonelaje_pulpa_fixed,
-          not_measured: f.data.not_measured,
-          porcentaje_solidos: f.data.porcentaje_solidos,
-          porcentaje_solidos_error: f.data.porcentaje_solidos_error,
-          porcentaje_solidos_fixed: f.data.porcentaje_solidos_fixed,
-          porcentaje_solidos_not_measured: f.data.porcentaje_solidos_not_measured || false
-        },
-      })),
-    };
-  }
-
-  fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(exportObject),
-  })
-  .then(response => {
-    if (!response.ok) {
-      return response.json().then(err => { 
-        throw new Error(err.detail || 'Error en la respuesta del servidor');
-      });
+  try {
+    let data;
+    if (activeModule.value === 'metallurgical') {
+      const exportObject = {
+        nodes: currentNodes.map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
+        flows: currentEdges.map(f => ({
+          id: f.id,
+          source: f.source,
+          target: f.target,
+          data: {
+            tonelaje: f.data.tonelaje,
+            tonelaje_error: f.data.tonelaje_error,
+            tonelaje_fixed: f.data.tonelaje_fixed,
+            not_measured: f.data.not_measured,
+            elementos: f.data.elementos.map(el => ({
+              name: el.name,
+              ley: el.ley,
+              ley_error: el.ley_error,
+              ley_fixed: el.ley_fixed,
+              not_measured: el.not_measured,
+            })),
+          },
+        })),
+      };
+      data = await api.previewEquations(exportObject);
+    } else {
+      const exportObject = {
+        nodes: currentNodes.map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
+        flows: currentEdges.map(f => ({
+          id: f.id,
+          source: f.source,
+          target: f.target,
+          data: {
+            tonelaje_pulpa: f.data.tonelaje_pulpa,
+            tonelaje_pulpa_error: f.data.tonelaje_pulpa_error,
+            tonelaje_pulpa_fixed: f.data.tonelaje_pulpa_fixed,
+            not_measured: f.data.not_measured,
+            porcentaje_solidos: f.data.porcentaje_solidos,
+            porcentaje_solidos_error: f.data.porcentaje_solidos_error,
+            porcentaje_solidos_fixed: f.data.porcentaje_solidos_fixed,
+            porcentaje_solidos_not_measured: f.data.porcentaje_solidos_not_measured || false
+          },
+        })),
+      };
+      data = await api.previewWaterEquations(exportObject);
     }
-    return response.json();
-  })
-  .then(data => {
+
     equationsList.value = data.equations;
     isEquationsModalVisible.value = true;
-  })
-  .catch(error => {
+  } catch (error) {
     console.error(`Error al verificar ecuaciones:`, error);
     alert(`Error al verificar ecuaciones: ${error.message}`);
-  })
-  .finally(() => {
+  } finally {
     isLoading.value = false;
-  });
+  }
 }
 
 function handleSaveDiagram() {
