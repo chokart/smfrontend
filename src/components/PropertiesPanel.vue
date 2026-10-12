@@ -22,7 +22,7 @@
           </select>
         </div>
         <div class="section-title">Puntos de Conexión</div>
-        <div class="form-group">
+        <div class="form-group" v-if="localData.node_type !== 'initial'">
           <label>Punto de Ingreso (i):</label>
           <select v-model="localData.targetPosition" @change="update">
             <option value="left">Izquierda (Left) ⬅️</option>
@@ -31,7 +31,7 @@
             <option value="bottom">Abajo (Bottom) ⬇️</option>
           </select>
         </div>
-        <div class="form-group">
+        <div class="form-group" v-if="localData.node_type === 'initial' || localData.node_type === 'process'">
           <label>Punto de Salida (s):</label>
           <select v-model="localData.sourcePosition" @change="update">
             <option value="right">Derecha (Right) ➡️</option>

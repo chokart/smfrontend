@@ -70,6 +70,14 @@ const handleRotateOut = (nodeData, event) => {
   nodeData.sourcePosition = rotatePosition(nodeData.sourcePosition, 'right')
 }
 
+const hasInputHandle = (nodeType) => {
+  return nodeType !== 'initial'
+}
+
+const hasOutputHandle = (nodeType) => {
+  return nodeType === 'initial' || nodeType === 'process'
+}
+
 const getNodeStyle = (node) => {
   const baseStyle = {
     border: '2px solid',
@@ -117,8 +125,9 @@ const getNodeStyle = (node) => {
         #[`node-${nodeSlot}`]="{ data, ...rest }"
       >
         <div class="custom-diagram-node" :style="getNodeStyle({ data, ...rest })">
-          <!-- PUNTO DE INGRESO (i) -->
+          <!-- PUNTO DE INGRESO (i): Solo si recibe flujos (proceso, concentrado, relave, producto) -->
           <Handle 
+            v-if="hasInputHandle(data.node_type || nodeSlot)"
             type="target" 
             :position="getPosition(data.targetPosition || 'left')" 
             class="custom-handle handle-in"
@@ -132,6 +141,7 @@ const getNodeStyle = (node) => {
           <!-- CONTROLES FLOTANTES PARA MOVER PUNTOS (i y s) -->
           <div class="node-rotate-controls">
             <button 
+              v-if="hasInputHandle(data.node_type || nodeSlot)"
               type="button" 
               class="rotate-btn btn-in" 
               title="Mover punto de ingreso (i) de posición" 
@@ -140,6 +150,7 @@ const getNodeStyle = (node) => {
               ⟳ i
             </button>
             <button 
+              v-if="hasOutputHandle(data.node_type || nodeSlot)"
               type="button" 
               class="rotate-btn btn-out" 
               title="Mover punto de salida (s) de posición" 
@@ -149,8 +160,9 @@ const getNodeStyle = (node) => {
             </button>
           </div>
 
-          <!-- PUNTO DE SALIDA (s) -->
+          <!-- PUNTO DE SALIDA (s): Solo si emite flujos (alimento o proceso) -->
           <Handle 
+            v-if="hasOutputHandle(data.node_type || nodeSlot)"
             type="source" 
             :position="getPosition(data.sourcePosition || 'right')" 
             class="custom-handle handle-out"
