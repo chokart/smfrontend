@@ -49,6 +49,7 @@ export const api = {
     return request('/health');
   },
 
+  // --- RECONCILIACIÓN Y CÁLCULOS ---
   reconcile(body) {
     return request('/reconcile', {
       method: 'POST',
@@ -81,6 +82,36 @@ export const api = {
     return request('/pulp-calculate', {
       method: 'POST',
       body: JSON.stringify(form),
+    });
+  },
+
+  // --- GESTOR DE DIAGRAMAS EN SQLITE ---
+  getDiagrams(module = null) {
+    const query = module ? `?module=${encodeURIComponent(module)}` : '';
+    return request(`/diagrams${query}`);
+  },
+
+  getDiagram(id) {
+    return request(`/diagrams/${id}`);
+  },
+
+  saveDiagram({ name, description = '', module = 'metallurgical', data }) {
+    return request('/diagrams', {
+      method: 'POST',
+      body: JSON.stringify({ name, description, module, data }),
+    });
+  },
+
+  updateDiagram(id, { name, description, data }) {
+    return request(`/diagrams/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name, description, data }),
+    });
+  },
+
+  deleteDiagram(id) {
+    return request(`/diagrams/${id}`, {
+      method: 'DELETE',
     });
   },
 };

@@ -45,6 +45,7 @@
           @open-config="isConfigPanelVisible = true" 
           @save-diagram="handleSaveDiagram"
           @load-diagram="handleLoadDiagram"
+          @open-diagrams="isDiagramsModalVisible = true"
           @view-report="isReportModalVisible = true"
           @verify-equations="handleVerifyEquations"
           :reportAvailable="!!reconciliationReport"
@@ -104,6 +105,17 @@
         :equations="equationsList"
         @close="isEquationsModalVisible = false"
       />
+      <DiagramsModal
+        v-if="isDiagramsModalVisible"
+        :current-module="activeModule"
+        :current-nodes-count="currentNodes ? currentNodes.length : 0"
+        :current-edges-count="currentEdges ? currentEdges.length : 0"
+        :current-diagram-data="getDiagramExportData()"
+        @close="isDiagramsModalVisible = false"
+        @load-diagram-data="handleLoadDiagramFromModal"
+        @export-json="handleSaveDiagram"
+        @import-json="handleJsonFileImport"
+      />
 
       <!-- ELEMENT CONFIG PANEL -->
       <ElementConfigPanel 
@@ -130,6 +142,7 @@ import ElementConfigPanel from './components/ElementConfigPanel.vue'
 import LoadingSpinner from './components/LoadingSpinner.vue'
 import ReporteModal from './components/ReporteModal.vue'
 import EquationsModal from './components/EquationsModal.vue'
+import DiagramsModal from './components/DiagramsModal.vue'
 import api from './services/api'
 
 // --- ESTADO REACTIVO PRINCIPAL ---
@@ -137,6 +150,7 @@ const activeModule = ref('metallurgical') // 'metallurgical' | 'water'
 let id = 5
 const elementNames = ref(['Cu'])
 const isConfigPanelVisible = ref(false)
+const isDiagramsModalVisible = ref(false)
 const isLoading = ref(false)
 const isReportModalVisible = ref(false)
 const reconciliationReport = ref(null)
@@ -435,13 +449,45 @@ function handleSaveDiagram() {
   a.click();
 }
 
+function getDiagramExportData() {
+  const currentNodes = getNodes();
+  const currentEdges = getEdges();
+  return {
+    nodes: currentNodes,
+    edges: currentEdges,
+    activeModule: activeModule.value,
+    elementNames: elementNames.value
+  };
+}
+
+function handleLoadDiagramFromModal(data) {
+  handleLoadDiagram(data);
+  isDiagramsModalVisible.value = false;
+}
+
+function handleJsonFileImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      handleLoadDiagram(data);
+      isDiagramsModalVisible.value = false;
+    } catch (err) {
+      alert('Error: El archivo no es un JSON válido.');
+    }
+  };
+  reader.readAsText(file);
+}
+
 function handleLoadDiagram(data) {
   if (data && data.nodes && data.edges) {
     activeModule.value = data.activeModule || 'metallurgical';
     initialNodes.value = data.nodes;
     initialEdges.value = data.edges;
     elementNames.value = data.elementNames || ['Cu'];
-    alert('Diagrama cargado.');
+    alert('Diagrama cargado con éxito.');
   } else {
     alert('Error: El archivo no tiene el formato de diagrama esperado.');
   }
