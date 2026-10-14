@@ -44,7 +44,18 @@
 
           <!-- % SÓLIDOS -->
           <td class="data-cell">
-            <div class="measured">{{ (flow.data?.porcentaje_solidos || 0).toFixed(1) }}%</div>
+            <div class="solidos-cell-flex">
+              <span class="measured">{{ (flow.data?.porcentaje_solidos || 0).toFixed(1) }}%</span>
+              <button
+                type="button"
+                class="badge-solidos-btn"
+                :class="flow.data?.porcentaje_solidos_fixed ? 'is-fixed' : 'is-adjust'"
+                :title="flow.data?.porcentaje_solidos_fixed ? '% Sólidos Fijo: No cambiará en el balance. Clic para hacerlo ajustable.' : '% Sólidos Ajustable: Se reconciliará en el balance. Clic para fijarlo.'"
+                @click="toggleSolidosFixed(flow)"
+              >
+                {{ flow.data?.porcentaje_solidos_fixed ? '🔒 Fijo' : '⚡ Ajustar' }}
+              </button>
+            </div>
             <div v-if="flow.data?.corrected_data" class="corrected">
               {{ flow.data.corrected_data.porcentaje_solidos_corregido.toFixed(1) }}%
               <span class="error-val">±{{ flow.data.corrected_data.porcentaje_solidos_error.toFixed(1) }}</span>
@@ -150,9 +161,16 @@ function toggleAdjustmentMode(flow) {
   })
 }
 
+function toggleSolidosFixed(flow) {
+  emit('update-flow', {
+    id: flow.id,
+    porcentaje_solidos_fixed: !flow.data?.porcentaje_solidos_fixed
+  })
+}
+
 async function copyTableToClipboard() {
   if (!props.flows || props.flows.length === 0) return
-  const headers = ['ID Flujo', 'De', 'A', '¿Ajustar?', 'Pulpa (tph)', '% Sólidos (Cp)', 'Sólido Seco (tph)', 'Agua (tph)', 'Estado']
+  const headers = ['ID Flujo', 'De', 'A', '¿Ajustar Pulpa?', 'Pulpa (tph)', '% Sólidos (Cp)', '¿% Sólidos Fijo?', 'Sólido Seco (tph)', 'Agua (tph)', 'Estado']
   let tsv = headers.join('\t') + '\n'
 
   props.flows.forEach(flow => {
@@ -163,6 +181,7 @@ async function copyTableToClipboard() {
       getAdjustmentLabel(flow),
       flow.data?.tonelaje_pulpa != null ? flow.data.tonelaje_pulpa : '',
       flow.data?.porcentaje_solidos != null ? flow.data.porcentaje_solidos : '',
+      flow.data?.porcentaje_solidos_fixed ? 'Sí' : 'No',
       flow.data?.corrected_data ? flow.data.corrected_data.tonelaje_solido_calculado.toFixed(2) : '--',
       flow.data?.corrected_data ? flow.data.corrected_data.tonelaje_agua_calculado.toFixed(2) : '--',
       flow.data?.corrected_data ? 'Ajustado' : 'Pendiente'
@@ -299,5 +318,40 @@ async function copyTableToClipboard() {
 }
 .badge-adj-not_measured:hover {
   background-color: #e2e8f0;
+}
+
+.solidos-cell-flex {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.badge-solidos-btn {
+  border: 1px solid transparent;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.badge-solidos-btn.is-adjust {
+  background-color: #f8fafc;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+.badge-solidos-btn.is-adjust:hover {
+  background-color: #f1f5f9;
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+.badge-solidos-btn.is-fixed {
+  background-color: #e0e7ff;
+  color: #3730a3;
+  border-color: #c7d2fe;
+}
+.badge-solidos-btn.is-fixed:hover {
+  background-color: #c7d2fe;
 }
 </style>

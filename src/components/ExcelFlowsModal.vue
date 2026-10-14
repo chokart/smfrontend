@@ -25,7 +25,7 @@
           </div>
           <div class="instruction-step">
             <span class="step-num">2</span>
-            <span>Completa valores y define si cada flujo se debe <strong>Ajustar (Sí/No)</strong> o es <strong>No medido</strong>.</span>
+            <span>Completa valores y define si cada flujo (y su % sólidos en agua) es <strong>Fijo o Ajustable</strong>.</span>
           </div>
           <div class="instruction-step">
             <span class="step-num">3</span>
@@ -91,14 +91,14 @@
                 <tr>
                   <th>ID</th>
                   <th>Flujo (De ➔ A)</th>
-                  <th class="col-adjustment">¿Ajustar?</th>
+                  <th class="col-adjustment">{{ isWaterModule ? '¿Ajustar Pulpa?' : '¿Ajustar Flujo?' }}</th>
                   <template v-if="!isWaterModule">
                     <th>Tonelaje (tph)</th>
                     <th v-for="elem in elementNames" :key="elem">Ley {{ elem }} (%)</th>
                   </template>
                   <template v-else>
                     <th>Pulpa (tph)</th>
-                    <th>% Sólidos</th>
+                    <th>% Sólidos (Cp)</th>
                   </template>
                   <th class="text-center">Estado</th>
                 </tr>
@@ -166,12 +166,26 @@
                       </div>
                     </td>
 
-                    <!-- % SÓLIDOS -->
+                    <!-- % SÓLIDOS CON CONTROL DE FIJO/AJUSTAR -->
                     <td class="value-cell">
-                      <div class="curr-val">{{ formatNumber(row.currentSolidos, 1) }}%</div>
+                      <div class="curr-val">
+                        {{ formatNumber(row.currentSolidos, 1) }}%
+                        <span v-if="row.currentSolidosFixed" class="badge-fixed-hint">🔒 Fijo</span>
+                      </div>
                       <div v-if="row.hasNewSolidos" class="new-val">
                         ➔ {{ formatNumber(row.newSolidos, 1) }}%
                         <span v-if="row.newSolidosError != null" class="err-hint">±{{ formatNumber(row.newSolidosError, 1) }}</span>
+                      </div>
+                      <div class="solidos-fixed-toggle-row">
+                        <button
+                          type="button"
+                          class="badge-toggle-solidos"
+                          :class="solidosFixedModes[row.id] ? 'is-fixed' : 'is-adjust'"
+                          :title="solidosFixedModes[row.id] ? '% Sólidos Fijo: no cambiará en la reconciliación. Clic para permitir ajuste.' : '% Sólidos Ajustable: el balance lo ajustará. Clic para fijarlo.'"
+                          @click="solidosFixedModes[row.id] = !solidosFixedModes[row.id]"
+                        >
+                          {{ solidosFixedModes[row.id] ? '🔒 %S Fijo' : '⚡ %S Ajustar' }}
+                        </button>
                       </div>
                     </td>
                   </template>
@@ -229,6 +243,8 @@ const textareaRef = ref(null)
 
 // Diccionario reactivo de modos de ajuste por flujo: { [flowId]: 'adjust' | 'fixed' | 'not_measured' }
 const adjustmentModes = ref({})
+// Diccionario reactivo de % sólidos fijo por flujo (agua): { [flowId]: boolean }
+const solidosFixedModes = ref({})
 
 let toastTimeout = null
 function showToast(msg, type = 'info', duration = 3000) {
@@ -245,11 +261,13 @@ function getNodeLabel(nodeId) {
   return node?.data?.label || nodeId || '?'
 }
 
-// Inicializar diccionario de modos de ajuste según datos actuales
+// Inicializar diccionarios de modos de ajuste según datos actuales
 function initAdjustmentModes() {
   const modes = {}
+  const sFixed = {}
   props.flows.forEach(f => {
     const d = f.data || {}
+    sFixed[f.id] = !!(d.porcentaje_solidos_fixed)
     if (isWaterModule.value) {
       if (d.not_measured) {
         modes[f.id] = 'not_measured'
@@ -269,6 +287,7 @@ function initAdjustmentModes() {
     }
   })
   adjustmentModes.value = modes
+  solidosFixedModes.value = sFixed
 }
 
 // Helper numérico robusto para formatos de Excel (comas, puntos, miles, porcentajes)
@@ -304,6 +323,19 @@ function formatNumber(val, decimals = 2) {
   return Number(val).toFixed(decimals)
 }
 
+function parseSolidosFixedFlag(val) {
+  if (val === null || val === undefined) return null
+  const lower = String(val).trim().toLowerCase()
+  if (!lower) return null
+  if (lower === 'si' || lower === 'sí' || lower === 'true' || lower === 'fijo' || lower === 'fixed' || lower === 'no ajustar') {
+    return true
+  }
+  if (lower === 'no' || lower === 'false' || lower === 'ajustar' || lower === 'libre') {
+    return false
+  }
+  return null
+}
+
 // 1. GENERAR PLANTILLA EN PORTAPAPELES
 async function copyTemplateToClipboard() {
   try {
@@ -337,8 +369,19 @@ async function copyTemplateToClipboard() {
         tsv += row.join('\t') + '\n'
       })
     } else {
-      // Cabecera Agua con columnas de ajuste
-      const headers = ['ID Flujo', 'De', 'A', '¿Ajustar Pulpa? (Sí/No)', '¿No Medido? (Sí/No)', 'Pulpa (tph)', 'Error Pulpa', '% Sólidos', 'Error % Sólidos']
+      // Cabecera Agua con columnas de ajuste incluyendo % Sólidos Fijo
+      const headers = [
+        'ID Flujo', 
+        'De', 
+        'A', 
+        '¿Ajustar Pulpa? (Sí/No)', 
+        '¿No Medido? (Sí/No)', 
+        'Pulpa (tph)', 
+        'Error Pulpa', 
+        '¿% Sólidos Fijo? (Sí/No)', 
+        '% Sólidos', 
+        'Error % Sólidos'
+      ]
       tsv += headers.join('\t') + '\n'
 
       props.flows.forEach(flow => {
@@ -351,6 +394,7 @@ async function copyTemplateToClipboard() {
           flowData.not_measured ? 'Sí' : 'No',
           flowData.tonelaje_pulpa != null ? flowData.tonelaje_pulpa : 100,
           flowData.tonelaje_pulpa_error != null ? flowData.tonelaje_pulpa_error : 1.0,
+          flowData.porcentaje_solidos_fixed ? 'Sí (Fijo)' : 'No',
           flowData.porcentaje_solidos != null ? flowData.porcentaje_solidos : 30.0,
           flowData.porcentaje_solidos_error != null ? flowData.porcentaje_solidos_error : 0.5
         ]
@@ -478,21 +522,18 @@ function reparse() {
           if (found) matchedFlowId = found.id
         }
 
-        // Columna ¿Ajustar? o Fijo
         const ajCol = headers.findIndex(h => h.includes('ajustar') || h.includes('fijo'))
         const nmCol = headers.findIndex(h => h.includes('medido') || h.includes('no med'))
         const ajVal = ajCol !== -1 ? row[ajCol] : null
         const nmVal = nmCol !== -1 ? row[nmCol] : null
         mode = parseAdjustmentFlags(ajVal, nmVal)
 
-        // Tonelaje
         const tonCol = headers.findIndex(h => h.includes('ton') && !h.includes('error'))
         if (tonCol !== -1) tonelaje = parseExcelNumber(row[tonCol])
 
         const tonErrCol = headers.findIndex(h => (h.includes('ton') || h.includes('tph')) && h.includes('error'))
         if (tonErrCol !== -1) tonelaje_error = parseExcelNumber(row[tonErrCol])
 
-        // Elementos
         props.elementNames.forEach(elem => {
           const lowerElem = elem.toLowerCase()
           const leyCol = headers.findIndex(h => h.includes(lowerElem) && !h.includes('error'))
@@ -509,7 +550,6 @@ function reparse() {
       const effectiveMode = (formatMode.value === 'auto' && !headers) ? 'values_only' : formatMode.value
 
       if (effectiveMode === 'template_full' || (headers && matchedFlowId && tonelaje == null)) {
-        // [0: ID, 1: De, 2: A, 3: ¿Ajustar?, 4: ¿NoMedido?, 5: Ton, 6: ErrTon, 7: Ley1, 8: ErrLey1...]
         if (!matchedFlowId && row[0]) {
           const found = props.flows.find(f => f.id.toLowerCase() === row[0].toLowerCase())
           if (found) matchedFlowId = found.id
@@ -524,7 +564,6 @@ function reparse() {
           colIdx += 2
         })
       } else if (effectiveMode === 'values_with_errors') {
-        // [Ton, ErrTon, Ley1, ErrLey1, Ley2, ErrLey2...]
         if (row[0] !== undefined) tonelaje = parseExcelNumber(row[0])
         if (row[1] !== undefined) tonelaje_error = parseExcelNumber(row[1])
         let colIdx = 2
@@ -534,7 +573,6 @@ function reparse() {
           colIdx += 2
         })
       } else if (effectiveMode === 'values_only') {
-        // [Ton, Ley1, Ley2, Ley3...]
         if (row[0] !== undefined) tonelaje = parseExcelNumber(row[0])
         props.elementNames.forEach((elem, eIdx) => {
           if (row[1 + eIdx] !== undefined) {
@@ -572,6 +610,7 @@ function reparse() {
       let porcentaje_solidos = null
       let porcentaje_solidos_error = null
       let mode = null
+      let solidosFixed = null
 
       if (headers) {
         const idCol = headers.findIndex(h => h.includes('id') || h.includes('flujo'))
@@ -580,11 +619,17 @@ function reparse() {
           if (found) matchedFlowId = found.id
         }
 
-        const ajCol = headers.findIndex(h => h.includes('ajustar') || h.includes('fijo'))
+        const ajCol = headers.findIndex(h => (h.includes('ajustar') || h.includes('fijo')) && (h.includes('pulpa') || !h.includes('solido')))
         const nmCol = headers.findIndex(h => h.includes('medido') || h.includes('no med'))
         const ajVal = ajCol !== -1 ? row[ajCol] : null
         const nmVal = nmCol !== -1 ? row[nmCol] : null
         mode = parseAdjustmentFlags(ajVal, nmVal)
+
+        // ¿% Sólidos Fijo?
+        const solFixedCol = headers.findIndex(h => (h.includes('solido') || h.includes('sólido') || h.includes('cp')) && (h.includes('fijo') || h.includes('fixed') || h.includes('ajustar')))
+        if (solFixedCol !== -1) {
+          solidosFixed = parseSolidosFixedFlag(row[solFixedCol])
+        }
 
         const pulpaCol = headers.findIndex(h => h.includes('pulpa') && !h.includes('error'))
         if (pulpaCol !== -1) tonelaje_pulpa = parseExcelNumber(row[pulpaCol])
@@ -592,7 +637,7 @@ function reparse() {
         const pulpaErrCol = headers.findIndex(h => h.includes('pulpa') && h.includes('error'))
         if (pulpaErrCol !== -1) tonelaje_pulpa_error = parseExcelNumber(row[pulpaErrCol])
 
-        const solCol = headers.findIndex(h => (h.includes('solido') || h.includes('sólido') || h.includes('cp')) && !h.includes('error'))
+        const solCol = headers.findIndex(h => (h.includes('solido') || h.includes('sólido') || h.includes('cp')) && !h.includes('error') && !h.includes('fijo') && !h.includes('fixed') && !h.includes('ajustar'))
         if (solCol !== -1) porcentaje_solidos = parseExcelNumber(row[solCol])
 
         const solErrCol = headers.findIndex(h => (h.includes('solido') || h.includes('sólido') || h.includes('cp')) && h.includes('error'))
@@ -602,7 +647,7 @@ function reparse() {
       const effectiveMode = (formatMode.value === 'auto' && !headers) ? 'values_only' : formatMode.value
 
       if (effectiveMode === 'template_full' || (headers && matchedFlowId && tonelaje_pulpa == null)) {
-        // [0: ID, 1: De, 2: A, 3: ¿Ajustar?, 4: ¿NoMedido?, 5: Pulpa, 6: ErrPulpa, 7: %Sol, 8: Err%Sol]
+        // [0: ID, 1: De, 2: A, 3: ¿Ajustar Pulpa?, 4: ¿NoMedido?, 5: Pulpa, 6: ErrPulpa, 7: ¿%S Fijo?, 8: %Sol, 9: Err%Sol]
         if (!matchedFlowId && row[0]) {
           const found = props.flows.find(f => f.id.toLowerCase() === row[0].toLowerCase())
           if (found) matchedFlowId = found.id
@@ -610,8 +655,9 @@ function reparse() {
         if (row[3] !== undefined) mode = parseAdjustmentFlags(row[3], row[4])
         if (row[5] !== undefined) tonelaje_pulpa = parseExcelNumber(row[5])
         if (row[6] !== undefined) tonelaje_pulpa_error = parseExcelNumber(row[6])
-        if (row[7] !== undefined) porcentaje_solidos = parseExcelNumber(row[7])
-        if (row[8] !== undefined) porcentaje_solidos_error = parseExcelNumber(row[8])
+        if (row[7] !== undefined) solidosFixed = parseSolidosFixedFlag(row[7])
+        if (row[8] !== undefined) porcentaje_solidos = parseExcelNumber(row[8])
+        if (row[9] !== undefined) porcentaje_solidos_error = parseExcelNumber(row[9])
       } else if (effectiveMode === 'values_with_errors') {
         if (row[0] !== undefined) tonelaje_pulpa = parseExcelNumber(row[0])
         if (row[1] !== undefined) tonelaje_pulpa_error = parseExcelNumber(row[1])
@@ -630,12 +676,16 @@ function reparse() {
         if (mode) {
           adjustmentModes.value[matchedFlowId] = mode
         }
+        if (solidosFixed !== null) {
+          solidosFixedModes.value[matchedFlowId] = solidosFixed
+        }
         results.push({
           flowId: matchedFlowId,
           tonelaje_pulpa,
           tonelaje_pulpa_error,
           porcentaje_solidos,
           porcentaje_solidos_error,
+          solidosFixed,
           mode
         })
       }
@@ -712,7 +762,11 @@ const previewRows = computed(() => {
       const newSolidos = hasNewSolidos ? parsed.porcentaje_solidos : flowData.porcentaje_solidos
       const newSolidosError = parsed?.porcentaje_solidos_error != null ? parsed.porcentaje_solidos_error : flowData.porcentaje_solidos_error
 
-      const hasChanges = modeChanged ||
+      const currentSolidosFixed = !!flowData.porcentaje_solidos_fixed
+      const selectedSolidosFixed = solidosFixedModes.value[flow.id] !== undefined ? solidosFixedModes.value[flow.id] : currentSolidosFixed
+      const solidosFixedChanged = selectedSolidosFixed !== currentSolidosFixed
+
+      const hasChanges = modeChanged || solidosFixedChanged ||
         (hasNewPulpa && Number(newPulpa) !== Number(flowData.tonelaje_pulpa)) ||
         (hasNewSolidos && Number(newSolidos) !== Number(flowData.porcentaje_solidos))
 
@@ -720,12 +774,13 @@ const previewRows = computed(() => {
         id: flow.id,
         sourceLabel: getNodeLabel(flow.source),
         targetLabel: getNodeLabel(flow.target),
-        matched: !!parsed || modeChanged,
+        matched: !!parsed || modeChanged || solidosFixedChanged,
         currentPulpa: flowData.tonelaje_pulpa,
         hasNewPulpa,
         newPulpa,
         newPulpaError,
         currentSolidos: flowData.porcentaje_solidos,
+        currentSolidosFixed,
         hasNewSolidos,
         newSolidos,
         newSolidosError,
@@ -752,7 +807,6 @@ function applyChanges() {
   const updates = []
 
   previewRows.value.forEach(row => {
-    // Si la fila coincidió por parseo o el usuario cambió manualmente su modo de ajuste
     const mode = adjustmentModes.value[row.id] || 'adjust'
     const isFixed = mode === 'fixed'
     const isNotMeasured = mode === 'not_measured'
@@ -784,7 +838,8 @@ function applyChanges() {
         tonelaje_pulpa_fixed: isFixed,
         not_measured: isNotMeasured,
         porcentaje_solidos: row.hasNewSolidos ? row.newSolidos : row.currentSolidos,
-        porcentaje_solidos_error: row.newSolidosError != null ? row.newSolidosError : undefined
+        porcentaje_solidos_error: row.newSolidosError != null ? row.newSolidosError : undefined,
+        porcentaje_solidos_fixed: !!solidosFixedModes.value[row.id]
       })
     }
   })
@@ -829,7 +884,7 @@ watch(() => props.visible, (val) => {
   border-radius: 12px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
   width: 100%;
-  max-width: 960px;
+  max-width: 980px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -1207,6 +1262,45 @@ watch(() => props.visible, (val) => {
   color: #6b7280;
   font-weight: normal;
   margin-left: 2px;
+}
+
+.solidos-fixed-toggle-row {
+  margin-top: 4px;
+}
+
+.badge-toggle-solidos {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.badge-toggle-solidos.is-fixed {
+  background-color: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.badge-toggle-solidos.is-adjust {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.badge-fixed-hint {
+  font-size: 0.68rem;
+  background-color: #fef3c7;
+  color: #92400e;
+  padding: 1px 4px;
+  border-radius: 4px;
+  margin-left: 4px;
+  font-weight: bold;
 }
 
 .status-col {

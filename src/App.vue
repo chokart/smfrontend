@@ -601,6 +601,7 @@ function handleApplyExcelData(updates) {
           porcentaje_solidos: item.porcentaje_solidos !== undefined && item.porcentaje_solidos !== null ? item.porcentaje_solidos : edge.data.porcentaje_solidos,
           tonelaje_pulpa_fixed: item.tonelaje_pulpa_fixed !== undefined ? item.tonelaje_pulpa_fixed : edge.data.tonelaje_pulpa_fixed,
           not_measured: item.not_measured !== undefined ? item.not_measured : edge.data.not_measured,
+          porcentaje_solidos_fixed: item.porcentaje_solidos_fixed !== undefined ? item.porcentaje_solidos_fixed : edge.data.porcentaje_solidos_fixed,
           corrected_data: null
         };
         if (item.tonelaje_pulpa_error !== undefined && item.tonelaje_pulpa_error !== null) {

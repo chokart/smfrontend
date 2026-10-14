@@ -44,8 +44,11 @@ const labelStyle = {
       class="nodrag nopan custom-edge-label"
     >
       <div v-if="'tonelaje_pulpa' in data">
-        <div v-if="data.tonelaje_pulpa_fixed" class="edge-fixed-badge">🔒 Fijo</div>
-        <div v-else-if="data.not_measured" class="edge-unmeasured-badge">🚫 No med.</div>
+        <div class="edge-badges-container">
+          <span v-if="data.tonelaje_pulpa_fixed" class="edge-fixed-badge">🔒 Pulpa Fija</span>
+          <span v-else-if="data.not_measured" class="edge-unmeasured-badge">🚫 No med.</span>
+          <span v-if="data.porcentaje_solidos_fixed" class="edge-solidos-badge">🔒 %S Fijo</span>
+        </div>
         <template v-if="data.corrected_data">
           <div><strong>Ton:</strong> {{ Number(data.tonelaje_pulpa).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_pulpa_corregido).toFixed(2) }}</span></div>
           <div><strong>%Sol:</strong> {{ Number(data.porcentaje_solidos).toFixed(1) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.porcentaje_solidos_corregido).toFixed(1) }}</span></div>
@@ -60,8 +63,10 @@ const labelStyle = {
         </template>
       </div>
       <div v-else-if="'tonelaje' in data">
-        <div v-if="data.tonelaje_fixed" class="edge-fixed-badge">🔒 Fijo</div>
-        <div v-else-if="data.not_measured" class="edge-unmeasured-badge">🚫 No med.</div>
+        <div class="edge-badges-container">
+          <span v-if="data.tonelaje_fixed" class="edge-fixed-badge">🔒 Fijo</span>
+          <span v-else-if="data.not_measured" class="edge-unmeasured-badge">🚫 No med.</span>
+        </div>
         <template v-if="data.corrected_tonelaje != null">
           <div><strong>Ton:</strong> {{ Number(data.tonelaje).toFixed(2) }} <span style="color: #28a745;">➔ {{ Number(data.corrected_tonelaje).toFixed(2) }}</span></div>
           <div v-for="el in (data.elementos || [])" :key="el.name">
@@ -86,6 +91,14 @@ const labelStyle = {
   cursor: pointer;
 }
 
+.edge-badges-container {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+
 .edge-fixed-badge {
   background: #fef3c7;
   color: #92400e;
@@ -93,7 +106,6 @@ const labelStyle = {
   font-weight: bold;
   border-radius: 3px;
   padding: 1px 4px;
-  margin-bottom: 2px;
   display: inline-block;
   border: 1px solid #fde68a;
 }
@@ -105,8 +117,18 @@ const labelStyle = {
   font-weight: 500;
   border-radius: 3px;
   padding: 1px 4px;
-  margin-bottom: 2px;
   display: inline-block;
   border: 1px solid #cbd5e1;
+}
+
+.edge-solidos-badge {
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 8.5px;
+  font-weight: bold;
+  border-radius: 3px;
+  padding: 1px 4px;
+  display: inline-block;
+  border: 1px solid #c7d2fe;
 }
 </style>
