@@ -1,6 +1,16 @@
 <template>
   <div class="summary-table-container">
-    <div class="summary-title">Resumen de Balance de Agua (Pulpa y Sólidos)</div>
+    <div class="summary-header-row">
+      <div class="summary-title">Resumen de Balance de Agua (Pulpa y Sólidos)</div>
+      <div class="summary-actions">
+        <button type="button" class="btn-table-action" @click="copyTableToClipboard" title="Copiar tabla de agua para Excel">
+          📋 Copiar a Excel
+        </button>
+        <button type="button" class="btn-table-action btn-table-action-primary" @click="$emit('open-excel')" title="Pegar propiedades de flujos de agua desde Excel">
+          📥 Pegar desde Excel
+        </button>
+      </div>
+    </div>
     <table class="summary-table">
       <thead>
         <tr>
@@ -72,9 +82,38 @@ const props = defineProps({
   flows: Array
 })
 
+defineEmits(['open-excel'])
+
 function getNodeLabel(nodeId) {
   const node = props.nodes.find(n => n.id === nodeId)
   return node ? node.data.label : nodeId
+}
+
+async function copyTableToClipboard() {
+  if (!props.flows || props.flows.length === 0) return
+  const headers = ['ID Flujo', 'De', 'A', 'Pulpa (tph)', '% Sólidos (Cp)', 'Sólido Seco (tph)', 'Agua (tph)', 'Estado']
+  let tsv = headers.join('\t') + '\n'
+
+  props.flows.forEach(flow => {
+    const row = [
+      flow.id,
+      getNodeLabel(flow.source),
+      getNodeLabel(flow.target),
+      flow.data?.tonelaje_pulpa != null ? flow.data.tonelaje_pulpa : '',
+      flow.data?.porcentaje_solidos != null ? flow.data.porcentaje_solidos : '',
+      flow.data?.corrected_data ? flow.data.corrected_data.tonelaje_solido_calculado.toFixed(2) : '--',
+      flow.data?.corrected_data ? flow.data.corrected_data.tonelaje_agua_calculado.toFixed(2) : '--',
+      flow.data?.corrected_data ? 'Ajustado' : 'Pendiente'
+    ]
+    tsv += row.join('\t') + '\n'
+  })
+
+  try {
+    await navigator.clipboard.writeText(tsv)
+    alert('¡Tabla de balance de agua copiada al portapapeles! Puedes pegarla en Excel con Ctrl+V.')
+  } catch (err) {
+    console.error('Error al copiar al portapapeles:', err)
+  }
 }
 </script>
 
@@ -82,11 +121,50 @@ function getNodeLabel(nodeId) {
 .summary-table-container {
   padding: 15px;
 }
+.summary-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
 .summary-title {
   font-weight: bold;
-  margin-bottom: 12px;
   color: #1565C0;
   font-size: 1.1rem;
+}
+.summary-actions {
+  display: flex;
+  gap: 8px;
+}
+.btn-table-action {
+  padding: 5px 11px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 5px;
+  border: 1px solid #cbd5e1;
+  background-color: white;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.btn-table-action:hover {
+  background-color: #f1f5f9;
+  border-color: #94a3b8;
+}
+.btn-table-action-primary {
+  background-color: #f0fdf4;
+  color: #15803d;
+  border-color: #86efac;
+  font-weight: 600;
+}
+.btn-table-action-primary:hover {
+  background-color: #dcfce7;
+  border-color: #4ade80;
 }
 .summary-table {
   width: 100%;

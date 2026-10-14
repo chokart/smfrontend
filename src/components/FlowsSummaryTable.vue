@@ -1,6 +1,16 @@
 <template>
   <div class="summary-table-container">
-    <div class="summary-title">Resumen de Balance Metalúrgico (Leyes)</div>
+    <div class="summary-header-row">
+      <div class="summary-title">Resumen de Balance Metalúrgico (Leyes)</div>
+      <div class="summary-actions">
+        <button type="button" class="btn-table-action" @click="copyTableToClipboard" title="Copiar tabla al portapapeles para Excel">
+          📋 Copiar a Excel
+        </button>
+        <button type="button" class="btn-table-action btn-table-action-primary" @click="$emit('open-excel')" title="Pegar propiedades de flujos desde Excel">
+          📥 Pegar desde Excel
+        </button>
+      </div>
+    </div>
     <div class="table-wrapper">
       <table class="summary-table">
         <thead>
@@ -68,6 +78,37 @@ const props = defineProps({
   elementNames: { type: Array, required: true },
 });
 
+defineEmits(['open-excel']);
+
+async function copyTableToClipboard() {
+  if (processedFlows.value.length === 0) return;
+  const headers = ['ID Flujo', 'De', 'A', 'Tonelaje Seco (tph)'];
+  props.elementNames.forEach(elem => headers.push(`Ley ${elem} (%)`));
+  headers.push('Estado');
+
+  let tsv = headers.join('\t') + '\n';
+  processedFlows.value.forEach(flow => {
+    const row = [
+      flow.id,
+      flow.sourceLabel,
+      flow.targetLabel,
+      flow.not_measured ? 'No Med.' : (flow.tonelaje != null ? flow.tonelaje : '')
+    ];
+    flow.elements.forEach(el => {
+      row.push(el.not_measured ? 'No Med.' : (el.ley != null ? el.ley : ''));
+    });
+    row.push(flow.tonelaje_corregido != null ? 'Ajustado' : 'Pendiente');
+    tsv += row.join('\t') + '\n';
+  });
+
+  try {
+    await navigator.clipboard.writeText(tsv);
+    alert('¡Tabla copiada al portapapeles! Puedes pegarla en Excel con Ctrl+V.');
+  } catch (err) {
+    console.error('Error al copiar al portapapeles:', err);
+  }
+}
+
 const processedFlows = computed(() => {
   return props.flows.map(flow => {
     const sourceNode = props.nodes.find(n => n.id === flow.source);
@@ -106,11 +147,50 @@ const processedFlows = computed(() => {
   padding: 15px;
   background: #f9f9f9;
 }
+.summary-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
 .summary-title {
   font-weight: bold;
-  margin-bottom: 12px;
   color: #1565C0;
   font-size: 1.1rem;
+}
+.summary-actions {
+  display: flex;
+  gap: 8px;
+}
+.btn-table-action {
+  padding: 5px 11px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 5px;
+  border: 1px solid #cbd5e1;
+  background-color: white;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.btn-table-action:hover {
+  background-color: #f1f5f9;
+  border-color: #94a3b8;
+}
+.btn-table-action-primary {
+  background-color: #f0fdf4;
+  color: #15803d;
+  border-color: #86efac;
+  font-weight: 600;
+}
+.btn-table-action-primary:hover {
+  background-color: #dcfce7;
+  border-color: #4ade80;
 }
 .table-wrapper {
   overflow-x: auto;

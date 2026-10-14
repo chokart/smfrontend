@@ -48,6 +48,7 @@
           @open-diagrams="isDiagramsModalVisible = true"
           @view-report="isReportModalVisible = true"
           @verify-equations="handleVerifyEquations"
+          @open-excel="isExcelModalVisible = true"
           :reportAvailable="!!reconciliationReport"
           :showConfig="activeModule === 'metallurgical'"
           :addNodeLabel="activeModule === 'water' ? 'Añadir Cajón' : 'Añadir Celda'"
@@ -88,11 +89,20 @@
         
         <!-- TABLAS DE RESUMEN DINÁMICAS -->
         <template v-if="activeModule === 'metallurgical'">
-          <FlowsSummaryTable :nodes="currentNodes" :flows="currentEdges" :element-names="elementNames" />
+          <FlowsSummaryTable 
+            :nodes="currentNodes" 
+            :flows="currentEdges" 
+            :element-names="elementNames" 
+            @open-excel="isExcelModalVisible = true"
+          />
           <NodesSummaryTable :nodes="currentNodes" :flows="currentEdges" :element-names="elementNames" />
         </template>
         <template v-else>
-          <WaterFlowsSummaryTable :nodes="currentNodes" :flows="currentEdges" />
+          <WaterFlowsSummaryTable 
+            :nodes="currentNodes" 
+            :flows="currentEdges" 
+            @open-excel="isExcelModalVisible = true"
+          />
           <NodesSummaryTable :nodes="currentNodes" :flows="currentEdges" :element-names="[]" />
         </template>
       </div>
@@ -117,6 +127,17 @@
         @load-diagram-data="handleLoadDiagramFromModal"
         @export-json="handleSaveDiagram"
         @import-json="handleJsonFileImport"
+      />
+
+      <!-- EXCEL FLOWS MODAL -->
+      <ExcelFlowsModal
+        :visible="isExcelModalVisible"
+        :active-module="activeModule"
+        :nodes="currentNodes"
+        :flows="currentEdges"
+        :element-names="elementNames"
+        @close="isExcelModalVisible = false"
+        @apply="handleApplyExcelData"
       />
 
       <!-- ELEMENT CONFIG PANEL -->
@@ -145,6 +166,7 @@ import LoadingSpinner from './components/LoadingSpinner.vue'
 import ReporteModal from './components/ReporteModal.vue'
 import EquationsModal from './components/EquationsModal.vue'
 import DiagramsModal from './components/DiagramsModal.vue'
+import ExcelFlowsModal from './components/ExcelFlowsModal.vue'
 import api from './services/api'
 
 // --- ESTADO REACTIVO PRINCIPAL ---
@@ -153,6 +175,7 @@ let id = 5
 const elementNames = ref(['Cu'])
 const isConfigPanelVisible = ref(false)
 const isDiagramsModalVisible = ref(false)
+const isExcelModalVisible = ref(false)
 const isLoading = ref(false)
 const isReportModalVisible = ref(false)
 const reconciliationReport = ref(null)
@@ -542,6 +565,66 @@ function handleSaveElements(newNames) {
       return ex ? ex : createDefaultElementData(name);
     });
   });
+}
+
+function handleApplyExcelData(updates) {
+  const edges = getEdges();
+  let updatedCount = 0;
+
+  updates.forEach(item => {
+    const edge = edges.find(e => e.id === item.id);
+    if (edge) {
+      updatedCount++;
+      if (activeModule.value === 'water') {
+        const newData = {
+          ...edge.data,
+          tonelaje_pulpa: item.tonelaje_pulpa !== undefined && item.tonelaje_pulpa !== null ? item.tonelaje_pulpa : edge.data.tonelaje_pulpa,
+          porcentaje_solidos: item.porcentaje_solidos !== undefined && item.porcentaje_solidos !== null ? item.porcentaje_solidos : edge.data.porcentaje_solidos,
+          corrected_data: null
+        };
+        if (item.tonelaje_pulpa_error !== undefined && item.tonelaje_pulpa_error !== null) {
+          newData.tonelaje_pulpa_error = item.tonelaje_pulpa_error;
+        }
+        if (item.porcentaje_solidos_error !== undefined && item.porcentaje_solidos_error !== null) {
+          newData.porcentaje_solidos_error = item.porcentaje_solidos_error;
+        }
+        edge.data = newData;
+      } else {
+        // Balance Metalúrgico de Leyes
+        const updatedElementos = (edge.data?.elementos || []).map(el => {
+          const parsedEl = (item.elementos || []).find(pe => pe.name === el.name);
+          if (parsedEl && parsedEl.ley !== undefined && parsedEl.ley !== null) {
+            return {
+              ...el,
+              ley: parsedEl.ley,
+              ley_error: parsedEl.ley_error !== undefined && parsedEl.ley_error !== null ? parsedEl.ley_error : el.ley_error,
+              corrected_data: null
+            };
+          }
+          return el;
+        });
+
+        const newData = {
+          ...edge.data,
+          tonelaje: item.tonelaje !== undefined && item.tonelaje !== null ? item.tonelaje : edge.data.tonelaje,
+          elementos: updatedElementos,
+          corrected_tonelaje: null
+        };
+        if (item.tonelaje_error !== undefined && item.tonelaje_error !== null) {
+          newData.tonelaje_error = item.tonelaje_error;
+        }
+        edge.data = newData;
+      }
+
+      // Sincronizar reactivamente si este flujo está seleccionado en el panel de propiedades
+      if (selectedElement.value && selectedElement.value.id === edge.id) {
+        selectedElement.value.data = { ...edge.data };
+      }
+    }
+  });
+
+  reconciliationReport.value = null;
+  alert(`¡${updatedCount} flujo(s) actualizados correctamente desde Excel!`);
 }
 
 function toggleSummaryExpansion() {

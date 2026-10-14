@@ -5,6 +5,7 @@
     <button @click="$emit('open-diagrams')" class="diagrams-button">📁 Guardar / Cargar</button>
     <button @click="$emit('export')" class="export-button">Reconciliar</button>
     <button @click="$emit('verify-equations')" class="verify-button">Verificar Ecuaciones</button>
+    <button @click="$emit('open-excel')" class="excel-button" title="Copiar y pegar propiedades de flujos desde Excel">📊 Copiar / Pegar Excel</button>
   </div>
 </template>
 
@@ -17,7 +18,8 @@ const emit = defineEmits([
   'load-diagram', 
   'open-diagrams', 
   'view-report', 
-  'verify-equations'
+  'verify-equations',
+  'open-excel'
 ]);
 
 const props = defineProps({
@@ -79,5 +81,16 @@ const props = defineProps({
 }
 .verify-button:hover {
   background-color: #dcfce7 !important;
+}
+
+.excel-button {
+  background-color: #f0fdf4 !important;
+  color: #15803d !important;
+  border-color: #86efac !important;
+  font-weight: 600 !important;
+}
+.excel-button:hover {
+  background-color: #dcfce7 !important;
+  border-color: #4ade80 !important;
 }
 </style>
