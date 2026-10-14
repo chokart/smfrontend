@@ -74,7 +74,7 @@
         <MetallurgicalDiagram 
           v-else
           ref="diagramRef"
-          :key="activeModule"
+          :key="`${activeModule}-${diagramKey}`"
           :nodes="initialNodes" 
           :edges="initialEdges"
           @connect="onConnect"
@@ -174,6 +174,7 @@ import api from './services/api'
 // --- ESTADO REACTIVO PRINCIPAL ---
 const activeModule = ref('metallurgical') // 'metallurgical' | 'water'
 let id = 5
+const diagramKey = ref(0)
 const elementNames = ref(['Cu'])
 const isConfigPanelVisible = ref(false)
 const isDiagramsModalVisible = ref(false)
@@ -238,9 +239,54 @@ const createDefaultFlowData = () => {
   }
 }
 
+// Funciones auxiliares para gestión robusta de IDs y nombres de nodos
+function updateNextNodeId(nodesList) {
+  let maxId = 0;
+  if (nodesList && Array.isArray(nodesList)) {
+    nodesList.forEach(n => {
+      const num = parseInt(n.id, 10);
+      if (!isNaN(num) && num > maxId) {
+        maxId = num;
+      }
+    });
+  }
+  id = Math.max(maxId + 1, 5);
+}
+
+function getNextNodeId() {
+  const current = getNodes() || [];
+  let maxId = 0;
+  current.forEach(n => {
+    const num = parseInt(n.id, 10);
+    if (!isNaN(num) && num > maxId) {
+      maxId = num;
+    }
+  });
+  const nextId = Math.max(maxId + 1, id);
+  id = nextId + 1;
+  return String(nextId);
+}
+
+function getNextNodeLabel(prefix) {
+  const current = getNodes() || [];
+  let maxNum = 0;
+  current.forEach(n => {
+    const label = n.data?.label || '';
+    if (label.startsWith(prefix)) {
+      const match = label.match(new RegExp(`^${prefix}\\s*(\\d+)`));
+      if (match && match[1]) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  });
+  return `${prefix} ${maxNum + 1}`;
+}
+
 // Inicialización
 function initDefaultDiagram() {
-  id = 5
   if (activeModule.value === 'water') {
     initialNodes.value = [
       { id: '1', type: 'initial', data: { label: 'Alimento', node_type: 'initial', sourcePosition: 'right' }, position: { x: 50, y: 200 }, sourcePosition: 'right' },
@@ -267,6 +313,7 @@ function initDefaultDiagram() {
       { id: 'e4-3', source: '4', target: '3', type: 'custom', animated: true, data: createDefaultFlowData() },
     ]
   }
+  updateNextNodeId(initialNodes.value);
 }
 initDefaultDiagram()
 
@@ -276,6 +323,7 @@ function switchModule(module) {
     activeModule.value = module
     clearDiagram()
     initDefaultDiagram()
+    diagramKey.value++
   }
 }
 
@@ -291,25 +339,32 @@ function onConnect(connection) {
   // Add edge via diagram ref if available
   if (diagramRef.value && diagramRef.value.addEdges) {
     diagramRef.value.addEdges([newEdge]);
-  } else {
-    // Fallback for initial state (though this is less likely to work reactively without proper setup)
-    initialEdges.value.push(newEdge);
   }
+  initialEdges.value.push(newEdge);
 }
 
 function addNewNode() {
   const labelPrefix = activeModule.value === 'water' ? 'Cajón' : 'Celda';
+  const newId = getNextNodeId();
+  const newLabel = getNextNodeLabel(labelPrefix);
   const newNode = {
-    id: `${id++}`,
+    id: newId,
     type: 'process',
-    data: { label: `${labelPrefix} ${id - 4}`, node_type: 'process', sourcePosition: 'right', targetPosition: 'left' },
-    position: { x: Math.random() * 400 + 200, y: Math.random() * 200 + 100 },
+    data: { 
+      label: newLabel, 
+      node_type: 'process', 
+      sourcePosition: 'right', 
+      targetPosition: 'left' 
+    },
+    position: { x: Math.random() * 300 + 250, y: Math.random() * 200 + 100 },
     sourcePosition: 'right',
     targetPosition: 'left'
   }
-  if (diagramRef.value) {
+  if (diagramRef.value && diagramRef.value.addNode) {
     diagramRef.value.addNode(newNode);
-  } else {
+  }
+  const exists = initialNodes.value.some(n => n.id === newNode.id);
+  if (!exists) {
     initialNodes.value.push(newNode);
   }
 }
@@ -353,6 +408,11 @@ function handleDeleteSelected(element) {
       } else {
         diagramRef.value.removeEdges([elem.id]);
       }
+    }
+    if (isNode) {
+      initialNodes.value = initialNodes.value.filter(n => n.id !== elem.id);
+    } else {
+      initialEdges.value = initialEdges.value.filter(e => e.id !== elem.id);
     }
     selectedElement.value = null;
   }
@@ -539,10 +599,32 @@ function handleJsonFileImport(event) {
 
 function handleLoadDiagram(data) {
   if (data && data.nodes && data.edges) {
-    activeModule.value = data.activeModule || 'metallurgical';
-    initialNodes.value = data.nodes;
-    initialEdges.value = data.edges;
+    const newModule = data.activeModule || 'metallurgical';
+    activeModule.value = newModule;
+    
+    // Clonación profunda de los nodos y flujos para evitar retener referencias o proxies
+    const cleanNodes = JSON.parse(JSON.stringify(data.nodes));
+    const cleanEdges = JSON.parse(JSON.stringify(data.edges));
+    
+    initialNodes.value = cleanNodes;
+    initialEdges.value = cleanEdges;
     elementNames.value = data.elementNames || ['Cu'];
+    
+    // Sincronizar el generador de IDs para evitar que nuevos nodos colisionen con los existentes
+    updateNextNodeId(cleanNodes);
+    
+    selectedElement.value = null;
+    reconciliationReport.value = null;
+    
+    // Forzar el re-montaje limpio del componente del diagrama
+    diagramKey.value++;
+    
+    nextTick(() => {
+      if (diagramRef.value && diagramRef.value.fitView) {
+        diagramRef.value.fitView();
+      }
+    });
+    
     alert('Diagrama cargado con éxito.');
   } else {
     alert('Error: El archivo no tiene el formato de diagrama esperado.');
@@ -554,6 +636,7 @@ function clearDiagram() {
   initialEdges.value = [];
   selectedElement.value = null;
   reconciliationReport.value = null;
+  id = 1;
 }
 
 function handleSaveElements(newNames) {
