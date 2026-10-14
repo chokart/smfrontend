@@ -20,6 +20,7 @@
           <th>% Sólidos (Cp)</th>
           <th>Sólido Seco (tph)</th>
           <th>Agua (tph)</th>
+          <th class="status-col">¿Ajustar?</th>
           <th class="status-col">Estado</th>
         </tr>
       </thead>
@@ -66,6 +67,19 @@
             <div v-else>--</div>
           </td>
 
+          <!-- MODO DE AJUSTE -->
+          <td class="status-col">
+            <button
+              type="button"
+              class="badge-adjustment"
+              :class="getAdjustmentClass(flow)"
+              :title="'Clic para cambiar: ' + getAdjustmentTitle(flow)"
+              @click="toggleAdjustmentMode(flow)"
+            >
+              {{ getAdjustmentLabel(flow) }}
+            </button>
+          </td>
+
           <td class="status-col">
             <span v-if="flow.data?.corrected_data" class="badge-success">Ajustado</span>
             <span v-else class="badge-pending">Pendiente</span>
@@ -82,16 +96,63 @@ const props = defineProps({
   flows: Array
 })
 
-defineEmits(['open-excel'])
+const emit = defineEmits(['open-excel', 'update-flow'])
 
 function getNodeLabel(nodeId) {
   const node = props.nodes.find(n => n.id === nodeId)
   return node ? node.data.label : nodeId
 }
 
+function getAdjustmentMode(flow) {
+  if (flow.data?.not_measured) return 'not_measured'
+  if (flow.data?.tonelaje_pulpa_fixed) return 'fixed'
+  return 'adjust'
+}
+
+function getAdjustmentLabel(flow) {
+  const mode = getAdjustmentMode(flow)
+  if (mode === 'fixed') return '🔒 Fijo'
+  if (mode === 'not_measured') return '🚫 No med.'
+  return '⚡ Ajustar'
+}
+
+function getAdjustmentClass(flow) {
+  const mode = getAdjustmentMode(flow)
+  return `badge-adj-${mode}`
+}
+
+function getAdjustmentTitle(flow) {
+  const mode = getAdjustmentMode(flow)
+  if (mode === 'fixed') return 'Flujo Fijo (No se ajusta en balance). Clic para cambiar a No medido.'
+  if (mode === 'not_measured') return 'Flujo No Medido (Se calcula por balance). Clic para cambiar a Ajustable.'
+  return 'Flujo Ajustable (Se ajusta en balance). Clic para cambiar a Fijo.'
+}
+
+function toggleAdjustmentMode(flow) {
+  const current = getAdjustmentMode(flow)
+  let nextFixed = false
+  let nextNotMeasured = false
+  if (current === 'adjust') {
+    nextFixed = true
+    nextNotMeasured = false
+  } else if (current === 'fixed') {
+    nextFixed = false
+    nextNotMeasured = true
+  } else {
+    nextFixed = false
+    nextNotMeasured = false
+  }
+
+  emit('update-flow', {
+    id: flow.id,
+    tonelaje_pulpa_fixed: nextFixed,
+    not_measured: nextNotMeasured
+  })
+}
+
 async function copyTableToClipboard() {
   if (!props.flows || props.flows.length === 0) return
-  const headers = ['ID Flujo', 'De', 'A', 'Pulpa (tph)', '% Sólidos (Cp)', 'Sólido Seco (tph)', 'Agua (tph)', 'Estado']
+  const headers = ['ID Flujo', 'De', 'A', '¿Ajustar?', 'Pulpa (tph)', '% Sólidos (Cp)', 'Sólido Seco (tph)', 'Agua (tph)', 'Estado']
   let tsv = headers.join('\t') + '\n'
 
   props.flows.forEach(flow => {
@@ -99,6 +160,7 @@ async function copyTableToClipboard() {
       flow.id,
       getNodeLabel(flow.source),
       getNodeLabel(flow.target),
+      getAdjustmentLabel(flow),
       flow.data?.tonelaje_pulpa != null ? flow.data.tonelaje_pulpa : '',
       flow.data?.porcentaje_solidos != null ? flow.data.porcentaje_solidos : '',
       flow.data?.corrected_data ? flow.data.corrected_data.tonelaje_solido_calculado.toFixed(2) : '--',
@@ -201,4 +263,41 @@ async function copyTableToClipboard() {
 .highlight-w { color: #0277BD; font-weight: bold; }
 .badge-success { background: #E8F5E9; color: #2E7D32; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; }
 .badge-pending { background: #FFF3E0; color: #EF6C00; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; }
+
+.badge-adjustment {
+  border: 1px solid transparent;
+  padding: 4px 9px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.badge-adj-adjust {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+.badge-adj-adjust:hover {
+  background-color: #dbeafe;
+}
+.badge-adj-fixed {
+  background-color: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+.badge-adj-fixed:hover {
+  background-color: #fde68a;
+}
+.badge-adj-not_measured {
+  background-color: #f1f5f9;
+  color: #64748b;
+  border-color: #cbd5e1;
+}
+.badge-adj-not_measured:hover {
+  background-color: #e2e8f0;
+}
 </style>

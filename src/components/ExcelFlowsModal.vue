@@ -25,11 +25,11 @@
           </div>
           <div class="instruction-step">
             <span class="step-num">2</span>
-            <span>Completa o modifica tus datos en Excel y cópialos con <strong>Ctrl+C</strong>.</span>
+            <span>Completa valores y define si cada flujo se debe <strong>Ajustar (Sí/No)</strong> o es <strong>No medido</strong>.</span>
           </div>
           <div class="instruction-step">
             <span class="step-num">3</span>
-            <span>Pégalos aquí en el área de texto (o haz clic en <strong>"Pegar del Portapapeles"</strong>) y revisa la vista previa.</span>
+            <span>Copia las celdas en Excel (Ctrl+C), pégalas aquí y haz clic en <strong>"Aplicar a Todos los Flujos"</strong>.</span>
           </div>
         </div>
 
@@ -48,12 +48,12 @@
           </div>
 
           <div class="format-selector">
-            <label for="format-mode">Formato de datos pegados:</label>
+            <label for="format-mode">Formato de columnas:</label>
             <select id="format-mode" v-model="formatMode" @change="reparse">
               <option value="auto">Auto-detectar (Encabezados o Valores)</option>
               <option value="values_only">Solo Valores (Tonelaje, Leyes...)</option>
-              <option value="values_with_errors">Valores y Errores (Tonelaje, Error, Leyes, Error...)</option>
-              <option value="template_full">Plantilla Completa (ID, De, A, Tonelaje...)</option>
+              <option value="values_with_errors">Valores y Errores (Tonelaje, Error, Leyes...)</option>
+              <option value="template_full">Plantilla Completa (ID, De, A, Ajustar, Tonelaje...)</option>
             </select>
           </div>
         </div>
@@ -77,10 +77,12 @@
         <!-- VISTA PREVIA DE DATOS PARSEADOS -->
         <div class="preview-section">
           <div class="preview-header">
-            <h4>Vista Previa de Cambios a Aplicar</h4>
-            <span class="badge-count" :class="{ 'has-matches': matchedCount > 0 }">
-              {{ matchedCount }} de {{ flows.length }} flujos coinciden
-            </span>
+            <h4>Vista Previa y Configuración de Ajuste</h4>
+            <div class="preview-header-meta">
+              <span class="badge-count" :class="{ 'has-matches': matchedCount > 0 }">
+                {{ matchedCount }} de {{ flows.length }} flujos vinculados
+              </span>
+            </div>
           </div>
 
           <div class="table-container">
@@ -89,6 +91,7 @@
                 <tr>
                   <th>ID</th>
                   <th>Flujo (De ➔ A)</th>
+                  <th class="col-adjustment">¿Ajustar?</th>
                   <template v-if="!isWaterModule">
                     <th>Tonelaje (tph)</th>
                     <th v-for="elem in elementNames" :key="elem">Ley {{ elem }} (%)</th>
@@ -102,7 +105,7 @@
               </thead>
               <tbody>
                 <tr v-if="flows.length === 0">
-                  <td :colspan="isWaterModule ? 5 : 4 + elementNames.length" class="empty-cell">
+                  <td :colspan="isWaterModule ? 6 : 5 + elementNames.length" class="empty-cell">
                     No hay flujos creados en el circuito actualmente.
                   </td>
                 </tr>
@@ -116,6 +119,19 @@
                     <span class="source-node">{{ row.sourceLabel }}</span>
                     <span class="arrow-sep">➔</span>
                     <span class="target-node">{{ row.targetLabel }}</span>
+                  </td>
+
+                  <!-- SELECTOR INTERACTIVO DE MODO DE AJUSTE -->
+                  <td class="col-adjustment">
+                    <select
+                      v-model="adjustmentModes[row.id]"
+                      class="select-mode"
+                      :class="`mode-${adjustmentModes[row.id] || 'adjust'}`"
+                    >
+                      <option value="adjust">⚡ Ajustar</option>
+                      <option value="fixed">🔒 Fijo (No ajustar)</option>
+                      <option value="not_measured">🚫 No medido</option>
+                    </select>
                   </td>
 
                   <!-- LEYES METALÚRGICAS -->
@@ -211,6 +227,9 @@ const toastMessage = ref('')
 const toastType = ref('info')
 const textareaRef = ref(null)
 
+// Diccionario reactivo de modos de ajuste por flujo: { [flowId]: 'adjust' | 'fixed' | 'not_measured' }
+const adjustmentModes = ref({})
+
 let toastTimeout = null
 function showToast(msg, type = 'info', duration = 3000) {
   toastMessage.value = msg
@@ -224,6 +243,32 @@ function showToast(msg, type = 'info', duration = 3000) {
 function getNodeLabel(nodeId) {
   const node = props.nodes.find(n => n.id === nodeId)
   return node?.data?.label || nodeId || '?'
+}
+
+// Inicializar diccionario de modos de ajuste según datos actuales
+function initAdjustmentModes() {
+  const modes = {}
+  props.flows.forEach(f => {
+    const d = f.data || {}
+    if (isWaterModule.value) {
+      if (d.not_measured) {
+        modes[f.id] = 'not_measured'
+      } else if (d.tonelaje_pulpa_fixed) {
+        modes[f.id] = 'fixed'
+      } else {
+        modes[f.id] = 'adjust'
+      }
+    } else {
+      if (d.not_measured) {
+        modes[f.id] = 'not_measured'
+      } else if (d.tonelaje_fixed) {
+        modes[f.id] = 'fixed'
+      } else {
+        modes[f.id] = 'adjust'
+      }
+    }
+  })
+  adjustmentModes.value = modes
 }
 
 // Helper numérico robusto para formatos de Excel (comas, puntos, miles, porcentajes)
@@ -264,8 +309,8 @@ async function copyTemplateToClipboard() {
   try {
     let tsv = ''
     if (!isWaterModule.value) {
-      // Cabecera Metalúrgica
-      const headers = ['ID Flujo', 'De', 'A', 'Tonelaje Seco (tph)', 'Error Ton']
+      // Cabecera Metalúrgica con columnas de ajuste
+      const headers = ['ID Flujo', 'De', 'A', '¿Ajustar? (Sí/No)', '¿No Medido? (Sí/No)', 'Tonelaje Seco (tph)', 'Error Ton']
       props.elementNames.forEach(elem => {
         headers.push(`Ley ${elem} (%)`)
         headers.push(`Error Ley ${elem}`)
@@ -279,6 +324,8 @@ async function copyTemplateToClipboard() {
           flow.id,
           getNodeLabel(flow.source),
           getNodeLabel(flow.target),
+          flowData.tonelaje_fixed ? 'No (Fijo)' : 'Sí',
+          flowData.not_measured ? 'Sí' : 'No',
           flowData.tonelaje != null ? flowData.tonelaje : 100,
           flowData.tonelaje_error != null ? flowData.tonelaje_error : 1.0
         ]
@@ -290,17 +337,18 @@ async function copyTemplateToClipboard() {
         tsv += row.join('\t') + '\n'
       })
     } else {
-      // Cabecera Agua
-      const headers = ['ID Flujo', 'De', 'A', 'Pulpa (tph)', 'Error Pulpa', '% Sólidos', 'Error % Sólidos']
+      // Cabecera Agua con columnas de ajuste
+      const headers = ['ID Flujo', 'De', 'A', '¿Ajustar Pulpa? (Sí/No)', '¿No Medido? (Sí/No)', 'Pulpa (tph)', 'Error Pulpa', '% Sólidos', 'Error % Sólidos']
       tsv += headers.join('\t') + '\n'
 
-      // Filas por cada flujo de agua
       props.flows.forEach(flow => {
         const flowData = flow.data || {}
         const row = [
           flow.id,
           getNodeLabel(flow.source),
           getNodeLabel(flow.target),
+          flowData.tonelaje_pulpa_fixed ? 'No (Fijo)' : 'Sí',
+          flowData.not_measured ? 'Sí' : 'No',
           flowData.tonelaje_pulpa != null ? flowData.tonelaje_pulpa : 100,
           flowData.tonelaje_pulpa_error != null ? flowData.tonelaje_pulpa_error : 1.0,
           flowData.porcentaje_solidos != null ? flowData.porcentaje_solidos : 30.0,
@@ -329,7 +377,6 @@ async function pasteFromClipboard() {
       showToast('El portapapeles está vacío.', 'warning')
     }
   } catch (err) {
-    // Si el navegador deniega el permiso directo, enfocar el textarea
     if (textareaRef.value) {
       textareaRef.value.focus()
       showToast('Por favor presiona Ctrl + V dentro del recuadro para pegar.', 'info', 3500)
@@ -358,21 +405,18 @@ function reparse() {
     return
   }
 
-  // Dividir por líneas (soporta \r\n y \n)
   const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0)
   if (lines.length === 0) {
     parsedData.value = []
     return
   }
 
-  // Separar columnas por tabulación (\t) o punto y coma / coma si es CSV
   const matrix = lines.map(line => {
     if (line.includes('\t')) return line.split('\t').map(c => c.trim())
     if (line.includes(';')) return line.split(';').map(c => c.trim())
     return line.split(',').map(c => c.trim())
   })
 
-  // Detectar si la primera fila es de encabezados
   const firstRow = matrix[0]
   const isHeaderRow = firstRow.some(cell => {
     const lower = cell.toLowerCase()
@@ -380,6 +424,7 @@ function reparse() {
       lower.includes('id') || lower.includes('flujo') || lower.includes('ton') ||
       lower.includes('pulpa') || lower.includes('solido') || lower.includes('sólido') ||
       lower.includes('ley') || lower.includes('de') || lower.includes('a') ||
+      lower.includes('ajustar') || lower.includes('fijo') || lower.includes('medido') ||
       props.elementNames.some(el => lower.includes(el.toLowerCase()))
     )
   })
@@ -393,6 +438,26 @@ function reparse() {
 
   const results = []
 
+  // Helper para interpretar ajuste / fijo / no medido
+  function parseAdjustmentFlags(ajustarVal, noMedidoVal) {
+    let mode = null
+    if (noMedidoVal) {
+      const lowerNm = noMedidoVal.toLowerCase()
+      if (lowerNm === 'si' || lowerNm === 'sí' || lowerNm === 'true' || lowerNm === 'no medido' || lowerNm === 'nd') {
+        return 'not_measured'
+      }
+    }
+    if (ajustarVal) {
+      const lowerAj = ajustarVal.toLowerCase()
+      if (lowerAj === 'no' || lowerAj === 'false' || lowerAj === 'fijo' || lowerAj === 'no ajustar') {
+        return 'fixed'
+      } else if (lowerAj === 'si' || lowerAj === 'sí' || lowerAj === 'true' || lowerAj === 'ajustar') {
+        return 'adjust'
+      }
+    }
+    return mode
+  }
+
   // MODALIDAD: BALANCE METALÚRGICO
   if (!isWaterModule.value) {
     dataRows.forEach((row, rowIdx) => {
@@ -401,18 +466,24 @@ function reparse() {
       let matchedFlowId = null
       let tonelaje = null
       let tonelaje_error = null
+      let mode = null
       const elementos = {}
       const elementosError = {}
 
-      // Intentar mapeo por encabezados si existen
       if (headers) {
-        // Buscar ID o nombres
         const idCol = headers.findIndex(h => h.includes('id') || h.includes('flujo'))
         if (idCol !== -1 && row[idCol]) {
           const val = row[idCol].trim()
           const found = props.flows.find(f => f.id.toLowerCase() === val.toLowerCase())
           if (found) matchedFlowId = found.id
         }
+
+        // Columna ¿Ajustar? o Fijo
+        const ajCol = headers.findIndex(h => h.includes('ajustar') || h.includes('fijo'))
+        const nmCol = headers.findIndex(h => h.includes('medido') || h.includes('no med'))
+        const ajVal = ajCol !== -1 ? row[ajCol] : null
+        const nmVal = nmCol !== -1 ? row[nmCol] : null
+        mode = parseAdjustmentFlags(ajVal, nmVal)
 
         // Tonelaje
         const tonCol = headers.findIndex(h => h.includes('ton') && !h.includes('error'))
@@ -435,18 +506,18 @@ function reparse() {
         })
       }
 
-      // Si no hubo encabezados o no se mapeó por ID, aplicar según modo o posición
       const effectiveMode = (formatMode.value === 'auto' && !headers) ? 'values_only' : formatMode.value
 
       if (effectiveMode === 'template_full' || (headers && matchedFlowId && tonelaje == null)) {
-        // Plantilla oficial: [0: ID, 1: De, 2: A, 3: Ton, 4: ErrTon, 5: Ley1, 6: ErrLey1, ...]
+        // [0: ID, 1: De, 2: A, 3: ¿Ajustar?, 4: ¿NoMedido?, 5: Ton, 6: ErrTon, 7: Ley1, 8: ErrLey1...]
         if (!matchedFlowId && row[0]) {
           const found = props.flows.find(f => f.id.toLowerCase() === row[0].toLowerCase())
           if (found) matchedFlowId = found.id
         }
-        if (row[3] !== undefined) tonelaje = parseExcelNumber(row[3])
-        if (row[4] !== undefined) tonelaje_error = parseExcelNumber(row[4])
-        let colIdx = 5
+        if (row[3] !== undefined) mode = parseAdjustmentFlags(row[3], row[4])
+        if (row[5] !== undefined) tonelaje = parseExcelNumber(row[5])
+        if (row[6] !== undefined) tonelaje_error = parseExcelNumber(row[6])
+        let colIdx = 7
         props.elementNames.forEach(elem => {
           if (row[colIdx] !== undefined) elementos[elem] = parseExcelNumber(row[colIdx])
           if (row[colIdx + 1] !== undefined) elementosError[elem] = parseExcelNumber(row[colIdx + 1])
@@ -472,18 +543,21 @@ function reparse() {
         })
       }
 
-      // Si aún no tenemos matchedFlowId, emparejar con el flujo por índice de fila
       if (!matchedFlowId && rowIdx < props.flows.length) {
         matchedFlowId = props.flows[rowIdx].id
       }
 
       if (matchedFlowId) {
+        if (mode) {
+          adjustmentModes.value[matchedFlowId] = mode
+        }
         results.push({
           flowId: matchedFlowId,
           tonelaje,
           tonelaje_error,
           elementos,
-          elementosError
+          elementosError,
+          mode
         })
       }
     })
@@ -497,6 +571,7 @@ function reparse() {
       let tonelaje_pulpa_error = null
       let porcentaje_solidos = null
       let porcentaje_solidos_error = null
+      let mode = null
 
       if (headers) {
         const idCol = headers.findIndex(h => h.includes('id') || h.includes('flujo'))
@@ -504,6 +579,12 @@ function reparse() {
           const found = props.flows.find(f => f.id.toLowerCase() === row[idCol].trim().toLowerCase())
           if (found) matchedFlowId = found.id
         }
+
+        const ajCol = headers.findIndex(h => h.includes('ajustar') || h.includes('fijo'))
+        const nmCol = headers.findIndex(h => h.includes('medido') || h.includes('no med'))
+        const ajVal = ajCol !== -1 ? row[ajCol] : null
+        const nmVal = nmCol !== -1 ? row[nmCol] : null
+        mode = parseAdjustmentFlags(ajVal, nmVal)
 
         const pulpaCol = headers.findIndex(h => h.includes('pulpa') && !h.includes('error'))
         if (pulpaCol !== -1) tonelaje_pulpa = parseExcelNumber(row[pulpaCol])
@@ -521,23 +602,22 @@ function reparse() {
       const effectiveMode = (formatMode.value === 'auto' && !headers) ? 'values_only' : formatMode.value
 
       if (effectiveMode === 'template_full' || (headers && matchedFlowId && tonelaje_pulpa == null)) {
-        // [0: ID, 1: De, 2: A, 3: Pulpa, 4: ErrPulpa, 5: %Sol, 6: Err%Sol]
+        // [0: ID, 1: De, 2: A, 3: ¿Ajustar?, 4: ¿NoMedido?, 5: Pulpa, 6: ErrPulpa, 7: %Sol, 8: Err%Sol]
         if (!matchedFlowId && row[0]) {
           const found = props.flows.find(f => f.id.toLowerCase() === row[0].toLowerCase())
           if (found) matchedFlowId = found.id
         }
-        if (row[3] !== undefined) tonelaje_pulpa = parseExcelNumber(row[3])
-        if (row[4] !== undefined) tonelaje_pulpa_error = parseExcelNumber(row[4])
-        if (row[5] !== undefined) porcentaje_solidos = parseExcelNumber(row[5])
-        if (row[6] !== undefined) porcentaje_solidos_error = parseExcelNumber(row[6])
+        if (row[3] !== undefined) mode = parseAdjustmentFlags(row[3], row[4])
+        if (row[5] !== undefined) tonelaje_pulpa = parseExcelNumber(row[5])
+        if (row[6] !== undefined) tonelaje_pulpa_error = parseExcelNumber(row[6])
+        if (row[7] !== undefined) porcentaje_solidos = parseExcelNumber(row[7])
+        if (row[8] !== undefined) porcentaje_solidos_error = parseExcelNumber(row[8])
       } else if (effectiveMode === 'values_with_errors') {
-        // [Pulpa, ErrPulpa, %Sol, Err%Sol]
         if (row[0] !== undefined) tonelaje_pulpa = parseExcelNumber(row[0])
         if (row[1] !== undefined) tonelaje_pulpa_error = parseExcelNumber(row[1])
         if (row[2] !== undefined) porcentaje_solidos = parseExcelNumber(row[2])
         if (row[3] !== undefined) porcentaje_solidos_error = parseExcelNumber(row[3])
       } else if (effectiveMode === 'values_only') {
-        // [Pulpa, %Sol]
         if (row[0] !== undefined) tonelaje_pulpa = parseExcelNumber(row[0])
         if (row[1] !== undefined) porcentaje_solidos = parseExcelNumber(row[1])
       }
@@ -547,12 +627,16 @@ function reparse() {
       }
 
       if (matchedFlowId) {
+        if (mode) {
+          adjustmentModes.value[matchedFlowId] = mode
+        }
         results.push({
           flowId: matchedFlowId,
           tonelaje_pulpa,
           tonelaje_pulpa_error,
           porcentaje_solidos,
-          porcentaje_solidos_error
+          porcentaje_solidos_error,
+          mode
         })
       }
     })
@@ -566,6 +650,11 @@ const previewRows = computed(() => {
   return props.flows.map(flow => {
     const flowData = flow.data || {}
     const parsed = parsedData.value.find(p => p.flowId === flow.id)
+    const currentMode = isWaterModule.value
+      ? (flowData.not_measured ? 'not_measured' : (flowData.tonelaje_pulpa_fixed ? 'fixed' : 'adjust'))
+      : (flowData.not_measured ? 'not_measured' : (flowData.tonelaje_fixed ? 'fixed' : 'adjust'))
+    const selectedMode = adjustmentModes.value[flow.id] || currentMode
+    const modeChanged = selectedMode !== currentMode
 
     if (!isWaterModule.value) {
       const currentLeyes = {}
@@ -594,14 +683,15 @@ const previewRows = computed(() => {
         }
       })
 
-      const hasChanges = (hasNewTonelaje && Number(newTonelaje) !== Number(flowData.tonelaje)) ||
+      const hasChanges = modeChanged ||
+        (hasNewTonelaje && Number(newTonelaje) !== Number(flowData.tonelaje)) ||
         props.elementNames.some(name => newLeyes[name] !== undefined && Number(newLeyes[name]) !== Number(currentLeyes[name]))
 
       return {
         id: flow.id,
         sourceLabel: getNodeLabel(flow.source),
         targetLabel: getNodeLabel(flow.target),
-        matched: !!parsed,
+        matched: !!parsed || modeChanged,
         currentTonelaje: flowData.tonelaje,
         hasNewTonelaje,
         newTonelaje,
@@ -622,14 +712,15 @@ const previewRows = computed(() => {
       const newSolidos = hasNewSolidos ? parsed.porcentaje_solidos : flowData.porcentaje_solidos
       const newSolidosError = parsed?.porcentaje_solidos_error != null ? parsed.porcentaje_solidos_error : flowData.porcentaje_solidos_error
 
-      const hasChanges = (hasNewPulpa && Number(newPulpa) !== Number(flowData.tonelaje_pulpa)) ||
+      const hasChanges = modeChanged ||
+        (hasNewPulpa && Number(newPulpa) !== Number(flowData.tonelaje_pulpa)) ||
         (hasNewSolidos && Number(newSolidos) !== Number(flowData.porcentaje_solidos))
 
       return {
         id: flow.id,
         sourceLabel: getNodeLabel(flow.source),
         targetLabel: getNodeLabel(flow.target),
-        matched: !!parsed,
+        matched: !!parsed || modeChanged,
         currentPulpa: flowData.tonelaje_pulpa,
         hasNewPulpa,
         newPulpa,
@@ -649,7 +740,7 @@ const matchedCount = computed(() => {
 })
 
 const changedCount = computed(() => {
-  return previewRows.value.filter(r => r.matched && r.hasChanges).length
+  return previewRows.value.filter(r => r.hasChanges).length
 })
 
 const hasAnyChanges = computed(() => {
@@ -661,7 +752,10 @@ function applyChanges() {
   const updates = []
 
   previewRows.value.forEach(row => {
-    if (!row.matched) return
+    // Si la fila coincidió por parseo o el usuario cambió manualmente su modo de ajuste
+    const mode = adjustmentModes.value[row.id] || 'adjust'
+    const isFixed = mode === 'fixed'
+    const isNotMeasured = mode === 'not_measured'
 
     if (!isWaterModule.value) {
       const elementosData = props.elementNames.map(name => {
@@ -678,6 +772,8 @@ function applyChanges() {
         id: row.id,
         tonelaje: row.hasNewTonelaje ? row.newTonelaje : row.currentTonelaje,
         tonelaje_error: row.newTonelajeError != null ? row.newTonelajeError : undefined,
+        tonelaje_fixed: isFixed,
+        not_measured: isNotMeasured,
         elementos: elementosData
       })
     } else {
@@ -685,6 +781,8 @@ function applyChanges() {
         id: row.id,
         tonelaje_pulpa: row.hasNewPulpa ? row.newPulpa : row.currentPulpa,
         tonelaje_pulpa_error: row.newPulpaError != null ? row.newPulpaError : undefined,
+        tonelaje_pulpa_fixed: isFixed,
+        not_measured: isNotMeasured,
         porcentaje_solidos: row.hasNewSolidos ? row.newSolidos : row.currentSolidos,
         porcentaje_solidos_error: row.newSolidosError != null ? row.newSolidosError : undefined
       })
@@ -695,9 +793,10 @@ function applyChanges() {
   emit('close')
 }
 
-// Limpiar o enfocar cuando se abre el modal
+// Inicializar cuando se abre el modal
 watch(() => props.visible, (val) => {
   if (val) {
+    initAdjustmentModes()
     nextTick(() => {
       if (textareaRef.value) {
         textareaRef.value.focus()
@@ -730,7 +829,7 @@ watch(() => props.visible, (val) => {
   border-radius: 12px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
   width: 100%;
-  max-width: 900px;
+  max-width: 960px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -993,7 +1092,7 @@ watch(() => props.visible, (val) => {
 }
 
 .table-container {
-  max-height: 220px;
+  max-height: 250px;
   overflow-y: auto;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
@@ -1053,6 +1152,40 @@ watch(() => props.visible, (val) => {
 .source-node { color: #1e293b; }
 .arrow-sep { color: #94a3b8; margin: 0 4px; }
 .target-node { color: #1e293b; }
+
+/* SELECTOR DE MODO DE AJUSTE */
+.col-adjustment {
+  width: 140px;
+}
+
+.select-mode {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.775rem;
+  font-weight: 600;
+  border: 1px solid #cbd5e1;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s;
+}
+
+.select-mode.mode-adjust {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.select-mode.mode-fixed {
+  background-color: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.select-mode.mode-not_measured {
+  background-color: #f1f5f9;
+  color: #475569;
+  border-color: #cbd5e1;
+}
 
 .value-cell {
   font-family: 'Roboto Mono', monospace;

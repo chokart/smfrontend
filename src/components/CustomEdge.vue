@@ -44,6 +44,8 @@ const labelStyle = {
       class="nodrag nopan custom-edge-label"
     >
       <div v-if="'tonelaje_pulpa' in data">
+        <div v-if="data.tonelaje_pulpa_fixed" class="edge-fixed-badge">🔒 Fijo</div>
+        <div v-else-if="data.not_measured" class="edge-unmeasured-badge">🚫 No med.</div>
         <template v-if="data.corrected_data">
           <div><strong>Ton:</strong> {{ Number(data.tonelaje_pulpa).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_pulpa_corregido).toFixed(2) }}</span></div>
           <div><strong>%Sol:</strong> {{ Number(data.porcentaje_solidos).toFixed(1) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.porcentaje_solidos_corregido).toFixed(1) }}</span></div>
@@ -58,6 +60,8 @@ const labelStyle = {
         </template>
       </div>
       <div v-else-if="'tonelaje' in data">
+        <div v-if="data.tonelaje_fixed" class="edge-fixed-badge">🔒 Fijo</div>
+        <div v-else-if="data.not_measured" class="edge-unmeasured-badge">🚫 No med.</div>
         <template v-if="data.corrected_tonelaje != null">
           <div><strong>Ton:</strong> {{ Number(data.tonelaje).toFixed(2) }} <span style="color: #28a745;">➔ {{ Number(data.corrected_tonelaje).toFixed(2) }}</span></div>
           <div v-for="el in (data.elementos || [])" :key="el.name">
@@ -80,5 +84,29 @@ const labelStyle = {
   background-color: #f8f9fa;
   border-color: #007bff;
   cursor: pointer;
+}
+
+.edge-fixed-badge {
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 8.5px;
+  font-weight: bold;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin-bottom: 2px;
+  display: inline-block;
+  border: 1px solid #fde68a;
+}
+
+.edge-unmeasured-badge {
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 8.5px;
+  font-weight: 500;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin-bottom: 2px;
+  display: inline-block;
+  border: 1px solid #cbd5e1;
 }
 </style>

@@ -94,6 +94,7 @@
             :flows="currentEdges" 
             :element-names="elementNames" 
             @open-excel="isExcelModalVisible = true"
+            @update-flow="handleFlowUpdate"
           />
           <NodesSummaryTable :nodes="currentNodes" :flows="currentEdges" :element-names="elementNames" />
         </template>
@@ -102,6 +103,7 @@
             :nodes="currentNodes" 
             :flows="currentEdges" 
             @open-excel="isExcelModalVisible = true"
+            @update-flow="handleFlowUpdate"
           />
           <NodesSummaryTable :nodes="currentNodes" :flows="currentEdges" :element-names="[]" />
         </template>
@@ -567,6 +569,23 @@ function handleSaveElements(newNames) {
   });
 }
 
+function handleFlowUpdate(payload) {
+  const edges = getEdges();
+  const edge = edges.find(e => e.id === payload.id);
+  if (edge) {
+    edge.data = {
+      ...edge.data,
+      ...payload,
+      corrected_tonelaje: null,
+      corrected_data: null
+    };
+    if (selectedElement.value && selectedElement.value.id === edge.id) {
+      selectedElement.value.data = { ...edge.data };
+    }
+    reconciliationReport.value = null;
+  }
+}
+
 function handleApplyExcelData(updates) {
   const edges = getEdges();
   let updatedCount = 0;
@@ -580,6 +599,8 @@ function handleApplyExcelData(updates) {
           ...edge.data,
           tonelaje_pulpa: item.tonelaje_pulpa !== undefined && item.tonelaje_pulpa !== null ? item.tonelaje_pulpa : edge.data.tonelaje_pulpa,
           porcentaje_solidos: item.porcentaje_solidos !== undefined && item.porcentaje_solidos !== null ? item.porcentaje_solidos : edge.data.porcentaje_solidos,
+          tonelaje_pulpa_fixed: item.tonelaje_pulpa_fixed !== undefined ? item.tonelaje_pulpa_fixed : edge.data.tonelaje_pulpa_fixed,
+          not_measured: item.not_measured !== undefined ? item.not_measured : edge.data.not_measured,
           corrected_data: null
         };
         if (item.tonelaje_pulpa_error !== undefined && item.tonelaje_pulpa_error !== null) {
@@ -607,6 +628,8 @@ function handleApplyExcelData(updates) {
         const newData = {
           ...edge.data,
           tonelaje: item.tonelaje !== undefined && item.tonelaje !== null ? item.tonelaje : edge.data.tonelaje,
+          tonelaje_fixed: item.tonelaje_fixed !== undefined ? item.tonelaje_fixed : edge.data.tonelaje_fixed,
+          not_measured: item.not_measured !== undefined ? item.not_measured : edge.data.not_measured,
           elementos: updatedElementos,
           corrected_tonelaje: null
         };

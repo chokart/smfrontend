@@ -20,12 +20,13 @@
             <th>Tonelaje Seco (tph)</th>
             <!-- Generar columnas dinámicas por elemento -->
             <th v-for="name in elementNames" :key="name">Ley {{ name }} (%)</th>
+            <th class="status-col">¿Ajustar?</th>
             <th class="status-col">Estado</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="processedFlows.length === 0">
-            <td :colspan="4 + elementNames.length" style="text-align: center; color: #777;">
+            <td :colspan="5 + elementNames.length" style="text-align: center; color: #777;">
               No hay flujos definidos.
             </td>
           </tr>
@@ -57,6 +58,19 @@
               </div>
             </td>
 
+            <!-- MODO DE AJUSTE INTERACTIVO -->
+            <td class="status-col">
+              <button
+                type="button"
+                class="badge-adjustment"
+                :class="getAdjustmentClass(flow)"
+                :title="'Clic para cambiar: ' + getAdjustmentTitle(flow)"
+                @click="toggleAdjustmentMode(flow)"
+              >
+                {{ getAdjustmentLabel(flow) }}
+              </button>
+            </td>
+
             <!-- ESTADO -->
             <td class="status-col">
               <span v-if="flow.tonelaje_corregido != null" class="badge-success">Ajustado</span>
@@ -78,11 +92,58 @@ const props = defineProps({
   elementNames: { type: Array, required: true },
 });
 
-defineEmits(['open-excel']);
+const emit = defineEmits(['open-excel', 'update-flow']);
+
+function getAdjustmentMode(flow) {
+  if (flow.not_measured) return 'not_measured';
+  if (flow.tonelaje_fixed) return 'fixed';
+  return 'adjust';
+}
+
+function getAdjustmentLabel(flow) {
+  const mode = getAdjustmentMode(flow);
+  if (mode === 'fixed') return '🔒 Fijo';
+  if (mode === 'not_measured') return '🚫 No med.';
+  return '⚡ Ajustar';
+}
+
+function getAdjustmentClass(flow) {
+  const mode = getAdjustmentMode(flow);
+  return `badge-adj-${mode}`;
+}
+
+function getAdjustmentTitle(flow) {
+  const mode = getAdjustmentMode(flow);
+  if (mode === 'fixed') return 'Flujo Fijo (No se ajusta en balance). Clic para cambiar a No medido.';
+  if (mode === 'not_measured') return 'Flujo No Medido (Se calcula por balance). Clic para cambiar a Ajustable.';
+  return 'Flujo Ajustable (Se ajusta en balance). Clic para cambiar a Fijo.';
+}
+
+function toggleAdjustmentMode(flow) {
+  const current = getAdjustmentMode(flow);
+  let nextFixed = false;
+  let nextNotMeasured = false;
+  if (current === 'adjust') {
+    nextFixed = true;
+    nextNotMeasured = false;
+  } else if (current === 'fixed') {
+    nextFixed = false;
+    nextNotMeasured = true;
+  } else {
+    nextFixed = false;
+    nextNotMeasured = false;
+  }
+
+  emit('update-flow', {
+    id: flow.id,
+    tonelaje_fixed: nextFixed,
+    not_measured: nextNotMeasured
+  });
+}
 
 async function copyTableToClipboard() {
   if (processedFlows.value.length === 0) return;
-  const headers = ['ID Flujo', 'De', 'A', 'Tonelaje Seco (tph)'];
+  const headers = ['ID Flujo', 'De', 'A', '¿Ajustar?', 'Tonelaje Seco (tph)'];
   props.elementNames.forEach(elem => headers.push(`Ley ${elem} (%)`));
   headers.push('Estado');
 
@@ -92,6 +153,7 @@ async function copyTableToClipboard() {
       flow.id,
       flow.sourceLabel,
       flow.targetLabel,
+      getAdjustmentLabel(flow),
       flow.not_measured ? 'No Med.' : (flow.tonelaje != null ? flow.tonelaje : '')
     ];
     flow.elements.forEach(el => {
@@ -134,7 +196,8 @@ const processedFlows = computed(() => {
       sourceLabel: sourceNode ? sourceNode.data.label : '?',
       targetLabel: targetNode ? targetNode.data.label : '?',
       tonelaje: flowData.tonelaje,
-      not_measured: flowData.not_measured,
+      tonelaje_fixed: flowData.tonelaje_fixed || false,
+      not_measured: flowData.not_measured || false,
       tonelaje_corregido: correctedTon,
       elements
     };
@@ -260,4 +323,41 @@ const processedFlows = computed(() => {
 }
 .badge-success { background: #E8F5E9; color: #2E7D32; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; border: 1px solid #C8E6C9; font-weight: bold;}
 .badge-pending { background: #FFF3E0; color: #EF6C00; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; border: 1px solid #FFE0B2; font-weight: bold;}
+
+.badge-adjustment {
+  border: 1px solid transparent;
+  padding: 4px 9px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.badge-adj-adjust {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+.badge-adj-adjust:hover {
+  background-color: #dbeafe;
+}
+.badge-adj-fixed {
+  background-color: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+.badge-adj-fixed:hover {
+  background-color: #fde68a;
+}
+.badge-adj-not_measured {
+  background-color: #f1f5f9;
+  color: #64748b;
+  border-color: #cbd5e1;
+}
+.badge-adj-not_measured:hover {
+  background-color: #e2e8f0;
+}
 </style>
