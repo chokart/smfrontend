@@ -45,21 +45,54 @@
       <!-- CONFIGURACIÓN DE FLUJO -->
       <div v-else>
         <div class="section-title">Tonelaje Seco</div>
-        <div class="form-group">
+        
+        <div class="checkbox-group highlight-checkbox">
+          <input id="chk-not-measured" v-model="localData.not_measured" type="checkbox" @change="onNotMeasuredChange" />
+          <label for="chk-not-measured"><strong>🚫 Flujo No Medido</strong> (deducir por balance)</label>
+        </div>
+
+        <div v-if="localData.not_measured" class="unmeasured-badge">
+          ℹ️ <strong>Flujo sin medición:</strong> No entra en la función objetivo y se calculará por diferencia de masa en los nodos.
+        </div>
+
+        <div class="form-group" :class="{ 'is-disabled-group': localData.not_measured }">
           <label>Valor Medido (tph):</label>
-          <input v-model.number="localData.tonelaje" type="number" step="0.01" @input="update" />
+          <input 
+            v-model.number="localData.tonelaje" 
+            type="number" 
+            step="0.01" 
+            :disabled="localData.not_measured" 
+            :placeholder="localData.not_measured ? 'Deducido por balance' : 'tph'"
+            @input="update" 
+          />
         </div>
-        <div class="form-group">
-          <label>Error (Desv. Est.):</label>
-          <input v-model.number="localData.tonelaje_error" type="number" step="0.01" @input="update" />
+
+        <div class="form-group" :class="{ 'is-disabled-group': localData.not_measured }">
+          <div class="label-with-presets">
+            <label>Error (Desv. Est.):</label>
+            <div v-if="!localData.not_measured && localData.tonelaje > 0" class="preset-buttons">
+              <span class="preset-label">%:</span>
+              <button type="button" class="preset-btn" @click="applyRelError('tonelaje', 0.01)" title="Asignar 1% de error relativo">1%</button>
+              <button type="button" class="preset-btn" @click="applyRelError('tonelaje', 0.02)" title="Asignar 2% de error relativo">2%</button>
+              <button type="button" class="preset-btn" @click="applyRelError('tonelaje', 0.05)" title="Asignar 5% de error relativo">5%</button>
+            </div>
+          </div>
+          <input 
+            v-model.number="localData.tonelaje_error" 
+            type="number" 
+            step="0.01" 
+            :disabled="localData.not_measured" 
+            :placeholder="localData.not_measured ? 'N/A' : '± tph'"
+            @input="update" 
+          />
+          <small v-if="!localData.not_measured && localData.tonelaje > 0 && localData.tonelaje_error > 0" class="rel-hint">
+            Equivale a: <strong>±{{ ((localData.tonelaje_error / localData.tonelaje) * 100).toFixed(1) }}%</strong> relativo
+          </small>
         </div>
-        <div class="checkbox-group">
+
+        <div v-if="!localData.not_measured" class="checkbox-group">
           <input v-model="localData.tonelaje_fixed" type="checkbox" @change="update" />
           <label>No ajustar (Fijo)</label>
-        </div>
-        <div class="checkbox-group">
-          <input v-model="localData.not_measured" type="checkbox" @change="update" />
-          <label>No medido</label>
         </div>
 
         <!-- RESULTADOS TONELAJE -->
@@ -71,20 +104,56 @@
 
         <div class="section-title">Leyes de Elementos</div>
         <div v-for="(element, index) in localData.elementos" :key="index" class="element-block">
-          <div class="element-header">{{ element.name }}</div>
-          <div class="form-group">
+          <div class="element-header-row">
+            <span class="element-header">{{ element.name }}</span>
+            <div class="checkbox-group-inline">
+              <label class="chk-lbl">
+                <input v-model="element.not_measured" type="checkbox" @change="onElementNotMeasuredChange(element)" />
+                No medida
+              </label>
+              <label v-if="!element.not_measured" class="chk-lbl">
+                <input v-model="element.ley_fixed" type="checkbox" @change="update" />
+                Fija
+              </label>
+            </div>
+          </div>
+
+          <div v-if="element.not_measured" class="unmeasured-badge-sm">
+            ℹ️ Ley no medida (se deducirá por balance nodal).
+          </div>
+
+          <div class="form-group" :class="{ 'is-disabled-group': element.not_measured }">
             <label>Ley (%):</label>
-            <input v-model.number="element.ley" type="number" step="0.001" @input="update" />
+            <input 
+              v-model.number="element.ley" 
+              type="number" 
+              step="0.001" 
+              :disabled="element.not_measured"
+              :placeholder="element.not_measured ? 'Deducida por balance' : '%'"
+              @input="update" 
+            />
           </div>
-          <div class="form-group">
-            <label>Error Ley:</label>
-            <input v-model.number="element.ley_error" type="number" step="0.001" @input="update" />
-          </div>
-          <div class="checkbox-group">
-            <input v-model="element.ley_fixed" type="checkbox" @change="update" />
-            <label>Fija</label>
-            <input v-model="element.not_measured" type="checkbox" @change="update" style="margin-left: 10px;" />
-            <label>No medida</label>
+
+          <div class="form-group" :class="{ 'is-disabled-group': element.not_measured }">
+            <div class="label-with-presets">
+              <label>Error Ley:</label>
+              <div v-if="!element.not_measured && element.ley > 0" class="preset-buttons">
+                <button type="button" class="preset-btn" @click="applyRelErrorElem(element, 0.01)">1%</button>
+                <button type="button" class="preset-btn" @click="applyRelErrorElem(element, 0.02)">2%</button>
+                <button type="button" class="preset-btn" @click="applyRelErrorElem(element, 0.05)">5%</button>
+              </div>
+            </div>
+            <input 
+              v-model.number="element.ley_error" 
+              type="number" 
+              step="0.001" 
+              :disabled="element.not_measured"
+              :placeholder="element.not_measured ? 'N/A' : '± %'"
+              @input="update" 
+            />
+            <small v-if="!element.not_measured && element.ley > 0 && element.ley_error > 0" class="rel-hint">
+              Equivale a: <strong>±{{ ((element.ley_error / element.ley) * 100).toFixed(1) }}%</strong> relativo
+            </small>
           </div>
           
           <!-- RESULTADOS LEY -->
@@ -131,6 +200,36 @@ watch(() => props.modelValue, (newVal) => {
     }
   }
 }, { immediate: true, deep: true })
+
+function onNotMeasuredChange() {
+  if (localData.value.not_measured) {
+    localData.value.tonelaje_fixed = false
+  }
+  update()
+}
+
+function onElementNotMeasuredChange(element) {
+  if (element.not_measured) {
+    element.ley_fixed = false
+  }
+  update()
+}
+
+function applyRelError(field, ratio) {
+  const val = Number(localData.value[field] || 0)
+  if (val > 0) {
+    localData.value[`${field}_error`] = Number((val * ratio).toFixed(2))
+    update()
+  }
+}
+
+function applyRelErrorElem(element, ratio) {
+  const val = Number(element.ley || 0)
+  if (val > 0) {
+    element.ley_error = Number((val * ratio).toFixed(4))
+    update()
+  }
+}
 
 function update() {
   const updatedElement = {
@@ -272,5 +371,100 @@ function update() {
 .btn-delete-element:hover {
   background-color: #fecaca;
   color: #b91c1c;
+}
+
+/* ESTILOS PARA FLUJOS NO MEDIDOS Y PRESETS DE ERROR */
+.highlight-checkbox {
+  background: #f8fafc;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 10px;
+}
+.unmeasured-badge {
+  background: #fef2f2;
+  border: 1px dashed #fca5a5;
+  color: #991b1b;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  margin-bottom: 12px;
+  line-height: 1.35;
+}
+.unmeasured-badge-sm {
+  background: #fef2f2;
+  color: #991b1b;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  margin-bottom: 8px;
+  border: 1px dashed #fca5a5;
+}
+.element-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.checkbox-group-inline {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.chk-lbl {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: #475569;
+}
+.label-with-presets {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.preset-buttons {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.preset-label {
+  font-size: 0.7rem;
+  color: #64748b;
+  margin-right: 2px;
+}
+.preset-btn {
+  padding: 1px 5px;
+  font-size: 0.7rem;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  cursor: pointer;
+  color: #334155;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: all 0.15s;
+}
+.preset-btn:hover {
+  background: #2563eb;
+  color: white;
+  border-color: #1d4ed8;
+}
+.rel-hint {
+  display: block;
+  font-size: 0.74rem;
+  color: #64748b;
+  margin-top: 3px;
+}
+.is-disabled-group label {
+  color: #94a3b8;
+}
+input:disabled {
+  background-color: #f1f5f9 !important;
+  color: #94a3b8 !important;
+  cursor: not-allowed;
+  border-color: #e2e8f0 !important;
 }
 </style>

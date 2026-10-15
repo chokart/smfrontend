@@ -44,21 +44,54 @@
       <!-- CONFIGURACIÓN DE FLUJO (AGUA) -->
       <div v-else>
         <div class="section-title">Sólido Seco</div>
-        <div class="form-group">
+
+        <div class="checkbox-group highlight-checkbox">
+          <input id="chk-water-not-measured" v-model="localData.not_measured" type="checkbox" @change="onNotMeasuredChange" />
+          <label for="chk-water-not-measured"><strong>🚫 Flujo No Medido</strong> (deducir por balance)</label>
+        </div>
+
+        <div v-if="localData.not_measured" class="unmeasured-badge">
+          ℹ️ <strong>Flujo sin medidor:</strong> Se deducirá automáticamente por conservación de masa de sólidos y agua en los nodos.
+        </div>
+
+        <div class="form-group" :class="{ 'is-disabled-group': localData.not_measured }">
           <label>Tonelaje Sólido Seco (tph):</label>
-          <input v-model.number="localData.tonelaje_solido" type="number" step="0.1" @input="update" />
+          <input 
+            v-model.number="localData.tonelaje_solido" 
+            type="number" 
+            step="0.1" 
+            :disabled="localData.not_measured"
+            :placeholder="localData.not_measured ? 'Deducido por balance' : 'tph'"
+            @input="update" 
+          />
         </div>
-        <div class="form-group">
-          <label>Error (Desv. Est.):</label>
-          <input v-model.number="localData.tonelaje_solido_error" type="number" step="0.1" @input="update" />
+
+        <div class="form-group" :class="{ 'is-disabled-group': localData.not_measured }">
+          <div class="label-with-presets">
+            <label>Error Sólido:</label>
+            <div v-if="!localData.not_measured && localData.tonelaje_solido > 0" class="preset-buttons">
+              <span class="preset-label">%:</span>
+              <button type="button" class="preset-btn" @click="applyRelError('tonelaje_solido', 0.01)" title="Asignar 1% de error relativo">1%</button>
+              <button type="button" class="preset-btn" @click="applyRelError('tonelaje_solido', 0.02)" title="Asignar 2% de error relativo">2%</button>
+              <button type="button" class="preset-btn" @click="applyRelError('tonelaje_solido', 0.05)" title="Asignar 5% de error relativo">5%</button>
+            </div>
+          </div>
+          <input 
+            v-model.number="localData.tonelaje_solido_error" 
+            type="number" 
+            step="0.1" 
+            :disabled="localData.not_measured"
+            :placeholder="localData.not_measured ? 'N/A' : '± tph'"
+            @input="update" 
+          />
+          <small v-if="!localData.not_measured && localData.tonelaje_solido > 0 && localData.tonelaje_solido_error > 0" class="rel-hint">
+            Equivale a: <strong>±{{ ((localData.tonelaje_solido_error / localData.tonelaje_solido) * 100).toFixed(1) }}%</strong> relativo
+          </small>
         </div>
-        <div class="checkbox-group">
+
+        <div v-if="!localData.not_measured" class="checkbox-group">
           <input v-model="localData.tonelaje_solido_fixed" type="checkbox" @change="update" />
           <label>No ajustar (Fijo)</label>
-        </div>
-        <div class="checkbox-group">
-          <input v-model="localData.not_measured" type="checkbox" @change="update" />
-          <label>No medido</label>
         </div>
 
         <div class="section-title">% Sólidos (Cp)</div>
@@ -67,8 +100,19 @@
           <input v-model.number="localData.porcentaje_solidos" type="number" step="0.1" @input="update" />
         </div>
         <div class="form-group">
-          <label>Error %:</label>
+          <div class="label-with-presets">
+            <label>Error % (Desv. Est.):</label>
+            <div v-if="localData.porcentaje_solidos > 0" class="preset-buttons">
+              <span class="preset-label">%:</span>
+              <button type="button" class="preset-btn" @click="applyRelErrorCp(0.01)" title="Asignar 1% relativo de Cp">1%</button>
+              <button type="button" class="preset-btn" @click="applyRelErrorCp(0.02)" title="Asignar 2% relativo de Cp">2%</button>
+              <button type="button" class="preset-btn" @click="applyRelErrorCp(0.05)" title="Asignar 5% relativo de Cp">5%</button>
+            </div>
+          </div>
           <input v-model.number="localData.porcentaje_solidos_error" type="number" step="0.1" @input="update" />
+          <small v-if="localData.porcentaje_solidos > 0 && localData.porcentaje_solidos_error > 0" class="rel-hint">
+            Equivale a: <strong>±{{ ((localData.porcentaje_solidos_error / localData.porcentaje_solidos) * 100).toFixed(1) }}%</strong> relativo
+          </small>
         </div>
         <div class="checkbox-group">
           <input v-model="localData.porcentaje_solidos_fixed" type="checkbox" @change="update" />
@@ -138,6 +182,29 @@ watch(() => props.modelValue, (newVal) => {
     }
   }
 }, { immediate: true, deep: true })
+
+function onNotMeasuredChange() {
+  if (localData.value.not_measured) {
+    localData.value.tonelaje_solido_fixed = false
+  }
+  update()
+}
+
+function applyRelError(field, ratio) {
+  const val = Number(localData.value[field] || 0)
+  if (val > 0) {
+    localData.value[`${field}_error`] = Number((val * ratio).toFixed(2))
+    update()
+  }
+}
+
+function applyRelErrorCp(ratio) {
+  const val = Number(localData.value.porcentaje_solidos || 0)
+  if (val > 0) {
+    localData.value.porcentaje_solidos_error = Number((val * ratio).toFixed(2))
+    update()
+  }
+}
 
 function update() {
   const updatedElement = {
@@ -259,5 +326,72 @@ function update() {
 .btn-delete-element:hover {
   background-color: #fecaca;
   color: #b91c1c;
+}
+
+/* ESTILOS PARA FLUJOS NO MEDIDOS Y PRESETS DE ERROR */
+.highlight-checkbox {
+  background: #f8fafc;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 10px;
+}
+.unmeasured-badge {
+  background: #fef2f2;
+  border: 1px dashed #fca5a5;
+  color: #991b1b;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  margin-bottom: 12px;
+  line-height: 1.35;
+}
+.label-with-presets {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.preset-buttons {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.preset-label {
+  font-size: 0.7rem;
+  color: #64748b;
+  margin-right: 2px;
+}
+.preset-btn {
+  padding: 1px 5px;
+  font-size: 0.7rem;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  cursor: pointer;
+  color: #334155;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: all 0.15s;
+}
+.preset-btn:hover {
+  background: #2563eb;
+  color: white;
+  border-color: #1d4ed8;
+}
+.rel-hint {
+  display: block;
+  font-size: 0.74rem;
+  color: #64748b;
+  margin-top: 3px;
+}
+.is-disabled-group label {
+  color: #94a3b8;
+}
+input:disabled {
+  background-color: #f1f5f9 !important;
+  color: #94a3b8 !important;
+  cursor: not-allowed;
+  border-color: #e2e8f0 !important;
 }
 </style>

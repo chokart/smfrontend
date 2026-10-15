@@ -35,7 +35,9 @@
           
           <!-- DATOS DE SÓLIDO SECO (MEDIDO / CORREGIDO) -->
           <td class="data-cell">
-            <div class="measured">{{ getFlowSolidValue(flow).toFixed(2) }}</div>
+            <div class="measured" :class="{ 'is-unmeasured': flow.data?.not_measured }">
+              {{ flow.data?.not_measured ? '🚫 No Med.' : getFlowSolidValue(flow).toFixed(2) }}
+            </div>
             <div v-if="flow.data?.corrected_data" class="corrected">
               {{ (flow.data.corrected_data.tonelaje_solido_corregido ?? flow.data.corrected_data.tonelaje_solido_calculado ?? 0).toFixed(2) }}
               <span v-if="flow.data.corrected_data.tonelaje_solido_error != null" class="error-val">
@@ -304,6 +306,11 @@ async function copyTableToClipboard() {
 }
 .node-label { font-weight: bold; color: #444; }
 .arrow { color: #999; margin: 0 5px; }
+.is-unmeasured {
+  color: #94a3b8;
+  font-style: italic;
+  font-size: 0.8rem;
+}
 .corrected {
   color: #2E7D32;
   font-weight: bold;
