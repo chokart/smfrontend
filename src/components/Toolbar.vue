@@ -6,6 +6,7 @@
     <button @click="$emit('export')" class="export-button">Reconciliar</button>
     <button @click="$emit('verify-equations')" class="verify-button">Verificar Ecuaciones</button>
     <button @click="$emit('open-excel')" class="excel-button" title="Copiar y pegar propiedades de flujos desde Excel">📊 Copiar / Pegar Excel</button>
+    <button @click="$emit('reset-circuit')" class="reset-button" title="Reiniciar circuito actual a valores por defecto">↺ Reiniciar</button>
   </div>
 </template>
 
@@ -19,7 +20,8 @@ const emit = defineEmits([
   'open-diagrams', 
   'view-report', 
   'verify-equations',
-  'open-excel'
+  'open-excel',
+  'reset-circuit'
 ]);
 
 const props = defineProps({
@@ -92,5 +94,16 @@ const props = defineProps({
 .excel-button:hover {
   background-color: #dcfce7 !important;
   border-color: #4ade80 !important;
+}
+
+.reset-button {
+  background-color: #fff1f2 !important;
+  color: #be123c !important;
+  border-color: #fecdd3 !important;
+  margin-left: 6px;
+}
+.reset-button:hover {
+  background-color: #ffe4e6 !important;
+  border-color: #fda4af !important;
 }
 </style>

@@ -49,6 +49,7 @@
           @view-report="isReportModalVisible = true"
           @verify-equations="handleVerifyEquations"
           @open-excel="isExcelModalVisible = true"
+          @reset-circuit="handleResetDiagram"
           :reportAvailable="!!reconciliationReport"
           :showConfig="activeModule === 'metallurgical'"
           :addNodeLabel="activeModule === 'water' ? 'Añadir Cajón' : 'Añadir Celda'"
@@ -79,6 +80,7 @@
           :edges="initialEdges"
           @connect="onConnect"
           @element-click="handleSelection"
+          @change="scheduleSave"
         />
       </div>
       
@@ -154,7 +156,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, computed } from 'vue'
+import { ref, nextTick, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import PulpCalculator from './components/PulpCalculator.vue'
 import MetallurgicalDiagram from './components/MetallurgicalDiagram.vue'
 import Toolbar from './components/Toolbar.vue'
@@ -171,8 +173,19 @@ import DiagramsModal from './components/DiagramsModal.vue'
 import ExcelFlowsModal from './components/ExcelFlowsModal.vue'
 import api from './services/api'
 
+// Claves para persistencia de sesión en localStorage
+const STORAGE_KEY_ACTIVE_MODULE = 'suiteminerals_active_module';
+const STORAGE_KEY_METALLURGICAL = 'suiteminerals_state_metallurgical';
+const STORAGE_KEY_WATER = 'suiteminerals_state_water';
+
+// Recuperar módulo activo previo si existe
+const savedActiveModule = localStorage.getItem(STORAGE_KEY_ACTIVE_MODULE);
+const initialActiveModule = (savedActiveModule && ['metallurgical', 'water', 'pulp'].includes(savedActiveModule))
+  ? savedActiveModule
+  : 'metallurgical';
+
 // --- ESTADO REACTIVO PRINCIPAL ---
-const activeModule = ref('metallurgical') // 'metallurgical' | 'water'
+const activeModule = ref(initialActiveModule) // 'metallurgical' | 'water' | 'pulp'
 let id = 5
 const diagramKey = ref(0)
 const elementNames = ref(['Cu'])
@@ -288,6 +301,64 @@ function getNextNodeLabel(prefix) {
   return `${prefix} ${maxNum + 1}`;
 }
 
+// --- AUTO-GUARDADO Y RESTAURACIÓN EN LOCALSTORAGE ---
+function saveCurrentState() {
+  try {
+    const mod = activeModule.value;
+    localStorage.setItem(STORAGE_KEY_ACTIVE_MODULE, mod);
+
+    if (mod === 'metallurgical' || mod === 'water') {
+      const nodes = getNodes();
+      const edges = getEdges();
+
+      if (nodes && Array.isArray(nodes) && nodes.length > 0) {
+        const cleanNodes = nodes.map(n => ({
+          id: n.id,
+          type: n.type || 'process',
+          data: JSON.parse(JSON.stringify(n.data || {})),
+          position: {
+            x: n.position?.x ?? 0,
+            y: n.position?.y ?? 0
+          },
+          sourcePosition: n.sourcePosition || n.data?.sourcePosition || 'right',
+          targetPosition: n.targetPosition || n.data?.targetPosition || 'left'
+        }));
+
+        const cleanEdges = edges.map(e => ({
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          type: e.type || 'custom',
+          animated: e.animated !== undefined ? e.animated : true,
+          data: JSON.parse(JSON.stringify(e.data || {}))
+        }));
+
+        const stateToSave = {
+          nodes: cleanNodes,
+          edges: cleanEdges,
+          elementNames: JSON.parse(JSON.stringify(elementNames.value || ['Cu'])),
+          reconciliationReport: reconciliationReport.value ? JSON.parse(JSON.stringify(reconciliationReport.value)) : null,
+          activeModule: mod,
+          updatedAt: Date.now()
+        };
+
+        const key = mod === 'water' ? STORAGE_KEY_WATER : STORAGE_KEY_METALLURGICAL;
+        localStorage.setItem(key, JSON.stringify(stateToSave));
+      }
+    }
+  } catch (err) {
+    console.warn('Error al auto-guardar estado en localStorage:', err);
+  }
+}
+
+let saveTimeout = null;
+function scheduleSave() {
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    saveCurrentState();
+  }, 200);
+}
+
 // Inicialización
 function initDefaultDiagram() {
   if (activeModule.value === 'water') {
@@ -318,15 +389,99 @@ function initDefaultDiagram() {
   }
   updateNextNodeId(initialNodes.value);
 }
-initDefaultDiagram()
+
+function loadSavedOrInitialDiagram() {
+  const mod = activeModule.value;
+  if (mod === 'pulp') return;
+
+  const key = mod === 'water' ? STORAGE_KEY_WATER : STORAGE_KEY_METALLURGICAL;
+  const raw = localStorage.getItem(key);
+  if (raw) {
+    try {
+      const savedData = JSON.parse(raw);
+      if (savedData && Array.isArray(savedData.nodes) && savedData.nodes.length > 0) {
+        const cleanNodes = JSON.parse(JSON.stringify(savedData.nodes));
+        const cleanEdges = Array.isArray(savedData.edges) ? JSON.parse(JSON.stringify(savedData.edges)) : [];
+
+        if (mod === 'water') {
+          cleanEdges.forEach(edge => {
+            if (edge.data) {
+              if (edge.data.tonelaje_solido == null && edge.data.tonelaje_pulpa != null) {
+                const cp = Number(edge.data.porcentaje_solidos || 30.0);
+                edge.data.tonelaje_solido = Number(edge.data.tonelaje_pulpa) * (cp / 100);
+              }
+              if (edge.data.tonelaje_solido_error == null && edge.data.tonelaje_pulpa_error != null) {
+                edge.data.tonelaje_solido_error = Number(edge.data.tonelaje_pulpa_error) * 0.3;
+              }
+              if (edge.data.tonelaje_solido_fixed === undefined && edge.data.tonelaje_pulpa_fixed !== undefined) {
+                edge.data.tonelaje_solido_fixed = !!edge.data.tonelaje_pulpa_fixed;
+              }
+            }
+          });
+        }
+
+        if (savedData.elementNames && Array.isArray(savedData.elementNames) && savedData.elementNames.length > 0) {
+          elementNames.value = savedData.elementNames;
+        }
+
+        if (savedData.reconciliationReport) {
+          reconciliationReport.value = savedData.reconciliationReport;
+        }
+
+        initialNodes.value = cleanNodes;
+        initialEdges.value = cleanEdges;
+        updateNextNodeId(cleanNodes);
+        return;
+      }
+    } catch (err) {
+      console.warn('Error al restaurar diagrama desde localStorage:', err);
+    }
+  }
+
+  // Si no hay datos guardados previamente, iniciar con circuito predeterminado
+  initDefaultDiagram();
+}
+
+// Cargar estado inicial al abrir o refrescar la página
+loadSavedOrInitialDiagram();
 
 function switchModule(module) {
-  if (confirm(`Al cambiar de módulo se reiniciará el diagrama actual. ¿Deseas continuar?`)) {
-    diagramRef.value = null; // Clear ref immediately to prevent stale data usage
-    activeModule.value = module
-    clearDiagram()
-    initDefaultDiagram()
-    diagramKey.value++
+  if (activeModule.value === module) return;
+
+  // Persistir inmediatamente el estado del módulo actual antes de cambiar
+  saveCurrentState();
+
+  diagramRef.value = null; // Limpiar referencia para evitar lecturas obsoletas
+  activeModule.value = module;
+  localStorage.setItem(STORAGE_KEY_ACTIVE_MODULE, module);
+
+  selectedElement.value = null;
+  reconciliationReport.value = null;
+
+  if (module === 'metallurgical' || module === 'water') {
+    clearDiagram();
+    loadSavedOrInitialDiagram();
+    diagramKey.value++;
+    nextTick(() => {
+      saveCurrentState();
+    });
+  }
+}
+
+function handleResetDiagram() {
+  const modLabel = activeModule.value === 'water' ? 'de Balance de Agua' : 'Metalúrgico de Leyes';
+  if (confirm(`¿Deseas reiniciar el diagrama ${modLabel} a su configuración inicial por defecto? Se perderán las modificaciones no guardadas en el servidor.`)) {
+    const key = activeModule.value === 'water' ? STORAGE_KEY_WATER : STORAGE_KEY_METALLURGICAL;
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {}
+    clearDiagram();
+    initDefaultDiagram();
+    diagramKey.value++;
+    nextTick(() => {
+      saveCurrentState();
+    });
+    alert('Diagrama reiniciado a los valores predeterminados.');
   }
 }
 
@@ -344,6 +499,7 @@ function onConnect(connection) {
     diagramRef.value.addEdges([newEdge]);
   }
   initialEdges.value.push(newEdge);
+  scheduleSave();
 }
 
 function addNewNode() {
@@ -370,6 +526,7 @@ function addNewNode() {
   if (!exists) {
     initialNodes.value.push(newNode);
   }
+  scheduleSave();
 }
 
 function handleSelection(element) {
@@ -396,6 +553,7 @@ function handlePropertiesUpdate(payload) {
         });
       }
     }
+    scheduleSave();
   }
 }
 
@@ -418,6 +576,7 @@ function handleDeleteSelected(element) {
       initialEdges.value = initialEdges.value.filter(e => e.id !== elem.id);
     }
     selectedElement.value = null;
+    scheduleSave();
   }
 }
 
@@ -495,6 +654,7 @@ async function reconcile() {
       }
     });
     reconciliationReport.value = data.report;
+    scheduleSave();
     alert(`Reconciliación de ${activeModule.value === 'water' ? 'Agua' : 'Leyes'} completada.`);
   } catch (err) {
     alert(`Error: ${err.message}`);
@@ -673,6 +833,7 @@ function handleLoadDiagram(data) {
       if (diagramRef.value && diagramRef.value.fitView) {
         diagramRef.value.fitView();
       }
+      saveCurrentState();
     });
     
     alert('Diagrama cargado con éxito.');
@@ -700,6 +861,7 @@ function handleSaveElements(newNames) {
       return ex ? ex : createDefaultElementData(name);
     });
   });
+  scheduleSave();
 }
 
 function handleFlowUpdate(payload) {
@@ -716,6 +878,7 @@ function handleFlowUpdate(payload) {
       selectedElement.value.data = { ...edge.data };
     }
     reconciliationReport.value = null;
+    scheduleSave();
   }
 }
 
@@ -787,12 +950,22 @@ function handleApplyExcelData(updates) {
   });
 
   reconciliationReport.value = null;
+  scheduleSave();
   alert(`¡${updatedCount} flujo(s) actualizados correctamente desde Excel!`);
 }
 
 function toggleSummaryExpansion() {
   isSummaryExpanded.value = !isSummaryExpanded.value;
 }
+
+// Registrar eventos de ciclo de vida del navegador para garantizar persistencia
+onMounted(() => {
+  window.addEventListener('beforeunload', saveCurrentState);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', saveCurrentState);
+});
 </script>
 
 <style>

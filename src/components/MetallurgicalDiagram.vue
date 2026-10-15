@@ -8,7 +8,7 @@ const props = defineProps({
   edges: { type: Array, default: () => [] },
 })
 
-const emit = defineEmits(['element-click', 'connect'])
+const emit = defineEmits(['element-click', 'connect', 'change'])
 
 const { 
   nodes: flowNodes, 
@@ -22,6 +22,9 @@ const {
   updateNodeInternals, 
   fitView, 
   onPaneReady, 
+  onNodeDragStop,
+  onNodesChange,
+  onEdgesChange,
   zoomIn, 
   zoomOut 
 } = useVueFlow()
@@ -33,6 +36,22 @@ onPaneReady((instance) => {
   nextTick(() => {
     updateNodeInternals()
   })
+})
+
+onNodeDragStop(() => {
+  emit('change')
+})
+
+onNodesChange((changes) => {
+  if (changes && changes.some(c => c.type === 'remove' || (c.type === 'position' && !c.dragging))) {
+    emit('change')
+  }
+})
+
+onEdgesChange((changes) => {
+  if (changes && changes.some(c => c.type === 'remove')) {
+    emit('change')
+  }
 })
 
 function onEdgeClick({ edge }) {
@@ -94,6 +113,7 @@ const handleRotateIn = (nodeId, nodeData, event) => {
   }
   nextTick(() => {
     updateNodeInternals([nodeId])
+    emit('change')
   })
 }
 
@@ -109,6 +129,7 @@ const handleRotateOut = (nodeId, nodeData, event) => {
   }
   nextTick(() => {
     updateNodeInternals([nodeId])
+    emit('change')
   })
 }
 

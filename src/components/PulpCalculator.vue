@@ -108,8 +108,10 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, watch, onMounted } from 'vue'
 import { api } from '../services/api'
+
+const STORAGE_KEY = 'suiteminerals_pulp_calc'
 
 const form = reactive({
   rho_solid: 2.7,
@@ -125,6 +127,36 @@ const form = reactive({
 const results = ref(null)
 const loading = ref(false)
 const error = ref(null)
+
+onMounted(() => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      const data = JSON.parse(saved)
+      if (data.form) {
+        Object.assign(form, data.form)
+      }
+      if (data.results) {
+        results.value = data.results
+      }
+    }
+  } catch (e) {
+    console.warn('Error al restaurar cálculo de pulpa:', e)
+  }
+})
+
+watch(
+  [form, results],
+  () => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        form,
+        results: results.value
+      }))
+    } catch (e) {}
+  },
+  { deep: true }
+)
 
 const calculate = async () => {
   loading.value = true
@@ -147,6 +179,9 @@ const resetForm = () => {
   })
   results.value = null
   error.value = null
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch (e) {}
 }
 
 // Opcional: limpiar otros campos si se desea un comportamiento más estricto
