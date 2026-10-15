@@ -18,10 +18,11 @@
             <option value="initial">Alimento</option>
             <option value="process">Proceso (Cajón)</option>
             <option value="product">Producto</option>
+            <option value="water_source">💧 Fuente de Agua (Tanque / Suministro)</option>
           </select>
         </div>
         <div class="section-title">Puntos de Conexión del Nodo</div>
-        <div class="form-group" v-if="localData.node_type !== 'initial'">
+        <div class="form-group" v-if="localData.node_type !== 'initial' && localData.node_type !== 'water_source'">
           <label>Punto de Ingreso (i):</label>
           <select v-model="localData.targetPosition" @change="update">
             <option value="left">Izquierda (Left) ⬅️</option>
@@ -30,7 +31,7 @@
             <option value="bottom">Abajo (Bottom) ⬇️</option>
           </select>
         </div>
-        <div class="form-group" v-if="localData.node_type === 'initial' || localData.node_type === 'process'">
+        <div class="form-group" v-if="localData.node_type === 'initial' || localData.node_type === 'process' || localData.node_type === 'water_source'">
           <label>Punto de Salida (s):</label>
           <select v-model="localData.sourcePosition" @change="update">
             <option value="right">Derecha (Right) ➡️</option>
@@ -41,108 +42,185 @@
         </div>
       </div>
 
-      <!-- CONFIGURACIÓN DE FLUJO (AGUA) -->
+      <!-- CONFIGURACIÓN DE FLUJO (AGUA O PULPA) -->
       <div v-else>
-        <div class="section-title">Sólido Seco</div>
-
-        <div class="checkbox-group highlight-checkbox">
-          <input id="chk-water-not-measured" v-model="localData.not_measured" type="checkbox" @change="onNotMeasuredChange" />
-          <label for="chk-water-not-measured"><strong>🚫 Flujo No Medido</strong> (deducir por balance)</label>
+        <!-- SELECTOR DE TIPO DE FLUJO: AGUA PURA O PULPA MINERAL -->
+        <div class="checkbox-group highlight-water-checkbox">
+          <input id="chk-is-water-only" v-model="localData.is_water_only" type="checkbox" @change="onWaterOnlyChange" />
+          <label for="chk-is-water-only"><strong>💧 Corriente de Solo Agua</strong> (Dilución / Agua Fresca)</label>
         </div>
 
-        <div v-if="localData.not_measured" class="unmeasured-badge">
-          ℹ️ <strong>Flujo sin medidor:</strong> Se deducirá automáticamente por conservación de masa de sólidos y agua en los nodos.
-        </div>
+        <!-- CASO 1: FLUJO DE SOLO AGUA PURA -->
+        <div v-if="localData.is_water_only" class="water-only-container">
+          <div class="unmeasured-badge water-badge-info">
+            ℹ️ <strong>Agua Pura (0% Sólidos):</strong> Esta tubería transporta agua limpia/fresca para dilución o lavado en cajones.
+          </div>
 
-        <div class="form-group" :class="{ 'is-disabled-group': localData.not_measured }">
-          <label>Tonelaje Sólido Seco (tph):</label>
-          <input 
-            v-model.number="localData.tonelaje_solido" 
-            type="number" 
-            step="0.1" 
-            :disabled="localData.not_measured"
-            :placeholder="localData.not_measured ? 'Deducido por balance' : 'tph'"
-            @input="update" 
-          />
-        </div>
+          <div class="checkbox-group highlight-checkbox">
+            <input id="chk-water-only-not-measured" v-model="localData.not_measured" type="checkbox" @change="onWaterNotMeasuredChange" />
+            <label for="chk-water-only-not-measured"><strong>🚫 Flujo No Medido</strong> (deducir agua por balance)</label>
+          </div>
 
-        <div class="form-group" :class="{ 'is-disabled-group': localData.not_measured }">
-          <div class="label-with-presets">
-            <label>Error Sólido:</label>
-            <div v-if="!localData.not_measured && localData.tonelaje_solido > 0" class="preset-buttons">
-              <span class="preset-label">%:</span>
-              <button type="button" class="preset-btn" @click="applyRelError('tonelaje_solido', 0.01)" title="Asignar 1% de error relativo">1%</button>
-              <button type="button" class="preset-btn" @click="applyRelError('tonelaje_solido', 0.02)" title="Asignar 2% de error relativo">2%</button>
-              <button type="button" class="preset-btn" @click="applyRelError('tonelaje_solido', 0.05)" title="Asignar 5% de error relativo">5%</button>
+          <div v-if="localData.not_measured" class="unmeasured-badge">
+            ℹ️ <strong>Sin medidor:</strong> El reconciliador calculará exactamente cuánta agua de dilución se requiere agregar.
+          </div>
+
+          <div class="form-group" :class="{ 'is-disabled-group': localData.not_measured }">
+            <label>Caudal de Agua (tph):</label>
+            <input 
+              v-model.number="localData.tonelaje_agua" 
+              type="number" 
+              step="0.1" 
+              :disabled="localData.not_measured"
+              :placeholder="localData.not_measured ? 'Deducido por balance' : 'tph'"
+              @input="update" 
+            />
+          </div>
+
+          <div class="form-group" :class="{ 'is-disabled-group': localData.not_measured }">
+            <div class="label-with-presets">
+              <label>Error Agua:</label>
+              <div v-if="!localData.not_measured && localData.tonelaje_agua > 0" class="preset-buttons">
+                <span class="preset-label">%:</span>
+                <button type="button" class="preset-btn" @click="applyRelError('tonelaje_agua', 0.01)" title="Asignar 1% de error">1%</button>
+                <button type="button" class="preset-btn" @click="applyRelError('tonelaje_agua', 0.02)" title="Asignar 2% de error">2%</button>
+                <button type="button" class="preset-btn" @click="applyRelError('tonelaje_agua', 0.05)" title="Asignar 5% de error">5%</button>
+              </div>
+            </div>
+            <input 
+              v-model.number="localData.tonelaje_agua_error" 
+              type="number" 
+              step="0.1" 
+              :disabled="localData.not_measured"
+              :placeholder="localData.not_measured ? 'N/A' : '± tph'"
+              @input="update" 
+            />
+            <small v-if="!localData.not_measured && localData.tonelaje_agua > 0 && localData.tonelaje_agua_error > 0" class="rel-hint">
+              Equivale a: <strong>±{{ ((localData.tonelaje_agua_error / localData.tonelaje_agua) * 100).toFixed(1) }}%</strong> relativo
+            </small>
+          </div>
+
+          <div v-if="!localData.not_measured" class="checkbox-group">
+            <input v-model="localData.tonelaje_agua_fixed" type="checkbox" @change="update" />
+            <label>No ajustar caudal (Fijo)</label>
+          </div>
+
+          <!-- RESULTADOS CALCULADOS TRAS RECONCILIACIÓN PARA AGUA PURA -->
+          <div v-if="localData.corrected_data" class="results-section">
+            <div class="section-title">Resultados Reconciliados</div>
+            <div class="result-item highlight" style="color: #0284c7;">
+              <span>Agua Pura Reconciliada:</span> 
+              <strong>
+                {{ (localData.corrected_data.tonelaje_agua_calculado ?? 0).toFixed(2) }} tph
+                <small v-if="localData.corrected_data.tonelaje_agua_error != null">± {{ localData.corrected_data.tonelaje_agua_error.toFixed(2) }}</small>
+              </strong>
             </div>
           </div>
-          <input 
-            v-model.number="localData.tonelaje_solido_error" 
-            type="number" 
-            step="0.1" 
-            :disabled="localData.not_measured"
-            :placeholder="localData.not_measured ? 'N/A' : '± tph'"
-            @input="update" 
-          />
-          <small v-if="!localData.not_measured && localData.tonelaje_solido > 0 && localData.tonelaje_solido_error > 0" class="rel-hint">
-            Equivale a: <strong>±{{ ((localData.tonelaje_solido_error / localData.tonelaje_solido) * 100).toFixed(1) }}%</strong> relativo
-          </small>
         </div>
 
-        <div v-if="!localData.not_measured" class="checkbox-group">
-          <input v-model="localData.tonelaje_solido_fixed" type="checkbox" @change="update" />
-          <label>No ajustar (Fijo)</label>
-        </div>
+        <!-- CASO 2: FLUJO ESTÁNDAR DE PULPA MINERAL -->
+        <div v-else>
+          <div class="section-title">Sólido Seco</div>
 
-        <div class="section-title">% Sólidos (Cp)</div>
-        <div class="form-group">
-          <label>Porcentaje Sólidos (%):</label>
-          <input v-model.number="localData.porcentaje_solidos" type="number" step="0.1" @input="update" />
-        </div>
-        <div class="form-group">
-          <div class="label-with-presets">
-            <label>Error % (Desv. Est.):</label>
-            <div v-if="localData.porcentaje_solidos > 0" class="preset-buttons">
-              <span class="preset-label">%:</span>
-              <button type="button" class="preset-btn" @click="applyRelErrorCp(0.01)" title="Asignar 1% relativo de Cp">1%</button>
-              <button type="button" class="preset-btn" @click="applyRelErrorCp(0.02)" title="Asignar 2% relativo de Cp">2%</button>
-              <button type="button" class="preset-btn" @click="applyRelErrorCp(0.05)" title="Asignar 5% relativo de Cp">5%</button>
+          <div class="checkbox-group highlight-checkbox">
+            <input id="chk-water-not-measured" v-model="localData.not_measured" type="checkbox" @change="onNotMeasuredChange" />
+            <label for="chk-water-not-measured"><strong>🚫 Flujo No Medido</strong> (deducir por balance)</label>
+          </div>
+
+          <div v-if="localData.not_measured" class="unmeasured-badge">
+            ℹ️ <strong>Flujo sin medidor:</strong> Se deducirá automáticamente por conservación de masa de sólidos y agua en los nodos.
+          </div>
+
+          <div class="form-group" :class="{ 'is-disabled-group': localData.not_measured }">
+            <label>Tonelaje Sólido Seco (tph):</label>
+            <input 
+              v-model.number="localData.tonelaje_solido" 
+              type="number" 
+              step="0.1" 
+              :disabled="localData.not_measured"
+              :placeholder="localData.not_measured ? 'Deducido por balance' : 'tph'"
+              @input="update" 
+            />
+          </div>
+
+          <div class="form-group" :class="{ 'is-disabled-group': localData.not_measured }">
+            <div class="label-with-presets">
+              <label>Error Sólido:</label>
+              <div v-if="!localData.not_measured && localData.tonelaje_solido > 0" class="preset-buttons">
+                <span class="preset-label">%:</span>
+                <button type="button" class="preset-btn" @click="applyRelError('tonelaje_solido', 0.01)" title="Asignar 1% de error relativo">1%</button>
+                <button type="button" class="preset-btn" @click="applyRelError('tonelaje_solido', 0.02)" title="Asignar 2% de error relativo">2%</button>
+                <button type="button" class="preset-btn" @click="applyRelError('tonelaje_solido', 0.05)" title="Asignar 5% de error relativo">5%</button>
+              </div>
             </div>
+            <input 
+              v-model.number="localData.tonelaje_solido_error" 
+              type="number" 
+              step="0.1" 
+              :disabled="localData.not_measured"
+              :placeholder="localData.not_measured ? 'N/A' : '± tph'"
+              @input="update" 
+            />
+            <small v-if="!localData.not_measured && localData.tonelaje_solido > 0 && localData.tonelaje_solido_error > 0" class="rel-hint">
+              Equivale a: <strong>±{{ ((localData.tonelaje_solido_error / localData.tonelaje_solido) * 100).toFixed(1) }}%</strong> relativo
+            </small>
           </div>
-          <input v-model.number="localData.porcentaje_solidos_error" type="number" step="0.1" @input="update" />
-          <small v-if="localData.porcentaje_solidos > 0 && localData.porcentaje_solidos_error > 0" class="rel-hint">
-            Equivale a: <strong>±{{ ((localData.porcentaje_solidos_error / localData.porcentaje_solidos) * 100).toFixed(1) }}%</strong> relativo
-          </small>
-        </div>
-        <div class="checkbox-group">
-          <input v-model="localData.porcentaje_solidos_fixed" type="checkbox" @change="update" />
-          <label>Fijo</label>
-        </div>
 
-        <!-- RESULTADOS CALCULADOS TRAS RECONCILIACIÓN -->
-        <div v-if="localData.corrected_data" class="results-section">
-          <div class="section-title">Resultados Ajustados</div>
-          <div class="result-item">
-            <span>Sólido Seco:</span> 
-            <strong>
-              {{ (localData.corrected_data.tonelaje_solido_corregido ?? localData.corrected_data.tonelaje_solido_calculado ?? 0).toFixed(2) }} 
-              <small v-if="localData.corrected_data.tonelaje_solido_error != null">± {{ localData.corrected_data.tonelaje_solido_error.toFixed(2) }}</small>
-            </strong>
+          <div v-if="!localData.not_measured" class="checkbox-group">
+            <input v-model="localData.tonelaje_solido_fixed" type="checkbox" @change="update" />
+            <label>No ajustar (Fijo)</label>
           </div>
-          <div class="result-item">
-            <span>% Sólidos:</span> 
-            <strong>
-              {{ (localData.corrected_data.porcentaje_solidos_corregido ?? 0).toFixed(2) }}% 
-              <small v-if="localData.corrected_data.porcentaje_solidos_error != null">± {{ localData.corrected_data.porcentaje_solidos_error.toFixed(2) }}</small>
-            </strong>
+
+          <div class="section-title">% Sólidos (Cp)</div>
+          <div class="form-group">
+            <label>Porcentaje Sólidos (%):</label>
+            <input v-model.number="localData.porcentaje_solidos" type="number" step="0.1" @input="update" />
           </div>
-          <div class="result-item highlight">
-            <span>Pulpa (Calc.):</span> 
-            <strong>{{ (localData.corrected_data.tonelaje_pulpa_calculado ?? localData.corrected_data.tonelaje_pulpa_corregido ?? 0).toFixed(2) }} tph</strong>
+          <div class="form-group">
+            <div class="label-with-presets">
+              <label>Error % (Desv. Est.):</label>
+              <div v-if="localData.porcentaje_solidos > 0" class="preset-buttons">
+                <span class="preset-label">%:</span>
+                <button type="button" class="preset-btn" @click="applyRelErrorCp(0.01)" title="Asignar 1% relativo de Cp">1%</button>
+                <button type="button" class="preset-btn" @click="applyRelErrorCp(0.02)" title="Asignar 2% relativo de Cp">2%</button>
+                <button type="button" class="preset-btn" @click="applyRelErrorCp(0.05)" title="Asignar 5% relativo de Cp">5%</button>
+              </div>
+            </div>
+            <input v-model.number="localData.porcentaje_solidos_error" type="number" step="0.1" @input="update" />
+            <small v-if="localData.porcentaje_solidos > 0 && localData.porcentaje_solidos_error > 0" class="rel-hint">
+              Equivale a: <strong>±{{ ((localData.porcentaje_solidos_error / localData.porcentaje_solidos) * 100).toFixed(1) }}%</strong> relativo
+            </small>
           </div>
-          <div class="result-item highlight">
-            <span>Agua (Calc.):</span> 
-            <strong>{{ (localData.corrected_data.tonelaje_agua_calculado ?? 0).toFixed(2) }} tph</strong>
+          <div class="checkbox-group">
+            <input v-model="localData.porcentaje_solidos_fixed" type="checkbox" @change="update" />
+            <label>Fijo</label>
+          </div>
+
+          <!-- RESULTADOS CALCULADOS TRAS RECONCILIACIÓN -->
+          <div v-if="localData.corrected_data" class="results-section">
+            <div class="section-title">Resultados Ajustados</div>
+            <div class="result-item">
+              <span>Sólido Seco:</span> 
+              <strong>
+                {{ (localData.corrected_data.tonelaje_solido_corregido ?? localData.corrected_data.tonelaje_solido_calculado ?? 0).toFixed(2) }} 
+                <small v-if="localData.corrected_data.tonelaje_solido_error != null">± {{ localData.corrected_data.tonelaje_solido_error.toFixed(2) }}</small>
+              </strong>
+            </div>
+            <div class="result-item">
+              <span>% Sólidos:</span> 
+              <strong>
+                {{ (localData.corrected_data.porcentaje_solidos_corregido ?? 0).toFixed(2) }}% 
+                <small v-if="localData.corrected_data.porcentaje_solidos_error != null">± {{ localData.corrected_data.porcentaje_solidos_error.toFixed(2) }}</small>
+              </strong>
+            </div>
+            <div class="result-item highlight">
+              <span>Pulpa (Calc.):</span> 
+              <strong>{{ (localData.corrected_data.tonelaje_pulpa_calculado ?? localData.corrected_data.tonelaje_pulpa_corregido ?? 0).toFixed(2) }} tph</strong>
+            </div>
+            <div class="result-item highlight">
+              <span>Agua (Calc.):</span> 
+              <strong>{{ (localData.corrected_data.tonelaje_agua_calculado ?? 0).toFixed(2) }} tph</strong>
+            </div>
           </div>
         </div>
       </div>
@@ -186,6 +264,37 @@ watch(() => props.modelValue, (newVal) => {
 function onNotMeasuredChange() {
   if (localData.value.not_measured) {
     localData.value.tonelaje_solido_fixed = false
+  }
+  update()
+}
+
+function onWaterNotMeasuredChange() {
+  if (localData.value.not_measured) {
+    localData.value.tonelaje_agua_fixed = false
+  }
+  update()
+}
+
+function onWaterOnlyChange() {
+  if (localData.value.is_water_only) {
+    localData.value.tonelaje_solido = 0
+    localData.value.tonelaje_solido_fixed = true
+    localData.value.porcentaje_solidos = 0
+    localData.value.porcentaje_solidos_fixed = true
+    if (!localData.value.tonelaje_agua && localData.value.tonelaje_pulpa) {
+      localData.value.tonelaje_agua = localData.value.tonelaje_pulpa
+    } else if (!localData.value.tonelaje_agua) {
+      localData.value.tonelaje_agua = 100.0
+    }
+  } else {
+    if (localData.value.porcentaje_solidos === 0) {
+      localData.value.porcentaje_solidos = 30.0
+      localData.value.porcentaje_solidos_fixed = false
+    }
+    if (localData.value.tonelaje_solido === 0) {
+      localData.value.tonelaje_solido = 30.0
+      localData.value.tonelaje_solido_fixed = false
+    }
   }
   update()
 }
@@ -393,5 +502,25 @@ input:disabled {
   color: #94a3b8 !important;
   cursor: not-allowed;
   border-color: #e2e8f0 !important;
+}
+
+.highlight-water-checkbox {
+  background: #f0f9ff;
+  border: 1px solid #7dd3fc;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+}
+.highlight-water-checkbox label {
+  color: #0369a1;
+  font-weight: 600;
+}
+.water-only-container {
+  padding-left: 2px;
+}
+.water-badge-info {
+  background: #e0f2fe !important;
+  color: #0369a1 !important;
+  border-color: #bae6fd !important;
 }
 </style>

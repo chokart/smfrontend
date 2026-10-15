@@ -41,6 +41,7 @@
       <div class="app-header" v-if="activeModule !== 'pulp'">
         <Toolbar 
           @add-node="addNewNode" 
+          @add-water-node="addNewWaterNode"
           @export="reconcile" 
           @open-config="isConfigPanelVisible = true" 
           @save-diagram="handleSaveDiagram"
@@ -52,6 +53,7 @@
           @reset-circuit="handleResetDiagram"
           :reportAvailable="!!reconciliationReport"
           :showConfig="activeModule === 'metallurgical'"
+          :showAddWater="activeModule === 'water'"
           :addNodeLabel="activeModule === 'water' ? 'Añadir Cajón' : 'Añadir Celda'"
         />
       </div>
@@ -232,6 +234,10 @@ const createDefaultElementData = (name) => ({
 const createDefaultFlowData = () => {
   if (activeModule.value === 'water') {
     return {
+      is_water_only: false,
+      tonelaje_agua: 100.0,
+      tonelaje_agua_error: 2.0,
+      tonelaje_agua_fixed: false,
       tonelaje_solido: 30.0,
       tonelaje_solido_error: 1.0,
       tonelaje_solido_fixed: false,
@@ -487,18 +493,57 @@ function handleResetDiagram() {
 
 // --- MANEJADORES DE EVENTOS DEL DIAGRAMA ---
 function onConnect(connection) {
+  const currentNodes = getNodes();
+  const sourceNode = currentNodes.find(n => n.id === connection.source);
+  const defaultData = createDefaultFlowData();
+
+  if (activeModule.value === 'water' && sourceNode?.data?.node_type === 'water_source') {
+    defaultData.is_water_only = true;
+    defaultData.tonelaje_agua = 100.0;
+    defaultData.tonelaje_agua_error = 2.0;
+    defaultData.tonelaje_agua_fixed = false;
+    defaultData.tonelaje_solido = 0.0;
+    defaultData.porcentaje_solidos = 0.0;
+  }
+
   const newEdge = {
     id: `e${connection.source}-${connection.target}-${Date.now()}`,
     ...connection,
     type: 'custom',
     animated: true,
-    data: createDefaultFlowData(),
+    data: defaultData,
   }
   // Add edge via diagram ref if available
   if (diagramRef.value && diagramRef.value.addEdges) {
     diagramRef.value.addEdges([newEdge]);
   }
   initialEdges.value.push(newEdge);
+  scheduleSave();
+}
+
+function addNewWaterNode() {
+  const newId = getNextNodeId();
+  const newLabel = getNextNodeLabel('Agua');
+  const newNode = {
+    id: newId,
+    type: 'water_source',
+    data: { 
+      label: newLabel, 
+      node_type: 'water_source', 
+      sourcePosition: 'bottom', 
+      targetPosition: 'top' 
+    },
+    position: { x: Math.random() * 250 + 150, y: Math.random() * 150 + 50 },
+    sourcePosition: 'bottom',
+    targetPosition: 'top'
+  }
+  if (diagramRef.value && diagramRef.value.addNode) {
+    diagramRef.value.addNode(newNode);
+  }
+  const exists = initialNodes.value.some(n => n.id === newNode.id);
+  if (!exists) {
+    initialNodes.value.push(newNode);
+  }
   scheduleSave();
 }
 
@@ -609,29 +654,38 @@ async function reconcile() {
       const body = {
         nodes: currentNodes.map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
         flows: currentEdges.map(f => {
-          const sVal = f.data.tonelaje_solido != null
+          const isWater = !!f.data.is_water_only;
+          const sVal = isWater ? 0.0 : (f.data.tonelaje_solido != null
             ? f.data.tonelaje_solido
-            : (f.data.tonelaje_pulpa && f.data.porcentaje_solidos ? (f.data.tonelaje_pulpa * f.data.porcentaje_solidos / 100) : 30.0);
-          const sErr = f.data.tonelaje_solido_error != null
+            : (f.data.tonelaje_pulpa && f.data.porcentaje_solidos ? (f.data.tonelaje_pulpa * f.data.porcentaje_solidos / 100) : 30.0));
+          const sErr = isWater ? 0.0 : (f.data.tonelaje_solido_error != null
             ? f.data.tonelaje_solido_error
-            : (f.data.tonelaje_pulpa_error ? f.data.tonelaje_pulpa_error * 0.3 : 1.0);
-          const sFixed = f.data.tonelaje_solido_fixed !== undefined
+            : (f.data.tonelaje_pulpa_error ? f.data.tonelaje_pulpa_error * 0.3 : 1.0));
+          const sFixed = isWater ? true : (f.data.tonelaje_solido_fixed !== undefined
             ? f.data.tonelaje_solido_fixed
-            : !!f.data.tonelaje_pulpa_fixed;
+            : !!f.data.tonelaje_pulpa_fixed);
+
+          const wVal = f.data.tonelaje_agua != null ? f.data.tonelaje_agua : (isWater ? 100.0 : 0.0);
+          const wErr = f.data.tonelaje_agua_error != null ? f.data.tonelaje_agua_error : 2.0;
+          const wFixed = !!f.data.tonelaje_agua_fixed;
 
           return {
             id: f.id, source: f.source, target: f.target,
             data: {
+              is_water_only: isWater,
+              tonelaje_agua: wVal,
+              tonelaje_agua_error: wErr,
+              tonelaje_agua_fixed: wFixed,
               tonelaje_solido: sVal,
               tonelaje_solido_error: sErr,
               tonelaje_solido_fixed: sFixed,
-              not_measured: f.data.not_measured,
-              porcentaje_solidos: f.data.porcentaje_solidos,
-              porcentaje_solidos_error: f.data.porcentaje_solidos_error,
-              porcentaje_solidos_fixed: f.data.porcentaje_solidos_fixed,
-              tonelaje_pulpa: f.data.tonelaje_pulpa,
-              tonelaje_pulpa_error: f.data.tonelaje_pulpa_error,
-              tonelaje_pulpa_fixed: sFixed
+              not_measured: !!f.data.not_measured,
+              porcentaje_solidos: isWater ? 0.0 : (f.data.porcentaje_solidos || 0.0),
+              porcentaje_solidos_error: isWater ? 0.0 : (f.data.porcentaje_solidos_error || 0.5),
+              porcentaje_solidos_fixed: isWater ? true : !!f.data.porcentaje_solidos_fixed,
+              tonelaje_pulpa: isWater ? wVal : f.data.tonelaje_pulpa,
+              tonelaje_pulpa_error: isWater ? wErr : f.data.tonelaje_pulpa_error,
+              tonelaje_pulpa_fixed: isWater ? wFixed : sFixed
             }
           };
         })
@@ -704,32 +758,41 @@ async function handleVerifyEquations() {
       const exportObject = {
         nodes: currentNodes.map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
         flows: currentEdges.map(f => {
-          const sVal = f.data.tonelaje_solido != null
+          const isWater = !!f.data.is_water_only;
+          const sVal = isWater ? 0.0 : (f.data.tonelaje_solido != null
             ? f.data.tonelaje_solido
-            : (f.data.tonelaje_pulpa && f.data.porcentaje_solidos ? (f.data.tonelaje_pulpa * f.data.porcentaje_solidos / 100) : 30.0);
-          const sErr = f.data.tonelaje_solido_error != null
+            : (f.data.tonelaje_pulpa && f.data.porcentaje_solidos ? (f.data.tonelaje_pulpa * f.data.porcentaje_solidos / 100) : 30.0));
+          const sErr = isWater ? 0.0 : (f.data.tonelaje_solido_error != null
             ? f.data.tonelaje_solido_error
-            : (f.data.tonelaje_pulpa_error ? f.data.tonelaje_pulpa_error * 0.3 : 1.0);
-          const sFixed = f.data.tonelaje_solido_fixed !== undefined
+            : (f.data.tonelaje_pulpa_error ? f.data.tonelaje_pulpa_error * 0.3 : 1.0));
+          const sFixed = isWater ? true : (f.data.tonelaje_solido_fixed !== undefined
             ? f.data.tonelaje_solido_fixed
-            : !!f.data.tonelaje_pulpa_fixed;
+            : !!f.data.tonelaje_pulpa_fixed);
+
+          const wVal = f.data.tonelaje_agua != null ? f.data.tonelaje_agua : (isWater ? 100.0 : 0.0);
+          const wErr = f.data.tonelaje_agua_error != null ? f.data.tonelaje_agua_error : 2.0;
+          const wFixed = !!f.data.tonelaje_agua_fixed;
 
           return {
             id: f.id,
             source: f.source,
             target: f.target,
             data: {
+              is_water_only: isWater,
+              tonelaje_agua: wVal,
+              tonelaje_agua_error: wErr,
+              tonelaje_agua_fixed: wFixed,
               tonelaje_solido: sVal,
               tonelaje_solido_error: sErr,
               tonelaje_solido_fixed: sFixed,
-              not_measured: f.data.not_measured,
-              porcentaje_solidos: f.data.porcentaje_solidos,
-              porcentaje_solidos_error: f.data.porcentaje_solidos_error,
-              porcentaje_solidos_fixed: f.data.porcentaje_solidos_fixed,
+              not_measured: !!f.data.not_measured,
+              porcentaje_solidos: isWater ? 0.0 : (f.data.porcentaje_solidos || 0.0),
+              porcentaje_solidos_error: isWater ? 0.0 : (f.data.porcentaje_solidos_error || 0.5),
+              porcentaje_solidos_fixed: isWater ? true : !!f.data.porcentaje_solidos_fixed,
               porcentaje_solidos_not_measured: f.data.porcentaje_solidos_not_measured || false,
-              tonelaje_pulpa: f.data.tonelaje_pulpa,
-              tonelaje_pulpa_error: f.data.tonelaje_pulpa_error,
-              tonelaje_pulpa_fixed: sFixed
+              tonelaje_pulpa: isWater ? wVal : f.data.tonelaje_pulpa,
+              tonelaje_pulpa_error: isWater ? wErr : f.data.tonelaje_pulpa_error,
+              tonelaje_pulpa_fixed: isWater ? wFixed : sFixed
             },
           };
         }),

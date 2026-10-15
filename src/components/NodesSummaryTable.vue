@@ -112,13 +112,19 @@ function calculateWaterBalance(nodeId, type, state) {
     const cd = d.corrected_data || {};
     
     if (state === 'reconciled') {
-      if (!cd.tonelaje_solido_corregido && !cd.tonelaje_solido_calculado && !cd.tonelaje_pulpa_corregido) return 0;
+      if (!cd.tonelaje_solido_corregido && !cd.tonelaje_solido_calculado && !cd.tonelaje_pulpa_corregido && !cd.tonelaje_agua_calculado) return 0;
       
-      if (type === 'pulpa') return Number(cd.tonelaje_pulpa_calculado ?? cd.tonelaje_pulpa_corregido ?? 0);
+      if (type === 'pulpa') return Number(cd.tonelaje_pulpa_calculado ?? cd.tonelaje_pulpa_corregido ?? cd.tonelaje_agua_calculado ?? 0);
       if (type === 'solidos') return Number(cd.tonelaje_solido_corregido ?? cd.tonelaje_solido_calculado ?? 0);
       if (type === 'agua') return Number(cd.tonelaje_agua_calculado ?? 0);
     } else {
       // Measured calculation
+      if (d.is_water_only) {
+        const w = Number(d.tonelaje_agua || 0);
+        if (type === 'pulpa') return w;
+        if (type === 'solidos') return 0;
+        if (type === 'agua') return w;
+      }
       const cp = Number(d.porcentaje_solidos || 0);
       const ts = d.tonelaje_solido != null 
         ? Number(d.tonelaje_solido) 

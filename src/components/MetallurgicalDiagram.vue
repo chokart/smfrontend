@@ -154,11 +154,11 @@ watch(
 )
 
 const hasInputHandle = (nodeType) => {
-  return nodeType !== 'initial'
+  return nodeType !== 'initial' && nodeType !== 'water_source'
 }
 
 const hasOutputHandle = (nodeType) => {
-  return nodeType === 'initial' || nodeType === 'process'
+  return nodeType === 'initial' || nodeType === 'process' || nodeType === 'water_source'
 }
 
 const getNodeStyle = (node) => {
@@ -184,6 +184,8 @@ const getNodeStyle = (node) => {
       return { ...baseStyle, borderColor: '#dc3545', background: '#f8d7da' };
     case 'product':
       return { ...baseStyle, borderColor: '#28a745', background: '#d4edda' };
+    case 'water_source':
+      return { ...baseStyle, borderColor: '#0284c7', background: '#e0f2fe', color: '#0369a1' };
     case 'process':
     default:
       return { ...baseStyle, borderColor: '#6c757d', background: '#f8f9fa' };
@@ -203,7 +205,7 @@ const getNodeStyle = (node) => {
     >
       <!-- PLANTILLA GENÉRICA REUTILIZABLE PARA TODOS LOS TIPOS DE NODOS -->
       <template 
-        v-for="nodeSlot in ['initial', 'concentrate', 'tailing', 'product', 'process']" 
+        v-for="nodeSlot in ['initial', 'concentrate', 'tailing', 'product', 'process', 'water_source']" 
         :key="nodeSlot"
         #[`node-${nodeSlot}`]="{ id: nodeId, data, ...rest }"
       >

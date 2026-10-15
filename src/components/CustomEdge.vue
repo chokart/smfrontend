@@ -31,6 +31,7 @@ const labelStyle = {
   textAlign: 'center'
 }
 function getSolidValue(d) {
+  if (d.is_water_only) return 0
   if (d.tonelaje_solido != null) return Number(d.tonelaje_solido)
   if (d.tonelaje_pulpa != null && d.porcentaje_solidos != null) {
     return Number(d.tonelaje_pulpa) * (Number(d.porcentaje_solidos) / 100.0)
@@ -39,6 +40,7 @@ function getSolidValue(d) {
 }
 
 function getPulpValue(d) {
+  if (d.is_water_only) return getWaterValue(d)
   const s = getSolidValue(d)
   const cp = Number(d.porcentaje_solidos || 0)
   if (cp > 0) return s / (cp / 100.0)
@@ -46,12 +48,26 @@ function getPulpValue(d) {
 }
 
 function getWaterValue(d) {
+  if (d.is_water_only) {
+    return d.tonelaje_agua != null ? Number(d.tonelaje_agua) : 0
+  }
   return Math.max(0, getPulpValue(d) - getSolidValue(d))
 }
+
+const edgeStyle = computed(() => {
+  if (props.data?.is_water_only) {
+    return {
+      stroke: '#0284c7',
+      strokeWidth: 2.5,
+      ...props.style
+    }
+  }
+  return props.style
+})
 </script>
 
 <template>
-  <BaseEdge :id="id" :path="path[0]" :style="style" :marker-end="markerEnd" />
+  <BaseEdge :id="id" :path="path[0]" :style="edgeStyle" :marker-end="markerEnd" />
   <EdgeLabelRenderer>
     <div
       v-if="data"
@@ -61,7 +77,23 @@ function getWaterValue(d) {
       }"
       class="nodrag nopan custom-edge-label"
     >
-      <div v-if="'tonelaje_solido' in data || 'tonelaje_pulpa' in data">
+      <!-- FLUJO DE AGUA PURA (DILUCIÓN / ADICIÓN) -->
+      <div v-if="data.is_water_only">
+        <div class="edge-badges-container">
+          <span class="edge-water-badge">💧 Solo Agua</span>
+          <span v-if="data.tonelaje_agua_fixed" class="edge-fixed-badge">🔒 Fijo</span>
+          <span v-else-if="data.not_measured" class="edge-unmeasured-badge">🚫 No med.</span>
+        </div>
+        <template v-if="data.corrected_data">
+          <div><strong>Agua:</strong> {{ (data.tonelaje_agua || 0).toFixed(2) }} <span style="color: #0284c7;">➔ {{ Number(data.corrected_data.tonelaje_agua_calculado ?? 0).toFixed(2) }} t/h</span></div>
+        </template>
+        <template v-else>
+          <div><strong>Agua:</strong> {{ data.not_measured ? '🚫 Deducir' : ((data.tonelaje_agua || 0).toFixed(2) + ' t/h') }}</div>
+        </template>
+      </div>
+
+      <!-- FLUJO DE PULPA MINERAL -->
+      <div v-else-if="'tonelaje_solido' in data || 'tonelaje_pulpa' in data">
         <div class="edge-badges-container">
           <span v-if="data.tonelaje_solido_fixed || data.tonelaje_pulpa_fixed" class="edge-fixed-badge">🔒 Sólido Fijo</span>
           <span v-else-if="data.not_measured" class="edge-unmeasured-badge">🚫 No med.</span>
@@ -148,5 +180,16 @@ function getWaterValue(d) {
   padding: 1px 4px;
   display: inline-block;
   border: 1px solid #c7d2fe;
+}
+
+.edge-water-badge {
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 8.5px;
+  font-weight: bold;
+  border-radius: 3px;
+  padding: 1px 4px;
+  display: inline-block;
+  border: 1px solid #7dd3fc;
 }
 </style>

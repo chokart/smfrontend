@@ -1,6 +1,7 @@
 <template>
   <div class="toolbar">
     <button @click="$emit('add-node')">{{ addNodeLabel }}</button>
+    <button v-if="showAddWater" @click="$emit('add-water-node')" class="water-button" title="Añadir fuente de agua limpia para dilución">💧 Añadir Agua</button>
     <button v-if="showConfig" @click="$emit('open-config')">Configurar Elementos</button>
     <button @click="$emit('open-diagrams')" class="diagrams-button">📁 Guardar / Cargar</button>
     <button @click="$emit('export')" class="export-button">Reconciliar</button>
@@ -13,6 +14,7 @@
 <script setup>
 const emit = defineEmits([
   'add-node', 
+  'add-water-node',
   'export', 
   'open-config', 
   'save-diagram', 
@@ -27,6 +29,7 @@ const emit = defineEmits([
 const props = defineProps({
   reportAvailable: { type: Boolean, default: false },
   showConfig: { type: Boolean, default: true },
+  showAddWater: { type: Boolean, default: false },
   addNodeLabel: { type: String, default: 'Añadir Celda' }
 });
 </script>
@@ -64,6 +67,17 @@ const props = defineProps({
 }
 .diagrams-button:hover {
   background-color: #e2e8f0 !important;
+}
+
+.water-button {
+  background-color: #f0f9ff !important;
+  color: #0284c7 !important;
+  border-color: #7dd3fc !important;
+  font-weight: 600 !important;
+}
+.water-button:hover {
+  background-color: #e0f2fe !important;
+  border-color: #38bdf8 !important;
 }
 
 .export-button {

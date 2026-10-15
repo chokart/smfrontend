@@ -35,35 +35,46 @@
           
           <!-- DATOS DE SÓLIDO SECO (MEDIDO / CORREGIDO) -->
           <td class="data-cell">
-            <div class="measured" :class="{ 'is-unmeasured': flow.data?.not_measured }">
-              {{ flow.data?.not_measured ? '🚫 No Med.' : getFlowSolidValue(flow).toFixed(2) }}
-            </div>
-            <div v-if="flow.data?.corrected_data" class="corrected">
-              {{ (flow.data.corrected_data.tonelaje_solido_corregido ?? flow.data.corrected_data.tonelaje_solido_calculado ?? 0).toFixed(2) }}
-              <span v-if="flow.data.corrected_data.tonelaje_solido_error != null" class="error-val">
-                ±{{ flow.data.corrected_data.tonelaje_solido_error.toFixed(2) }}
-              </span>
-            </div>
+            <template v-if="flow.data?.is_water_only">
+              <span class="badge-water-tag">💧 Solo Agua</span>
+              <div class="measured" style="color: #64748b; font-size: 0.8rem;">0.00 tph</div>
+            </template>
+            <template v-else>
+              <div class="measured" :class="{ 'is-unmeasured': flow.data?.not_measured }">
+                {{ flow.data?.not_measured ? '🚫 No Med.' : getFlowSolidValue(flow).toFixed(2) }}
+              </div>
+              <div v-if="flow.data?.corrected_data" class="corrected">
+                {{ (flow.data.corrected_data.tonelaje_solido_corregido ?? flow.data.corrected_data.tonelaje_solido_calculado ?? 0).toFixed(2) }}
+                <span v-if="flow.data.corrected_data.tonelaje_solido_error != null" class="error-val">
+                  ±{{ flow.data.corrected_data.tonelaje_solido_error.toFixed(2) }}
+                </span>
+              </div>
+            </template>
           </td>
 
           <!-- % SÓLIDOS -->
           <td class="data-cell">
-            <div class="solidos-cell-flex">
-              <span class="measured">{{ (flow.data?.porcentaje_solidos || 0).toFixed(1) }}%</span>
-              <button
-                type="button"
-                class="badge-solidos-btn"
-                :class="flow.data?.porcentaje_solidos_fixed ? 'is-fixed' : 'is-adjust'"
-                :title="flow.data?.porcentaje_solidos_fixed ? '% Sólidos Fijo: No cambiará en el balance. Clic para hacerlo ajustable.' : '% Sólidos Ajustable: Se reconciliará en el balance. Clic para fijarlo.'"
-                @click="toggleSolidosFixed(flow)"
-              >
-                {{ flow.data?.porcentaje_solidos_fixed ? '🔒 Fijo' : '⚡ Ajustar' }}
-              </button>
-            </div>
-            <div v-if="flow.data?.corrected_data" class="corrected">
-              {{ flow.data.corrected_data.porcentaje_solidos_corregido.toFixed(1) }}%
-              <span class="error-val">±{{ flow.data.corrected_data.porcentaje_solidos_error.toFixed(1) }}</span>
-            </div>
+            <template v-if="flow.data?.is_water_only">
+              <span class="measured" style="color: #64748b;">0.0%</span>
+            </template>
+            <template v-else>
+              <div class="solidos-cell-flex">
+                <span class="measured">{{ (flow.data?.porcentaje_solidos || 0).toFixed(1) }}%</span>
+                <button
+                  type="button"
+                  class="badge-solidos-btn"
+                  :class="flow.data?.porcentaje_solidos_fixed ? 'is-fixed' : 'is-adjust'"
+                  :title="flow.data?.porcentaje_solidos_fixed ? '% Sólidos Fijo: No cambiará en el balance. Clic para hacerlo ajustable.' : '% Sólidos Ajustable: Se reconciliará en el balance. Clic para fijarlo.'"
+                  @click="toggleSolidosFixed(flow)"
+                >
+                  {{ flow.data?.porcentaje_solidos_fixed ? '🔒 Fijo' : '⚡ Ajustar' }}
+                </button>
+              </div>
+              <div v-if="flow.data?.corrected_data" class="corrected">
+                {{ flow.data.corrected_data.porcentaje_solidos_corregido.toFixed(1) }}%
+                <span class="error-val">±{{ flow.data.corrected_data.porcentaje_solidos_error.toFixed(1) }}</span>
+              </div>
+            </template>
           </td>
 
           <!-- PULPA (CALCULADO) -->
@@ -77,10 +88,17 @@
             <div v-else>--</div>
           </td>
 
-          <!-- AGUA (CALCULADO) -->
+          <!-- AGUA (CALCULADO O MEDIDO) -->
           <td class="data-cell highlight-w">
             <div v-if="flow.data?.corrected_data">
               {{ (flow.data.corrected_data.tonelaje_agua_calculado ?? 0).toFixed(2) }}
+              <span v-if="flow.data.corrected_data.tonelaje_agua_error != null" class="error-val" style="display: block; font-size: 0.72rem; color: #0284c7;">
+                ±{{ flow.data.corrected_data.tonelaje_agua_error.toFixed(2) }}
+              </span>
+            </div>
+            <div v-else-if="flow.data?.is_water_only">
+              <span v-if="flow.data?.not_measured" style="color: #64748b;">🚫 Deducir</span>
+              <span v-else>{{ (flow.data?.tonelaje_agua || 0).toFixed(2) }}</span>
             </div>
             <div v-else-if="getEstimatedWater(flow) != null">
               <span style="color: #64748b;">{{ getEstimatedWater(flow).toFixed(2) }}</span>
@@ -125,6 +143,7 @@ function getNodeLabel(nodeId) {
 }
 
 function getFlowSolidValue(flow) {
+  if (flow.data?.is_water_only) return 0
   if (flow.data?.tonelaje_solido != null) return Number(flow.data.tonelaje_solido)
   if (flow.data?.tonelaje_pulpa != null && flow.data?.porcentaje_solidos != null) {
     return Number(flow.data.tonelaje_pulpa) * (Number(flow.data.porcentaje_solidos) / 100.0)
@@ -133,6 +152,9 @@ function getFlowSolidValue(flow) {
 }
 
 function getEstimatedPulp(flow) {
+  if (flow.data?.is_water_only) {
+    return getEstimatedWater(flow)
+  }
   const s = getFlowSolidValue(flow)
   const cp = flow.data?.porcentaje_solidos
   if (s > 0 && cp > 0) {
@@ -142,6 +164,9 @@ function getEstimatedPulp(flow) {
 }
 
 function getEstimatedWater(flow) {
+  if (flow.data?.is_water_only) {
+    return flow.data?.tonelaje_agua != null ? Number(flow.data.tonelaje_agua) : null
+  }
   const p = getEstimatedPulp(flow)
   const s = getFlowSolidValue(flow)
   if (p != null && s >= 0) {
@@ -152,6 +177,10 @@ function getEstimatedWater(flow) {
 
 function getAdjustmentMode(flow) {
   if (flow.data?.not_measured) return 'not_measured'
+  if (flow.data?.is_water_only) {
+    if (flow.data?.tonelaje_agua_fixed) return 'fixed'
+    return 'adjust'
+  }
   if (flow.data?.tonelaje_solido_fixed || flow.data?.tonelaje_pulpa_fixed) return 'fixed'
   return 'adjust'
 }
@@ -190,15 +219,24 @@ function toggleAdjustmentMode(flow) {
     nextNotMeasured = false
   }
 
-  emit('update-flow', {
-    id: flow.id,
-    tonelaje_solido_fixed: nextFixed,
-    tonelaje_pulpa_fixed: nextFixed,
-    not_measured: nextNotMeasured
-  })
+  if (flow.data?.is_water_only) {
+    emit('update-flow', {
+      id: flow.id,
+      tonelaje_agua_fixed: nextFixed,
+      not_measured: nextNotMeasured
+    })
+  } else {
+    emit('update-flow', {
+      id: flow.id,
+      tonelaje_solido_fixed: nextFixed,
+      tonelaje_pulpa_fixed: nextFixed,
+      not_measured: nextNotMeasured
+    })
+  }
 }
 
 function toggleSolidosFixed(flow) {
+  if (flow.data?.is_water_only) return
   emit('update-flow', {
     id: flow.id,
     porcentaje_solidos_fixed: !flow.data?.porcentaje_solidos_fixed
@@ -399,5 +437,17 @@ async function copyTableToClipboard() {
 }
 .badge-solidos-btn.is-fixed:hover {
   background-color: #c7d2fe;
+}
+
+.badge-water-tag {
+  display: inline-block;
+  background-color: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #7dd3fc;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  margin-bottom: 2px;
 }
 </style>
