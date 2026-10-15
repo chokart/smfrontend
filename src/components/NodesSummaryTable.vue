@@ -83,15 +83,19 @@ const props = defineProps({
 
 const isWaterBalance = computed(() => props.elementNames.length === 0);
 
-const processNodes = computed(() => {
-  return props.nodes.filter(n => n.data?.node_type === 'process');
-});
-
 function getFlowsForNode(nodeId) {
   const inputFlows = props.flows.filter(f => f.target === nodeId);
   const outputFlows = props.flows.filter(f => f.source === nodeId);
   return { inputFlows, outputFlows };
 }
+
+const processNodes = computed(() => {
+  return props.nodes.filter(n => {
+    if (n.data?.node_type !== 'process') return false;
+    const { inputFlows, outputFlows } = getFlowsForNode(n.id);
+    return inputFlows.length > 0 && outputFlows.length > 0;
+  });
+});
 
 function getBalanceClass(value) {
   return Math.abs(value) < 0.001 ? 'balanced' : 'unbalanced';
