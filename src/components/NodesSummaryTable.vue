@@ -108,21 +108,22 @@ function calculateWaterBalance(nodeId, type, state) {
     const cd = d.corrected_data || {};
     
     if (state === 'reconciled') {
-      // Si no hay datos corregidos, devolver 0 o el medido? 
-      // Devolver 0 indicaría que "no hay resultado de reconciliación aún".
-      if (!cd.tonelaje_pulpa_corregido && !cd.tonelaje_solido_calculado) return 0;
+      if (!cd.tonelaje_solido_corregido && !cd.tonelaje_solido_calculado && !cd.tonelaje_pulpa_corregido) return 0;
       
-      if (type === 'pulpa') return Number(cd.tonelaje_pulpa_corregido || 0);
-      if (type === 'solidos') return Number(cd.tonelaje_solido_calculado || 0);
-      if (type === 'agua') return Number(cd.tonelaje_agua_calculado || 0);
+      if (type === 'pulpa') return Number(cd.tonelaje_pulpa_calculado ?? cd.tonelaje_pulpa_corregido ?? 0);
+      if (type === 'solidos') return Number(cd.tonelaje_solido_corregido ?? cd.tonelaje_solido_calculado ?? 0);
+      if (type === 'agua') return Number(cd.tonelaje_agua_calculado ?? 0);
     } else {
       // Measured calculation
-      const tp = Number(d.tonelaje_pulpa || 0);
       const cp = Number(d.porcentaje_solidos || 0);
+      const ts = d.tonelaje_solido != null 
+        ? Number(d.tonelaje_solido) 
+        : (d.tonelaje_pulpa != null ? Number(d.tonelaje_pulpa) * (cp / 100) : 0);
+      const tp = cp > 0 ? (ts * 100 / cp) : (Number(d.tonelaje_pulpa) || 0);
 
       if (type === 'pulpa') return tp;
-      if (type === 'solidos') return (tp * cp / 100);
-      if (type === 'agua') return (tp * (1 - cp / 100));
+      if (type === 'solidos') return ts;
+      if (type === 'agua') return Math.max(0, tp - ts);
     }
     return 0;
   };

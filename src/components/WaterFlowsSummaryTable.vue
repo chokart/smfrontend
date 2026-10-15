@@ -16,9 +16,9 @@
         <tr>
           <th>ID Flujo</th>
           <th>De -> A</th>
-          <th>Pulpa (tph)</th>
-          <th>% Sólidos (Cp)</th>
           <th>Sólido Seco (tph)</th>
+          <th>% Sólidos (Cp)</th>
+          <th>Pulpa (tph)</th>
           <th>Agua (tph)</th>
           <th class="status-col">¿Ajustar?</th>
           <th class="status-col">Estado</th>
@@ -33,12 +33,14 @@
             <span class="node-label">{{ getNodeLabel(flow.target) }}</span>
           </td>
           
-          <!-- DATOS DE PULPA -->
+          <!-- DATOS DE SÓLIDO SECO (MEDIDO / CORREGIDO) -->
           <td class="data-cell">
-            <div class="measured">{{ (flow.data?.tonelaje_pulpa || 0).toFixed(2) }}</div>
+            <div class="measured">{{ getFlowSolidValue(flow).toFixed(2) }}</div>
             <div v-if="flow.data?.corrected_data" class="corrected">
-              {{ flow.data.corrected_data.tonelaje_pulpa_corregido.toFixed(2) }}
-              <span class="error-val">±{{ flow.data.corrected_data.tonelaje_pulpa_error.toFixed(2) }}</span>
+              {{ (flow.data.corrected_data.tonelaje_solido_corregido ?? flow.data.corrected_data.tonelaje_solido_calculado ?? 0).toFixed(2) }}
+              <span v-if="flow.data.corrected_data.tonelaje_solido_error != null" class="error-val">
+                ±{{ flow.data.corrected_data.tonelaje_solido_error.toFixed(2) }}
+              </span>
             </div>
           </td>
 
@@ -62,10 +64,13 @@
             </div>
           </td>
 
-          <!-- SÓLIDO SECO (CALCULADO) -->
-          <td class="data-cell highlight-s">
+          <!-- PULPA (CALCULADO) -->
+          <td class="data-cell highlight-p">
             <div v-if="flow.data?.corrected_data">
-              {{ flow.data.corrected_data.tonelaje_solido_calculado.toFixed(2) }}
+              {{ (flow.data.corrected_data.tonelaje_pulpa_calculado ?? flow.data.corrected_data.tonelaje_pulpa_corregido ?? 0).toFixed(2) }}
+            </div>
+            <div v-else-if="getEstimatedPulp(flow) != null">
+              <span style="color: #64748b;">{{ getEstimatedPulp(flow).toFixed(2) }}</span>
             </div>
             <div v-else>--</div>
           </td>
@@ -73,7 +78,10 @@
           <!-- AGUA (CALCULADO) -->
           <td class="data-cell highlight-w">
             <div v-if="flow.data?.corrected_data">
-              {{ flow.data.corrected_data.tonelaje_agua_calculado.toFixed(2) }}
+              {{ (flow.data.corrected_data.tonelaje_agua_calculado ?? 0).toFixed(2) }}
+            </div>
+            <div v-else-if="getEstimatedWater(flow) != null">
+              <span style="color: #64748b;">{{ getEstimatedWater(flow).toFixed(2) }}</span>
             </div>
             <div v-else>--</div>
           </td>
@@ -114,9 +122,35 @@ function getNodeLabel(nodeId) {
   return node ? node.data.label : nodeId
 }
 
+function getFlowSolidValue(flow) {
+  if (flow.data?.tonelaje_solido != null) return Number(flow.data.tonelaje_solido)
+  if (flow.data?.tonelaje_pulpa != null && flow.data?.porcentaje_solidos != null) {
+    return Number(flow.data.tonelaje_pulpa) * (Number(flow.data.porcentaje_solidos) / 100.0)
+  }
+  return 0
+}
+
+function getEstimatedPulp(flow) {
+  const s = getFlowSolidValue(flow)
+  const cp = flow.data?.porcentaje_solidos
+  if (s > 0 && cp > 0) {
+    return s / (cp / 100.0)
+  }
+  return null
+}
+
+function getEstimatedWater(flow) {
+  const p = getEstimatedPulp(flow)
+  const s = getFlowSolidValue(flow)
+  if (p != null && s >= 0) {
+    return Math.max(0, p - s)
+  }
+  return null
+}
+
 function getAdjustmentMode(flow) {
   if (flow.data?.not_measured) return 'not_measured'
-  if (flow.data?.tonelaje_pulpa_fixed) return 'fixed'
+  if (flow.data?.tonelaje_solido_fixed || flow.data?.tonelaje_pulpa_fixed) return 'fixed'
   return 'adjust'
 }
 
@@ -156,6 +190,7 @@ function toggleAdjustmentMode(flow) {
 
   emit('update-flow', {
     id: flow.id,
+    tonelaje_solido_fixed: nextFixed,
     tonelaje_pulpa_fixed: nextFixed,
     not_measured: nextNotMeasured
   })
@@ -170,20 +205,23 @@ function toggleSolidosFixed(flow) {
 
 async function copyTableToClipboard() {
   if (!props.flows || props.flows.length === 0) return
-  const headers = ['ID Flujo', 'De', 'A', '¿Ajustar Pulpa?', 'Pulpa (tph)', '% Sólidos (Cp)', '¿% Sólidos Fijo?', 'Sólido Seco (tph)', 'Agua (tph)', 'Estado']
+  const headers = ['ID Flujo', 'De', 'A', '¿Ajustar Sólido?', 'Sólido Seco (tph)', '% Sólidos (Cp)', '¿% Sólidos Fijo?', 'Pulpa (tph)', 'Agua (tph)', 'Estado']
   let tsv = headers.join('\t') + '\n'
 
   props.flows.forEach(flow => {
+    const sVal = getFlowSolidValue(flow)
+    const pCalc = flow.data?.corrected_data ? (flow.data.corrected_data.tonelaje_pulpa_calculado ?? flow.data.corrected_data.tonelaje_pulpa_corregido).toFixed(2) : (getEstimatedPulp(flow)?.toFixed(2) ?? '--')
+    const wCalc = flow.data?.corrected_data ? flow.data.corrected_data.tonelaje_agua_calculado.toFixed(2) : (getEstimatedWater(flow)?.toFixed(2) ?? '--')
     const row = [
       flow.id,
       getNodeLabel(flow.source),
       getNodeLabel(flow.target),
       getAdjustmentLabel(flow),
-      flow.data?.tonelaje_pulpa != null ? flow.data.tonelaje_pulpa : '',
+      sVal != null ? sVal : '',
       flow.data?.porcentaje_solidos != null ? flow.data.porcentaje_solidos : '',
       flow.data?.porcentaje_solidos_fixed ? 'Sí' : 'No',
-      flow.data?.corrected_data ? flow.data.corrected_data.tonelaje_solido_calculado.toFixed(2) : '--',
-      flow.data?.corrected_data ? flow.data.corrected_data.tonelaje_agua_calculado.toFixed(2) : '--',
+      pCalc,
+      wCalc,
       flow.data?.corrected_data ? 'Ajustado' : 'Pendiente'
     ]
     tsv += row.join('\t') + '\n'
@@ -279,6 +317,7 @@ async function copyTableToClipboard() {
   margin-left: 4px;
 }
 .highlight-s { color: #827717; font-weight: bold; }
+.highlight-p { color: #5b21b6; font-weight: bold; }
 .highlight-w { color: #0277BD; font-weight: bold; }
 .badge-success { background: #E8F5E9; color: #2E7D32; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; }
 .badge-pending { background: #FFF3E0; color: #EF6C00; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; }

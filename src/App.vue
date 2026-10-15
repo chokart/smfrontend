@@ -219,14 +219,17 @@ const createDefaultElementData = (name) => ({
 const createDefaultFlowData = () => {
   if (activeModule.value === 'water') {
     return {
-      tonelaje_pulpa: 100.0,
-      tonelaje_pulpa_error: 1.0,
-      tonelaje_pulpa_fixed: false,
+      tonelaje_solido: 30.0,
+      tonelaje_solido_error: 1.0,
+      tonelaje_solido_fixed: false,
       not_measured: false,
       porcentaje_solidos: 30.0,
       porcentaje_solidos_error: 0.5,
       porcentaje_solidos_fixed: false,
       corrected_data: null,
+      tonelaje_pulpa: 100.0,
+      tonelaje_pulpa_error: 1.0,
+      tonelaje_pulpa_fixed: false
     }
   }
   return {
@@ -446,18 +449,33 @@ async function reconcile() {
     } else {
       const body = {
         nodes: currentNodes.map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
-        flows: currentEdges.map(f => ({
-          id: f.id, source: f.source, target: f.target,
-          data: {
-            tonelaje_pulpa: f.data.tonelaje_pulpa,
-            tonelaje_pulpa_error: f.data.tonelaje_pulpa_error,
-            tonelaje_pulpa_fixed: f.data.tonelaje_pulpa_fixed,
-            not_measured: f.data.not_measured,
-            porcentaje_solidos: f.data.porcentaje_solidos,
-            porcentaje_solidos_error: f.data.porcentaje_solidos_error,
-            porcentaje_solidos_fixed: f.data.porcentaje_solidos_fixed
-          }
-        }))
+        flows: currentEdges.map(f => {
+          const sVal = f.data.tonelaje_solido != null
+            ? f.data.tonelaje_solido
+            : (f.data.tonelaje_pulpa && f.data.porcentaje_solidos ? (f.data.tonelaje_pulpa * f.data.porcentaje_solidos / 100) : 30.0);
+          const sErr = f.data.tonelaje_solido_error != null
+            ? f.data.tonelaje_solido_error
+            : (f.data.tonelaje_pulpa_error ? f.data.tonelaje_pulpa_error * 0.3 : 1.0);
+          const sFixed = f.data.tonelaje_solido_fixed !== undefined
+            ? f.data.tonelaje_solido_fixed
+            : !!f.data.tonelaje_pulpa_fixed;
+
+          return {
+            id: f.id, source: f.source, target: f.target,
+            data: {
+              tonelaje_solido: sVal,
+              tonelaje_solido_error: sErr,
+              tonelaje_solido_fixed: sFixed,
+              not_measured: f.data.not_measured,
+              porcentaje_solidos: f.data.porcentaje_solidos,
+              porcentaje_solidos_error: f.data.porcentaje_solidos_error,
+              porcentaje_solidos_fixed: f.data.porcentaje_solidos_fixed,
+              tonelaje_pulpa: f.data.tonelaje_pulpa,
+              tonelaje_pulpa_error: f.data.tonelaje_pulpa_error,
+              tonelaje_pulpa_fixed: sFixed
+            }
+          };
+        })
       };
       data = await api.reconcileWater(body);
     }
@@ -525,21 +543,36 @@ async function handleVerifyEquations() {
     } else {
       const exportObject = {
         nodes: currentNodes.map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
-        flows: currentEdges.map(f => ({
-          id: f.id,
-          source: f.source,
-          target: f.target,
-          data: {
-            tonelaje_pulpa: f.data.tonelaje_pulpa,
-            tonelaje_pulpa_error: f.data.tonelaje_pulpa_error,
-            tonelaje_pulpa_fixed: f.data.tonelaje_pulpa_fixed,
-            not_measured: f.data.not_measured,
-            porcentaje_solidos: f.data.porcentaje_solidos,
-            porcentaje_solidos_error: f.data.porcentaje_solidos_error,
-            porcentaje_solidos_fixed: f.data.porcentaje_solidos_fixed,
-            porcentaje_solidos_not_measured: f.data.porcentaje_solidos_not_measured || false
-          },
-        })),
+        flows: currentEdges.map(f => {
+          const sVal = f.data.tonelaje_solido != null
+            ? f.data.tonelaje_solido
+            : (f.data.tonelaje_pulpa && f.data.porcentaje_solidos ? (f.data.tonelaje_pulpa * f.data.porcentaje_solidos / 100) : 30.0);
+          const sErr = f.data.tonelaje_solido_error != null
+            ? f.data.tonelaje_solido_error
+            : (f.data.tonelaje_pulpa_error ? f.data.tonelaje_pulpa_error * 0.3 : 1.0);
+          const sFixed = f.data.tonelaje_solido_fixed !== undefined
+            ? f.data.tonelaje_solido_fixed
+            : !!f.data.tonelaje_pulpa_fixed;
+
+          return {
+            id: f.id,
+            source: f.source,
+            target: f.target,
+            data: {
+              tonelaje_solido: sVal,
+              tonelaje_solido_error: sErr,
+              tonelaje_solido_fixed: sFixed,
+              not_measured: f.data.not_measured,
+              porcentaje_solidos: f.data.porcentaje_solidos,
+              porcentaje_solidos_error: f.data.porcentaje_solidos_error,
+              porcentaje_solidos_fixed: f.data.porcentaje_solidos_fixed,
+              porcentaje_solidos_not_measured: f.data.porcentaje_solidos_not_measured || false,
+              tonelaje_pulpa: f.data.tonelaje_pulpa,
+              tonelaje_pulpa_error: f.data.tonelaje_pulpa_error,
+              tonelaje_pulpa_fixed: sFixed
+            },
+          };
+        }),
       };
       data = await api.previewWaterEquations(exportObject);
     }
@@ -606,6 +639,23 @@ function handleLoadDiagram(data) {
     const cleanNodes = JSON.parse(JSON.stringify(data.nodes));
     const cleanEdges = JSON.parse(JSON.stringify(data.edges));
     
+    if (newModule === 'water') {
+      cleanEdges.forEach(edge => {
+        if (edge.data) {
+          if (edge.data.tonelaje_solido == null && edge.data.tonelaje_pulpa != null) {
+            const cp = Number(edge.data.porcentaje_solidos || 30.0);
+            edge.data.tonelaje_solido = Number(edge.data.tonelaje_pulpa) * (cp / 100);
+          }
+          if (edge.data.tonelaje_solido_error == null && edge.data.tonelaje_pulpa_error != null) {
+            edge.data.tonelaje_solido_error = Number(edge.data.tonelaje_pulpa_error) * 0.3;
+          }
+          if (edge.data.tonelaje_solido_fixed === undefined && edge.data.tonelaje_pulpa_fixed !== undefined) {
+            edge.data.tonelaje_solido_fixed = !!edge.data.tonelaje_pulpa_fixed;
+          }
+        }
+      });
+    }
+
     initialNodes.value = cleanNodes;
     initialEdges.value = cleanEdges;
     elementNames.value = data.elementNames || ['Cu'];
@@ -680,18 +730,24 @@ function handleApplyExcelData(updates) {
       if (activeModule.value === 'water') {
         const newData = {
           ...edge.data,
-          tonelaje_pulpa: item.tonelaje_pulpa !== undefined && item.tonelaje_pulpa !== null ? item.tonelaje_pulpa : edge.data.tonelaje_pulpa,
+          tonelaje_solido: item.tonelaje_solido !== undefined && item.tonelaje_solido !== null ? item.tonelaje_solido : edge.data.tonelaje_solido,
           porcentaje_solidos: item.porcentaje_solidos !== undefined && item.porcentaje_solidos !== null ? item.porcentaje_solidos : edge.data.porcentaje_solidos,
-          tonelaje_pulpa_fixed: item.tonelaje_pulpa_fixed !== undefined ? item.tonelaje_pulpa_fixed : edge.data.tonelaje_pulpa_fixed,
+          tonelaje_solido_fixed: item.tonelaje_solido_fixed !== undefined ? item.tonelaje_solido_fixed : edge.data.tonelaje_solido_fixed,
           not_measured: item.not_measured !== undefined ? item.not_measured : edge.data.not_measured,
           porcentaje_solidos_fixed: item.porcentaje_solidos_fixed !== undefined ? item.porcentaje_solidos_fixed : edge.data.porcentaje_solidos_fixed,
           corrected_data: null
         };
-        if (item.tonelaje_pulpa_error !== undefined && item.tonelaje_pulpa_error !== null) {
-          newData.tonelaje_pulpa_error = item.tonelaje_pulpa_error;
+        if (item.tonelaje_solido_error !== undefined && item.tonelaje_solido_error !== null) {
+          newData.tonelaje_solido_error = item.tonelaje_solido_error;
         }
         if (item.porcentaje_solidos_error !== undefined && item.porcentaje_solidos_error !== null) {
           newData.porcentaje_solidos_error = item.porcentaje_solidos_error;
+        }
+        if (item.tonelaje_pulpa !== undefined && item.tonelaje_pulpa !== null) {
+          newData.tonelaje_pulpa = item.tonelaje_pulpa;
+        }
+        if (item.tonelaje_pulpa_fixed !== undefined) {
+          newData.tonelaje_pulpa_fixed = item.tonelaje_pulpa_fixed;
         }
         edge.data = newData;
       } else {

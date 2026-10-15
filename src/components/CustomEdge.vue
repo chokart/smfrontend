@@ -30,6 +30,24 @@ const labelStyle = {
   minWidth: '80px',
   textAlign: 'center'
 }
+function getSolidValue(d) {
+  if (d.tonelaje_solido != null) return Number(d.tonelaje_solido)
+  if (d.tonelaje_pulpa != null && d.porcentaje_solidos != null) {
+    return Number(d.tonelaje_pulpa) * (Number(d.porcentaje_solidos) / 100.0)
+  }
+  return 0
+}
+
+function getPulpValue(d) {
+  const s = getSolidValue(d)
+  const cp = Number(d.porcentaje_solidos || 0)
+  if (cp > 0) return s / (cp / 100.0)
+  return 0
+}
+
+function getWaterValue(d) {
+  return Math.max(0, getPulpValue(d) - getSolidValue(d))
+}
 </script>
 
 <template>
@@ -43,23 +61,23 @@ const labelStyle = {
       }"
       class="nodrag nopan custom-edge-label"
     >
-      <div v-if="'tonelaje_pulpa' in data">
+      <div v-if="'tonelaje_solido' in data || 'tonelaje_pulpa' in data">
         <div class="edge-badges-container">
-          <span v-if="data.tonelaje_pulpa_fixed" class="edge-fixed-badge">🔒 Pulpa Fija</span>
+          <span v-if="data.tonelaje_solido_fixed || data.tonelaje_pulpa_fixed" class="edge-fixed-badge">🔒 Sólido Fijo</span>
           <span v-else-if="data.not_measured" class="edge-unmeasured-badge">🚫 No med.</span>
           <span v-if="data.porcentaje_solidos_fixed" class="edge-solidos-badge">🔒 %S Fijo</span>
         </div>
         <template v-if="data.corrected_data">
-          <div><strong>Ton:</strong> {{ Number(data.tonelaje_pulpa).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_pulpa_corregido).toFixed(2) }}</span></div>
+          <div><strong>T.Sol:</strong> {{ getSolidValue(data).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_solido_corregido ?? data.corrected_data.tonelaje_solido_calculado ?? 0).toFixed(2) }}</span></div>
           <div><strong>%Sol:</strong> {{ Number(data.porcentaje_solidos).toFixed(1) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.porcentaje_solidos_corregido).toFixed(1) }}</span></div>
-          <div><strong>T.Agua:</strong> {{ (Number(data.tonelaje_pulpa) * (1 - Number(data.porcentaje_solidos) / 100)).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_agua_calculado).toFixed(2) }}</span></div>
-          <div><strong>T.Sol:</strong> {{ (Number(data.tonelaje_pulpa) * (Number(data.porcentaje_solidos) / 100)).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_solido_calculado).toFixed(2) }}</span></div>
+          <div><strong>Pulpa:</strong> {{ getPulpValue(data).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_pulpa_calculado ?? data.corrected_data.tonelaje_pulpa_corregido ?? 0).toFixed(2) }}</span></div>
+          <div><strong>T.Agua:</strong> {{ getWaterValue(data).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_agua_calculado).toFixed(2) }}</span></div>
         </template>
         <template v-else>
-          <div><strong>Ton:</strong> {{ Number(data.tonelaje_pulpa).toFixed(2) }} t/h</div>
+          <div><strong>T.Sol:</strong> {{ getSolidValue(data).toFixed(2) }} t/h</div>
           <div><strong>%Sol:</strong> {{ Number(data.porcentaje_solidos).toFixed(1) }} %</div>
-          <div><strong>T.Agua:</strong> {{ (Number(data.tonelaje_pulpa) * (1 - Number(data.porcentaje_solidos) / 100)).toFixed(2) }} t/h</div>
-          <div><strong>T.Sol:</strong> {{ (Number(data.tonelaje_pulpa) * (Number(data.porcentaje_solidos) / 100)).toFixed(2) }} t/h</div>
+          <div><strong>Pulpa:</strong> {{ getPulpValue(data).toFixed(2) }} t/h</div>
+          <div><strong>T.Agua:</strong> {{ getWaterValue(data).toFixed(2) }} t/h</div>
         </template>
       </div>
       <div v-else-if="'tonelaje' in data">

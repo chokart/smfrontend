@@ -43,17 +43,17 @@
 
       <!-- CONFIGURACIÓN DE FLUJO (AGUA) -->
       <div v-else>
-        <div class="section-title">Caudales de Pulpa</div>
+        <div class="section-title">Sólido Seco</div>
         <div class="form-group">
-          <label>Tonelaje Pulpa (tph):</label>
-          <input v-model.number="localData.tonelaje_pulpa" type="number" step="0.1" @input="update" />
+          <label>Tonelaje Sólido Seco (tph):</label>
+          <input v-model.number="localData.tonelaje_solido" type="number" step="0.1" @input="update" />
         </div>
         <div class="form-group">
           <label>Error (Desv. Est.):</label>
-          <input v-model.number="localData.tonelaje_pulpa_error" type="number" step="0.1" @input="update" />
+          <input v-model.number="localData.tonelaje_solido_error" type="number" step="0.1" @input="update" />
         </div>
         <div class="checkbox-group">
-          <input v-model="localData.tonelaje_pulpa_fixed" type="checkbox" @change="update" />
+          <input v-model="localData.tonelaje_solido_fixed" type="checkbox" @change="update" />
           <label>No ajustar (Fijo)</label>
         </div>
         <div class="checkbox-group">
@@ -79,16 +79,26 @@
         <div v-if="localData.corrected_data" class="results-section">
           <div class="section-title">Resultados Ajustados</div>
           <div class="result-item">
-            <span>Pulpa:</span> <strong>{{ localData.corrected_data.tonelaje_pulpa_corregido.toFixed(2) }} <small>± {{ localData.corrected_data.tonelaje_pulpa_error.toFixed(2) }}</small></strong>
+            <span>Sólido Seco:</span> 
+            <strong>
+              {{ (localData.corrected_data.tonelaje_solido_corregido ?? localData.corrected_data.tonelaje_solido_calculado ?? 0).toFixed(2) }} 
+              <small v-if="localData.corrected_data.tonelaje_solido_error != null">± {{ localData.corrected_data.tonelaje_solido_error.toFixed(2) }}</small>
+            </strong>
           </div>
           <div class="result-item">
-            <span>% Sólidos:</span> <strong>{{ localData.corrected_data.porcentaje_solidos_corregido.toFixed(2) }}% <small>± {{ localData.corrected_data.porcentaje_solidos_error.toFixed(2) }}</small></strong>
+            <span>% Sólidos:</span> 
+            <strong>
+              {{ (localData.corrected_data.porcentaje_solidos_corregido ?? 0).toFixed(2) }}% 
+              <small v-if="localData.corrected_data.porcentaje_solidos_error != null">± {{ localData.corrected_data.porcentaje_solidos_error.toFixed(2) }}</small>
+            </strong>
           </div>
           <div class="result-item highlight">
-            <span>Agua:</span> <strong>{{ localData.corrected_data.tonelaje_agua_calculado.toFixed(2) }} tph</strong>
+            <span>Pulpa (Calc.):</span> 
+            <strong>{{ (localData.corrected_data.tonelaje_pulpa_calculado ?? localData.corrected_data.tonelaje_pulpa_corregido ?? 0).toFixed(2) }} tph</strong>
           </div>
           <div class="result-item highlight">
-            <span>Sólido Seco:</span> <strong>{{ localData.corrected_data.tonelaje_solido_calculado.toFixed(2) }} tph</strong>
+            <span>Agua (Calc.):</span> 
+            <strong>{{ (localData.corrected_data.tonelaje_agua_calculado ?? 0).toFixed(2) }} tph</strong>
           </div>
         </div>
       </div>
