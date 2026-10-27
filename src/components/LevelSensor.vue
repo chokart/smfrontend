@@ -514,6 +514,7 @@ const esp32CodeTemplate = computed(() => {
 
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 
 // ==========================================
 // 1. CONFIGURACIÓN DE RED WI-FI
