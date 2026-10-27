@@ -24,6 +24,12 @@
         >
           <span class="icon">🧪</span> Cálculo de Pulpa
         </button>
+              <button 
+          :class="{ active: activeModule === 'level' }" 
+          @click="switchModule('level')"
+        >
+          <span class="icon">📶</span> Sensor de Nivel
+        </button>
       </nav>
       <div class="sidebar-footer">
         <p>Desarrollado por:</p>
@@ -38,7 +44,7 @@
       <LoadingSpinner v-if="isLoading" />
       
       <!-- CABECERA SUPERIOR (TOOLBAR) -->
-      <div class="app-header" v-if="activeModule !== 'pulp'">
+      <div class="app-header" v-if="activeModule !== 'pulp' && activeModule !== 'level'">
         <Toolbar 
           @add-node="addNewNode" 
           @add-water-node="addNewWaterNode"
@@ -74,6 +80,7 @@
       
       <div class="main-content">
         <PulpCalculator v-if="activeModule === 'pulp'" />
+        <LevelSensor v-else-if="activeModule === 'level'" />
         <MetallurgicalDiagram 
           v-else
           ref="diagramRef"
@@ -86,7 +93,7 @@
         />
       </div>
       
-      <div v-if="activeModule !== 'pulp'" class="summary-footer" :class="{ 'is-expanded': isSummaryExpanded }">
+      <div v-if="activeModule !== 'pulp' && activeModule !== 'level'" class="summary-footer" :class="{ 'is-expanded': isSummaryExpanded }">
         <button @click="toggleSummaryExpansion" class="summary-toggle-button">
           {{ isSummaryExpanded ? '▼ Contraer' : '▲ Expandir' }}
         </button>
@@ -160,6 +167,7 @@
 <script setup>
 import { ref, nextTick, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import PulpCalculator from './components/PulpCalculator.vue'
+import LevelSensor from './components/LevelSensor.vue'
 import MetallurgicalDiagram from './components/MetallurgicalDiagram.vue'
 import Toolbar from './components/Toolbar.vue'
 import PropertiesPanel from './components/PropertiesPanel.vue'
@@ -882,7 +890,6 @@ function handleLoadDiagram(data) {
     initialNodes.value = cleanNodes;
     initialEdges.value = cleanEdges;
     elementNames.value = data.elementNames || ['Cu'];
-    
     // Sincronizar el generador de IDs para evitar que nuevos nodos colisionen con los existentes
     updateNextNodeId(cleanNodes);
     
@@ -898,7 +905,6 @@ function handleLoadDiagram(data) {
       }
       saveCurrentState();
     });
-    
     alert('Diagrama cargado con éxito.');
   } else {
     alert('Error: El archivo no tiene el formato de diagrama esperado.');
@@ -906,6 +912,7 @@ function handleLoadDiagram(data) {
 }
 
 function clearDiagram() {
+  diagramKey.value++;
   initialNodes.value = [];
   initialEdges.value = [];
   selectedElement.value = null;

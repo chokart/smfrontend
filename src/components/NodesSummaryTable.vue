@@ -26,7 +26,7 @@
         </thead>
         <tbody>
           <tr v-if="processNodes.length === 0">
-            <td :colspan="isWaterBalance ? 5 : 3 + elementNames.length * 2" style="text-align: center; color: #777;">
+            <td :colspan="isWaterBalance ? 7 : 3 + elementNames.length * 2" style="text-align: center; color: #777;">
               No hay nodos de proceso.
             </td>
           </tr>

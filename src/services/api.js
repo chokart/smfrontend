@@ -114,6 +114,34 @@ export const api = {
       method: 'DELETE',
     });
   },
+
+  // --- TELEMETRÍA SENSOR DE NIVEL (ESP32) ---
+  sendLevelReading(data) {
+    return request('/level/reading', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  getLatestLevel(deviceId = null) {
+    const query = deviceId ? `?device_id=${encodeURIComponent(deviceId)}` : '';
+    return request(`/level/latest${query}`);
+  },
+
+  getLevelHistory(limit = 40, deviceId = null) {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit);
+    if (deviceId) params.append('device_id', deviceId);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return request(`/level/history${query}`);
+  },
+
+  simulateLevelReading(data) {
+    return request('/level/simulate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
 };
 
 export default api;

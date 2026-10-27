@@ -164,15 +164,16 @@
           </div>
         </div>
 
-        <div class="panel-footer-actions">
-          <button 
-            type="button" 
-            class="btn-delete-element"
-            @click="$emit('delete', modelValue)"
-          >
-            🗑️ Eliminar {{ title }}
-          </button>
-        </div>
+      </div>
+
+      <div class="panel-footer-actions">
+        <button 
+          type="button" 
+          class="btn-delete-element"
+          @click="$emit('delete', modelValue)"
+        >
+          🗑️ Eliminar {{ title }}
+        </button>
       </div>
     </div>
   </div>
