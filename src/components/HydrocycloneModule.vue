@@ -199,6 +199,12 @@
             >
               ⚖️ Diagrama de Paridad (1:1)
             </button>
+            <button 
+              :class="['chart-tab-btn', { active: activeBalanceChartTab === 'residuals' }]"
+              @click="activeBalanceChartTab = 'residuals'"
+            >
+              🎯 Ranking de Error y Desbalance por Malla
+            </button>
           </div>
 
           <!-- 1. GRÁFICA DE GRANULOMETRÍA: DATOS REALES VS BALANCEADOS (SEMILOG) -->
@@ -505,35 +511,167 @@
             </div>
           </div>
 
+          <!-- 4. DIAGNÓSTICO DE DESBALANCE / ERRORES POR MALLA -->
+          <div v-show="activeBalanceChartTab === 'residuals'" class="chart-wrapper">
+            <div class="chart-title-row">
+              <h4>Ranking Numérico de Desbalance de Muestreo (|r| = |Feed - Compuesto|)</h4>
+              <span class="chart-hint">Identifica directamente las mallas con mayor error relativo de tamizado en laboratorio</span>
+            </div>
+            <div class="residuals-chart-container">
+              <div 
+                v-for="item in (balanceResult.top_errors || [])" 
+                :key="item.size_microns" 
+                class="residual-bar-row"
+              >
+                <div class="residual-mesh-info">
+                  <span class="residual-rank-badge" :class="`rank-${item.rank}`">
+                    <template v-if="item.rank === 1">🥇 1°</template>
+                    <template v-else-if="item.rank === 2">🥈 2°</template>
+                    <template v-else-if="item.rank === 3">🥉 3°</template>
+                    <template v-else>#{{ item.rank }}</template>
+                  </span>
+                  <div class="mesh-label-group">
+                    <strong class="mesh-microns">{{ item.size_microns }} µm</strong>
+                    <span v-if="item.mesh_label" class="mesh-subtag">{{ item.mesh_label }}</span>
+                  </div>
+                </div>
+                <div class="residual-bar-track">
+                  <div 
+                    class="residual-bar-fill" 
+                    :class="`severity-${item.severity}`" 
+                    :style="{ width: `${Math.max(4, Math.min(100, (item.residual_pct / maxResidual) * 100))}%` }"
+                  >
+                    <span class="residual-bar-pct">{{ item.residual_pct.toFixed(2) }}%</span>
+                  </div>
+                </div>
+                <div class="residual-values">
+                  <span class="residual-detail">
+                    Feed: <strong>{{ item.feed_measured.toFixed(2) }}%</strong> vs Comp.: <strong>{{ item.composite_measured.toFixed(2) }}%</strong> (ΔFeed: {{ item.delta_feed_pct.toFixed(2) }}%)
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="chart-legend">
+              <span class="legend-item"><i class="dot red"></i> Desbalance Alto (&ge; 0.50%)</span>
+              <span class="legend-item"><i class="dot orange"></i> Desbalance Medio (0.20% - 0.50%)</span>
+              <span class="legend-item"><i class="dot green"></i> Desbalance Bajo (&lt; 0.20%)</span>
+            </div>
+          </div>
+
+          <!-- PANEL DE DIAGNÓSTICO DE ERROR Y TOP MALLAS DISCREPANTES -->
+          <div v-if="balanceResult.top_errors && balanceResult.top_errors.length > 0" class="error-diagnostic-panel">
+            <div class="diagnostic-header">
+              <div class="diagnostic-title">
+                <span class="diag-icon">🎯</span>
+                <div>
+                  <h5>Diagnóstico de Error de Muestreo: Mallas con Mayor Desbalance</h5>
+                  <span class="diag-sub">Diferencia entre la medición real de laboratorio y el compuesto balanceado de masa</span>
+                </div>
+              </div>
+              <div class="table-sort-actions">
+                <span class="sort-label">Ordenar tabla por:</span>
+                <button 
+                  type="button"
+                  class="btn-sort" 
+                  :class="{ active: sievesSortMode === 'mesh' }" 
+                  @click="sievesSortMode = 'mesh'"
+                >
+                  Malla (µm) ↓
+                </button>
+                <button 
+                  type="button"
+                  class="btn-sort" 
+                  :class="{ active: sievesSortMode === 'error' }" 
+                  @click="sievesSortMode = 'error'"
+                >
+                  🎯 Mayor Error
+                </button>
+              </div>
+            </div>
+
+            <!-- CARDS DE LAS 3 MALLAS CON MAYOR ERROR -->
+            <div class="top-error-cards">
+              <div 
+                v-for="errItem in balanceResult.top_errors.slice(0, 3)" 
+                :key="`card-${errItem.size_microns}`" 
+                class="top-error-card"
+                :class="`rank-card-${errItem.rank}`"
+              >
+                <div class="top-error-rank">
+                  <span v-if="errItem.rank === 1">🥇 1° Mayor Error</span>
+                  <span v-else-if="errItem.rank === 2">🥈 2° Mayor Error</span>
+                  <span v-else-if="errItem.rank === 3">🥉 3° Mayor Error</span>
+                  <span v-else>#{{ errItem.rank }}</span>
+                </div>
+                <div class="top-error-mesh">
+                  <span class="mesh-val">{{ errItem.size_microns }} µm</span>
+                  <span class="mesh-tag" v-if="errItem.mesh_label">{{ errItem.mesh_label }}</span>
+                </div>
+                <div class="top-error-metric">
+                  <span class="metric-label">Desbalance (|r|):</span>
+                  <span class="metric-val" :class="`text-${errItem.severity}`">
+                    {{ errItem.residual_pct.toFixed(2) }}%
+                  </span>
+                </div>
+                <div class="top-error-sub">
+                  Feed Real: <strong>{{ errItem.feed_measured.toFixed(2) }}%</strong> vs. Compuesto: <strong>{{ errItem.composite_measured.toFixed(2) }}%</strong> (Ajuste reconciliado: {{ errItem.delta_feed_pct.toFixed(2) }}%)
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- TABLA COMPARATIVA DETALLADA REAL VS BALANCEADA -->
           <div class="streams-summary">
-            <h4>Detalle Malla por Malla: Mediciones Reales vs. Valores Balanceados</h4>
+            <div class="table-title-row">
+              <h4>Detalle Malla por Malla: Mediciones Reales vs. Valores Balanceados</h4>
+              <span class="chart-hint">Mostrando {{ displayedSieves.length }} mallas (Orden: {{ sievesSortMode === 'error' ? 'Mayor Desbalance Numérico' : 'Abertura Descendente' }})</span>
+            </div>
             <div class="table-container-sieves-small">
               <table class="data-table compact">
                 <thead>
                   <tr>
-                    <th>Malla (µm)</th>
+                    <th>Malla</th>
+                    <th>Ranking</th>
+                    <th>Desbalance |r|</th>
                     <th>Feed Real</th>
                     <th>Feed Bal.</th>
+                    <th>Compuesto</th>
+                    <th>Ajuste Δ</th>
                     <th>Over Real</th>
                     <th>Over Bal.</th>
                     <th>Under Real</th>
                     <th>Under Bal.</th>
-                    <th>Partición Inicial</th>
-                    <th>Partición Balanceada</th>
+                    <th>Partición Bal.</th>
                     <th>Partición Modelo</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(row, idx) in balanceResult.reconciled_sieves" :key="idx">
-                    <td><strong>{{ row.size_microns }}</strong></td>
+                  <tr v-for="(row, idx) in displayedSieves" :key="idx" :class="{ 'row-highlight': row.rank <= 2 }">
+                    <td>
+                      <strong>{{ row.size_microns }} µm</strong>
+                      <small v-if="row.mesh_label" class="mesh-badge">{{ row.mesh_label }}</small>
+                    </td>
+                    <td>
+                      <span class="rank-pill" :class="`rank-${row.rank}`">
+                        <template v-if="row.rank === 1">🥇 1°</template>
+                        <template v-else-if="row.rank === 2">🥈 2°</template>
+                        <template v-else-if="row.rank === 3">🥉 3°</template>
+                        <template v-else>#{{ row.rank }}</template>
+                      </span>
+                    </td>
+                    <td>
+                      <span class="error-badge" :class="`severity-${row.severity}`">
+                        {{ row.residual_pct !== undefined ? row.residual_pct.toFixed(2) + '%' : '-' }}
+                      </span>
+                    </td>
                     <td>{{ row.feed_passing.toFixed(2) }}%</td>
                     <td class="bal-col">{{ row.reconciled_feed_passing.toFixed(2) }}%</td>
+                    <td>{{ row.composite_passing !== undefined ? row.composite_passing.toFixed(2) + '%' : '-' }}</td>
+                    <td :class="row.delta_feed >= 0.4 ? 'delta-high' : ''">{{ row.delta_feed !== undefined ? row.delta_feed.toFixed(2) + '%' : '-' }}</td>
                     <td>{{ row.overflow_passing.toFixed(2) }}%</td>
                     <td class="bal-col">{{ row.reconciled_overflow_passing.toFixed(2) }}%</td>
                     <td>{{ row.underflow_passing.toFixed(2) }}%</td>
                     <td class="bal-col">{{ row.reconciled_underflow_passing.toFixed(2) }}%</td>
-                    <td>{{ row.partition_raw ? row.partition_raw.toFixed(1) + '%' : '-' }}</td>
                     <td class="bal-col">{{ row.partition_actual.toFixed(1) }}%</td>
                     <td>{{ row.partition_fitted.toFixed(1) }}%</td>
                   </tr>
@@ -947,7 +1085,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, computed } from 'vue';
 import { api } from '../services/api.js';
 
 // Estado de pestañas
@@ -1231,9 +1369,24 @@ async function executeCycloneSimulation() {
 }
 
 // -----------------------------------------------------------------------------
-// UTILIDADES GRÁFICAS (SVG PLOTS)
+// UTILIDADES GRÁFICAS (SVG PLOTS) Y ORDENAMIENTO DE MALLAS
 // -----------------------------------------------------------------------------
-const activeBalanceChartTab = ref('psd_comparison'); // 'psd_comparison' | 'tromp' | 'parity'
+const activeBalanceChartTab = ref('psd_comparison'); // 'psd_comparison' | 'tromp' | 'parity' | 'residuals'
+const sievesSortMode = ref('mesh'); // 'mesh' | 'error'
+
+const displayedSieves = computed(() => {
+  if (!balanceResult.value || !balanceResult.value.reconciled_sieves) return [];
+  const list = [...balanceResult.value.reconciled_sieves];
+  if (sievesSortMode.value === 'error') {
+    return list.sort((a, b) => (b.residual_pct || 0) - (a.residual_pct || 0));
+  }
+  return list.sort((a, b) => b.size_microns - a.size_microns);
+});
+
+const maxResidual = computed(() => {
+  if (!balanceResult.value || !balanceResult.value.top_errors || balanceResult.value.top_errors.length === 0) return 1.0;
+  return Math.max(...balanceResult.value.top_errors.map(e => e.residual_pct), 0.1);
+});
 
 function sizeToXCoord(microns) {
   // Escala logarítmica entre 15 µm y 2000 µm -> X entre 50 y 480 px
@@ -1932,4 +2085,365 @@ function formatScientific(val) {
 }
 
 .dot.grey { background: #94a3b8; }
+
+/* -------------------------------------------------------------------------- */
+/* DIAGNÓSTICO DE ERRORES Y RANKING DE DESBALANCE */
+/* -------------------------------------------------------------------------- */
+.error-diagnostic-panel {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+
+.diagnostic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.diagnostic-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.diag-icon {
+  font-size: 1.5rem;
+}
+
+.diag-sub {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.table-sort-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sort-label {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-right: 4px;
+}
+
+.btn-sort {
+  padding: 4px 10px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-sort:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.btn-sort.active {
+  background: #0284c7;
+  color: white;
+  border-color: #0284c7;
+}
+
+.top-error-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.top-error-card {
+  background: white;
+  border-radius: 8px;
+  padding: 12px 14px;
+  border-left: 4px solid #cbd5e1;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.top-error-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.06);
+}
+
+.top-error-card.rank-card-1 {
+  border-left-color: #ef4444;
+  background: #fffafa;
+}
+
+.top-error-card.rank-card-2 {
+  border-left-color: #f97316;
+  background: #fffcf9;
+}
+
+.top-error-card.rank-card-3 {
+  border-left-color: #eab308;
+  background: #fffef5;
+}
+
+.top-error-rank {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.top-error-mesh {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.mesh-val {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.mesh-tag {
+  background: #e2e8f0;
+  color: #334155;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.top-error-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.metric-label {
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+.metric-val {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.text-high { color: #dc2626; }
+.text-medium { color: #d97706; }
+.text-low { color: #16a34a; }
+
+.top-error-sub {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+/* Gráfico de Barras de Residuos */
+.residuals-chart-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.residual-bar-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 280px;
+  align-items: center;
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .residual-bar-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+
+.residual-mesh-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.residual-rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.residual-rank-badge.rank-1 {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.residual-rank-badge.rank-2 {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.residual-rank-badge.rank-3 {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.mesh-label-group {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.mesh-microns {
+  font-size: 0.88rem;
+  color: #1e293b;
+}
+
+.mesh-subtag {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.residual-bar-track {
+  background: #e2e8f0;
+  height: 20px;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.residual-bar-fill {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 6px;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.residual-bar-fill.severity-high {
+  background: linear-gradient(90deg, #f87171, #ef4444);
+}
+
+.residual-bar-fill.severity-medium {
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+}
+
+.residual-bar-fill.severity-low {
+  background: linear-gradient(90deg, #34d399, #10b981);
+}
+
+.residual-bar-pct {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.residual-values {
+  font-size: 0.78rem;
+  color: #475569;
+  text-align: right;
+}
+
+.residual-detail strong {
+  color: #0f172a;
+}
+
+/* Badges de Tabla */
+.rank-pill {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.rank-pill.rank-1 {
+  background: #fee2e2;
+  color: #b91c1c;
+  font-weight: 800;
+}
+
+.rank-pill.rank-2 {
+  background: #ffedd5;
+  color: #c2410c;
+  font-weight: 800;
+}
+
+.rank-pill.rank-3 {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.error-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.error-badge.severity-high {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+
+.error-badge.severity-medium {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.error-badge.severity-low {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.mesh-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 4px;
+  background: #e2e8f0;
+  color: #475569;
+  border-radius: 3px;
+  font-size: 0.72rem;
+}
+
+.delta-high {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.row-highlight {
+  background: #fffbfb;
+}
 </style>
