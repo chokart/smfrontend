@@ -24,7 +24,13 @@
         >
           <span class="icon">🧪</span> Cálculo de Pulpa
         </button>
-              <button 
+        <button 
+          :class="{ active: activeModule === 'cyclone' }" 
+          @click="switchModule('cyclone')"
+        >
+          <span class="icon">🌪️</span> Hidrociclones
+        </button>
+        <button 
           :class="{ active: activeModule === 'level' }" 
           @click="switchModule('level')"
         >
@@ -44,7 +50,7 @@
       <LoadingSpinner v-if="isLoading" />
       
       <!-- CABECERA SUPERIOR (TOOLBAR) -->
-      <div class="app-header" v-if="activeModule !== 'pulp' && activeModule !== 'level'">
+      <div class="app-header" v-if="activeModule === 'metallurgical' || activeModule === 'water'">
         <Toolbar 
           @add-node="addNewNode" 
           @add-water-node="addNewWaterNode"
@@ -81,6 +87,7 @@
       <div class="main-content">
         <PulpCalculator v-if="activeModule === 'pulp'" />
         <LevelSensor v-else-if="activeModule === 'level'" />
+        <HydrocycloneModule v-else-if="activeModule === 'cyclone'" />
         <MetallurgicalDiagram 
           v-else
           ref="diagramRef"
@@ -93,7 +100,7 @@
         />
       </div>
       
-      <div v-if="activeModule !== 'pulp' && activeModule !== 'level'" class="summary-footer" :class="{ 'is-expanded': isSummaryExpanded }">
+      <div v-if="activeModule === 'metallurgical' || activeModule === 'water'" class="summary-footer" :class="{ 'is-expanded': isSummaryExpanded }">
         <button @click="toggleSummaryExpansion" class="summary-toggle-button">
           {{ isSummaryExpanded ? '▼ Contraer' : '▲ Expandir' }}
         </button>
@@ -165,9 +172,10 @@
 </template>
 
 <script setup>
-import { ref, nextTick, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, nextTick, computed, onMounted, onBeforeUnmount } from 'vue'
 import PulpCalculator from './components/PulpCalculator.vue'
 import LevelSensor from './components/LevelSensor.vue'
+import HydrocycloneModule from './components/HydrocycloneModule.vue'
 import MetallurgicalDiagram from './components/MetallurgicalDiagram.vue'
 import Toolbar from './components/Toolbar.vue'
 import PropertiesPanel from './components/PropertiesPanel.vue'
@@ -190,12 +198,12 @@ const STORAGE_KEY_WATER = 'suiteminerals_state_water';
 
 // Recuperar módulo activo previo si existe
 const savedActiveModule = localStorage.getItem(STORAGE_KEY_ACTIVE_MODULE);
-const initialActiveModule = (savedActiveModule && ['metallurgical', 'water', 'pulp'].includes(savedActiveModule))
+const initialActiveModule = (savedActiveModule && ['metallurgical', 'water', 'pulp', 'level', 'cyclone'].includes(savedActiveModule))
   ? savedActiveModule
   : 'metallurgical';
 
 // --- ESTADO REACTIVO PRINCIPAL ---
-const activeModule = ref(initialActiveModule) // 'metallurgical' | 'water' | 'pulp'
+const activeModule = ref(initialActiveModule) // 'metallurgical' | 'water' | 'pulp' | 'level' | 'cyclone'
 let id = 5
 const diagramKey = ref(0)
 const elementNames = ref(['Cu'])
@@ -488,7 +496,9 @@ function handleResetDiagram() {
     const key = activeModule.value === 'water' ? STORAGE_KEY_WATER : STORAGE_KEY_METALLURGICAL;
     try {
       localStorage.removeItem(key);
-    } catch (e) {}
+    } catch (_e) {
+      // Ignorar errores de acceso al almacenamiento local
+    }
     clearDiagram();
     initDefaultDiagram();
     diagramKey.value++;

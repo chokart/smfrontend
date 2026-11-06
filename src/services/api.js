@@ -142,6 +142,28 @@ export const api = {
       body: JSON.stringify(data),
     });
   },
+
+  // --- MÓDULO DE HIDROCICLONES (NAGESWARARAO) ---
+  reconcileCycloneBalance(payload) {
+    return request('/cyclone/balance', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  calibrateCyclone(payload) {
+    return request('/cyclone/calibrate', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  simulateCyclone(payload) {
+    return request('/cyclone/simulate', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
 };
 
 export default api;
