@@ -369,42 +369,32 @@
                   Bypass Rf = {{ balanceResult.bypass_rf_pct }}%
                 </text>
 
-                <!-- Curva Tromp con Datos Balanceados (Línea sólida azul) -->
+                <!-- Curva Tromp Balanceada Continua (Modelo Lynch-Rao ajustado a datos balanceados) -->
                 <polyline 
-                  :points="generateTrompPoints(balanceResult.reconciled_sieves, 'partition_actual')" 
+                  :points="generateFittedTrompPath(balanceResult.d50c_microns, balanceResult.sharpness_m, balanceResult.bypass_rf_pct)" 
                   fill="none" 
                   stroke="#0284c7" 
                   stroke-width="2.5" 
                 />
-                <!-- Curva Tromp Corregida/Reducida (Línea segmentada verde) -->
+                <!-- Curva Tromp Corregida/Reducida Continua (Separación Centrífuga Sin Bypass) -->
                 <polyline 
-                  :points="generateTrompPoints(balanceResult.reconciled_sieves, 'partition_reduced')" 
+                  :points="generateReducedTrompPath(balanceResult.d50c_microns, balanceResult.sharpness_m)" 
                   fill="none" 
                   stroke="#10b981" 
                   stroke-width="2" 
                   stroke-dasharray="4,2" 
                 />
 
-                <!-- Puntos con Datos Iniciales / Crudos de Laboratorio (Círculos huecos celestes) -->
-                <circle 
-                  v-for="(pt, pIdx) in getTrompCoords(balanceResult.reconciled_sieves, 'partition_raw')" 
-                  :key="`raw-${pIdx}`"
-                  :cx="pt.x" 
-                  :cy="pt.y" 
-                  r="4" 
-                  fill="#ffffff" 
-                  stroke="#38bdf8" 
-                  stroke-width="1.8" 
-                />
-
-                <!-- Puntos con Datos Balanceados / Reconciliados (Puntos azules sólidos) -->
+                <!-- Puntos Experimentales Reconciliados (Datos Balanceados) -->
                 <circle 
                   v-for="(pt, pIdx) in getTrompCoords(balanceResult.reconciled_sieves, 'partition_actual')" 
                   :key="`act-${pIdx}`"
                   :cx="pt.x" 
                   :cy="pt.y" 
-                  r="3.5" 
+                  r="4" 
                   fill="#0284c7" 
+                  stroke="#ffffff"
+                  stroke-width="1.5"
                 />
 
                 <!-- Marcador de d50c -->
@@ -420,11 +410,11 @@
               </svg>
             </div>
             <div class="chart-legend">
-              <span class="legend-item"><i class="dot blue"></i> Eficiencia Balanceada (Línea)</span>
-              <span class="legend-item"><i class="symbol circle blue"></i> Eficiencia Inicial Cruda (Puntos ○)</span>
-              <span class="legend-item"><i class="dot green dashed"></i> Eficiencia Reducida (Sin Bypass)</span>
-              <span class="legend-item"><i class="dot orange"></i> Bypass Rf</span>
-              <span class="legend-item"><i class="dot red"></i> d50c</span>
+              <span class="legend-item"><i class="dot blue"></i> Curva Tromp Balanceada (Modelo Lynch-Rao)</span>
+              <span class="legend-item"><i class="symbol circle blue" style="background:#0284c7; border-color:#0284c7;"></i> Puntos Reconciliados (Datos Balanceados)</span>
+              <span class="legend-item"><i class="dot green dashed"></i> Curva Reducida (Sin Bypass)</span>
+              <span class="legend-item"><i class="dot orange"></i> Bypass Rf ({{ balanceResult.bypass_rf_pct }}%)</span>
+              <span class="legend-item"><i class="dot red"></i> d50c ({{ balanceResult.d50c_microns }} µm)</span>
             </div>
           </div>
 
@@ -1403,6 +1393,40 @@ function getTrompCoords(sieves, key) {
 function generateTrompPoints(sieves, key) {
   const coords = getTrompCoords(sieves, key);
   return coords.map(c => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+}
+
+function generateFittedTrompPath(d50c, m, rfPct) {
+  if (!d50c || !m) return '';
+  const rf = (rfPct || 0) / 100.0;
+  const pts = [];
+  const minLog = Math.log10(15);
+  const maxLog = Math.log10(2000);
+  for (let i = 0; i <= 60; i++) {
+    const logVal = minLog + (i / 60) * (maxLog - minLog);
+    const size = Math.pow(10, logVal);
+    const yRed = 1.0 - Math.exp(-0.693 * Math.pow(size / d50c, m));
+    const yAct = (rf + (1.0 - rf) * yRed) * 100.0;
+    const x = sizeToXCoord(size);
+    const y = 210 - (yAct * 1.9);
+    pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+  }
+  return pts.join(' ');
+}
+
+function generateReducedTrompPath(d50c, m) {
+  if (!d50c || !m) return '';
+  const pts = [];
+  const minLog = Math.log10(15);
+  const maxLog = Math.log10(2000);
+  for (let i = 0; i <= 60; i++) {
+    const logVal = minLog + (i / 60) * (maxLog - minLog);
+    const size = Math.pow(10, logVal);
+    const yRed = (1.0 - Math.exp(-0.693 * Math.pow(size / d50c, m))) * 100.0;
+    const x = sizeToXCoord(size);
+    const y = 210 - (yRed * 1.9);
+    pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+  }
+  return pts.join(' ');
 }
 
 function formatScientific(val) {
