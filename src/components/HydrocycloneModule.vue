@@ -179,11 +179,144 @@
             </div>
           </div>
 
-          <!-- GRÁFICO SVG INTERACTIVO: CURVA TROMP -->
-          <div class="chart-wrapper">
-            <h4>Curva de Partición Tromp (% Reporte al Underflow)</h4>
+          <!-- SELECTOR DE VISTAS DE GRÁFICA DEL BALANCE -->
+          <div class="chart-tab-bar">
+            <button 
+              :class="['chart-tab-btn', { active: activeBalanceChartTab === 'psd_comparison' }]"
+              @click="activeBalanceChartTab = 'psd_comparison'"
+            >
+              📊 Granulometría: Datos Reales vs. Balanceados
+            </button>
+            <button 
+              :class="['chart-tab-btn', { active: activeBalanceChartTab === 'tromp' }]"
+              @click="activeBalanceChartTab = 'tromp'"
+            >
+              📉 Curva de Partición Tromp
+            </button>
+            <button 
+              :class="['chart-tab-btn', { active: activeBalanceChartTab === 'parity' }]"
+              @click="activeBalanceChartTab = 'parity'"
+            >
+              ⚖️ Diagrama de Paridad (1:1)
+            </button>
+          </div>
+
+          <!-- 1. GRÁFICA DE GRANULOMETRÍA: DATOS REALES VS BALANCEADOS (SEMILOG) -->
+          <div v-show="activeBalanceChartTab === 'psd_comparison'" class="chart-wrapper">
+            <div class="chart-title-row">
+              <h4>Distribución Granulométrica: Mediciones de Planta vs. Reconciliación de Masa</h4>
+              <span class="chart-hint">Puntos: Datos Reales Medidos | Líneas Continuas: Datos Balanceados</span>
+            </div>
             <div class="svg-chart-container">
-              <svg viewBox="0 0 500 260" class="svg-chart">
+              <svg viewBox="0 0 500 270" class="svg-chart">
+                <!-- Ejes principales -->
+                <line x1="50" y1="20" x2="50" y2="210" stroke="#cbd5e1" stroke-width="1.5" />
+                <line x1="50" y1="210" x2="480" y2="210" stroke="#cbd5e1" stroke-width="1.5" />
+
+                <!-- Grilla horizontal -->
+                <line x1="50" y1="20" x2="480" y2="20" stroke="#f1f5f9" stroke-dasharray="3,3" />
+                <text x="42" y="24" class="chart-axis-label" text-anchor="end">100%</text>
+
+                <line x1="50" y1="67.5" x2="480" y2="67.5" stroke="#f1f5f9" stroke-dasharray="3,3" />
+                <text x="42" y="71.5" class="chart-axis-label" text-anchor="end">75%</text>
+
+                <line x1="50" y1="115" x2="480" y2="115" stroke="#f1f5f9" stroke-dasharray="3,3" />
+                <text x="42" y="119" class="chart-axis-label" text-anchor="end">50%</text>
+
+                <line x1="50" y1="162.5" x2="480" y2="162.5" stroke="#f1f5f9" stroke-dasharray="3,3" />
+                <text x="42" y="166.5" class="chart-axis-label" text-anchor="end">25%</text>
+
+                <text x="42" y="214" class="chart-axis-label" text-anchor="end">0%</text>
+
+                <!-- Grilla vertical logarítmica con tamaños característicos -->
+                <g v-for="size in [37, 74, 149, 297, 841, 1680]" :key="`grid-${size}`">
+                  <line 
+                    :x1="sizeToXCoord(size)" 
+                    y1="20" 
+                    :x2="sizeToXCoord(size)" 
+                    y2="210" 
+                    stroke="#f1f5f9" 
+                    stroke-dasharray="2,2" 
+                  />
+                  <text 
+                    :x="sizeToXCoord(size)" 
+                    y="226" 
+                    class="chart-axis-label" 
+                    text-anchor="middle"
+                  >{{ size }}</text>
+                </g>
+                <text x="265" y="244" class="chart-axis-title" text-anchor="middle">Abertura de Malla (µm) - Escala Logarítmica</text>
+
+                <!-- LÍNEAS BALANCEADAS (RECONCILIADAS) -->
+                <polyline 
+                  :points="generatePsdPoints(balanceResult.reconciled_sieves, 'reconciled_feed_passing')" 
+                  fill="none" 
+                  stroke="#0284c7" 
+                  stroke-width="2.5" 
+                />
+                <polyline 
+                  :points="generatePsdPoints(balanceResult.reconciled_sieves, 'reconciled_overflow_passing')" 
+                  fill="none" 
+                  stroke="#10b981" 
+                  stroke-width="2.5" 
+                />
+                <polyline 
+                  :points="generatePsdPoints(balanceResult.reconciled_sieves, 'reconciled_underflow_passing')" 
+                  fill="none" 
+                  stroke="#f59e0b" 
+                  stroke-width="2.5" 
+                />
+
+                <!-- PUNTOS REALES (MEDIDOS EN PLANTA) -->
+                <!-- Feed Real (Círculos) -->
+                <circle 
+                  v-for="(pt, idx) in getPsdCoords(balanceResult.reconciled_sieves, 'feed_passing')" 
+                  :key="`rf-${idx}`"
+                  :cx="pt.x" 
+                  :cy="pt.y" 
+                  r="4.5" 
+                  fill="#ffffff" 
+                  stroke="#0284c7" 
+                  stroke-width="2.2" 
+                />
+                <!-- Over Real (Cuadrados) -->
+                <rect 
+                  v-for="(pt, idx) in getPsdCoords(balanceResult.reconciled_sieves, 'overflow_passing')" 
+                  :key="`ro-${idx}`"
+                  :x="pt.x - 4" 
+                  :y="pt.y - 4" 
+                  width="8" 
+                  height="8" 
+                  fill="#ffffff" 
+                  stroke="#10b981" 
+                  stroke-width="2.2" 
+                />
+                <!-- Under Real (Triángulos) -->
+                <polygon 
+                  v-for="(pt, idx) in getPsdCoords(balanceResult.reconciled_sieves, 'underflow_passing')" 
+                  :key="`ru-${idx}`"
+                  :points="`${pt.x},${pt.y - 5} ${pt.x + 4.5},${pt.y + 4} ${pt.x - 4.5},${pt.y + 4}`" 
+                  fill="#ffffff" 
+                  stroke="#f59e0b" 
+                  stroke-width="2.2" 
+                />
+              </svg>
+            </div>
+            <div class="chart-legend">
+              <span class="legend-item"><i class="symbol circle blue"></i> <strong>Alimentación:</strong> Real (○) vs. Balanceada (──)</span>
+              <span class="legend-item"><i class="symbol square green"></i> <strong>Rebose:</strong> Real (□) vs. Balanceada (──)</span>
+              <span class="legend-item"><i class="symbol triangle orange"></i> <strong>Descarga:</strong> Real (△) vs. Balanceada (──)</span>
+            </div>
+          </div>
+
+          <!-- 2. GRÁFICO SVG INTERACTIVO: CURVA TROMP -->
+          <div v-show="activeBalanceChartTab === 'tromp'" class="chart-wrapper">
+            <div class="chart-title-row">
+              <h4>Curva de Partición Tromp (% Reporte al Underflow vs. Tamaño de Partícula)</h4>
+              <span class="chart-hint">Evaluación de eficiencia clasificatoria y bypass de finos</span>
+            </div>
+            <div class="svg-chart-container">
+              <svg viewBox="0 0 500 270" class="svg-chart">
                 <!-- Ejes y grilla -->
                 <line x1="50" y1="20" x2="50" y2="210" stroke="#cbd5e1" stroke-width="1.5" />
                 <line x1="50" y1="210" x2="480" y2="210" stroke="#cbd5e1" stroke-width="1.5" />
@@ -196,6 +329,25 @@
                 <text x="42" y="119" class="chart-axis-label" text-anchor="end">50%</text>
 
                 <text x="42" y="214" class="chart-axis-label" text-anchor="end">0%</text>
+
+                <!-- Grilla vertical logarítmica con tamaños -->
+                <g v-for="size in [37, 74, 149, 297, 841, 1680]" :key="`tgrid-${size}`">
+                  <line 
+                    :x1="sizeToXCoord(size)" 
+                    y1="20" 
+                    :x2="sizeToXCoord(size)" 
+                    y2="210" 
+                    stroke="#f1f5f9" 
+                    stroke-dasharray="2,2" 
+                  />
+                  <text 
+                    :x="sizeToXCoord(size)" 
+                    y="226" 
+                    class="chart-axis-label" 
+                    text-anchor="middle"
+                  >{{ size }}</text>
+                </g>
+                <text x="265" y="244" class="chart-axis-title" text-anchor="middle">Abertura de Malla (µm) - Escala Logarítmica</text>
 
                 <!-- Línea de Bypass Rf -->
                 <line 
@@ -254,6 +406,124 @@
               <span class="legend-item"><i class="dot green dashed"></i> Eficiencia Reducida (Corregida)</span>
               <span class="legend-item"><i class="dot orange"></i> Bypass Rf</span>
               <span class="legend-item"><i class="dot red"></i> d50c</span>
+            </div>
+          </div>
+
+          <!-- 3. GRÁFICA DE PARIDAD (1:1): VALORES MEDIDOS VS RECONCILIADOS -->
+          <div v-show="activeBalanceChartTab === 'parity'" class="chart-wrapper">
+            <div class="chart-title-row">
+              <h4>Diagrama de Paridad (1:1): % Pasante Medido vs. % Pasante Reconciliado</h4>
+              <span class="chart-hint">Puntos sobre la diagonal indican consistencia perfecta del balance</span>
+            </div>
+            <div class="svg-chart-container">
+              <svg viewBox="0 0 500 270" class="svg-chart">
+                <!-- Ejes -->
+                <line x1="50" y1="20" x2="50" y2="210" stroke="#cbd5e1" stroke-width="1.5" />
+                <line x1="50" y1="210" x2="480" y2="210" stroke="#cbd5e1" stroke-width="1.5" />
+
+                <!-- Grilla 0, 25, 50, 75, 100% -->
+                <g v-for="val in [0, 25, 50, 75, 100]" :key="`par-${val}`">
+                  <line 
+                    :x1="parityToX(val)" 
+                    y1="20" 
+                    :x2="parityToX(val)" 
+                    y2="210" 
+                    stroke="#f1f5f9" 
+                    stroke-dasharray="2,2" 
+                  />
+                  <line 
+                    x1="50" 
+                    :y1="parityToY(val)" 
+                    x2="480" 
+                    :y2="parityToY(val)" 
+                    stroke="#f1f5f9" 
+                    stroke-dasharray="2,2" 
+                  />
+                  <text :x="parityToX(val)" y="226" class="chart-axis-label" text-anchor="middle">{{ val }}%</text>
+                  <text x="42" :y="parityToY(val) + 4" class="chart-axis-label" text-anchor="end">{{ val }}%</text>
+                </g>
+                <text x="265" y="244" class="chart-axis-title" text-anchor="middle">% Pasante Medido en Planta</text>
+
+                <!-- Línea Diagonal 1:1 (Y = X) -->
+                <line 
+                  :x1="parityToX(0)" 
+                  :y1="parityToY(0)" 
+                  :x2="parityToX(100)" 
+                  :y2="parityToY(100)" 
+                  stroke="#94a3b8" 
+                  stroke-width="1.5" 
+                  stroke-dasharray="4,4" 
+                />
+
+                <!-- Puntos de Alimentación (Azul) -->
+                <circle 
+                  v-for="(r, idx) in balanceResult.reconciled_sieves" 
+                  :key="`pf-${idx}`"
+                  :cx="parityToX(r.feed_passing)" 
+                  :cy="parityToY(r.reconciled_feed_passing)" 
+                  r="4" 
+                  fill="#0284c7" 
+                />
+                <!-- Puntos de Rebose (Verde) -->
+                <circle 
+                  v-for="(r, idx) in balanceResult.reconciled_sieves" 
+                  :key="`po-${idx}`"
+                  :cx="parityToX(r.overflow_passing)" 
+                  :cy="parityToY(r.reconciled_overflow_passing)" 
+                  r="4" 
+                  fill="#10b981" 
+                />
+                <!-- Puntos de Descarga (Naranja) -->
+                <circle 
+                  v-for="(r, idx) in balanceResult.reconciled_sieves" 
+                  :key="`pu-${idx}`"
+                  :cx="parityToX(r.underflow_passing)" 
+                  :cy="parityToY(r.reconciled_underflow_passing)" 
+                  r="4" 
+                  fill="#f59e0b" 
+                />
+              </svg>
+            </div>
+            <div class="chart-legend">
+              <span class="legend-item"><i class="dot blue"></i> Alimentación (Feed)</span>
+              <span class="legend-item"><i class="dot green"></i> Rebose (Overflow)</span>
+              <span class="legend-item"><i class="dot orange"></i> Descarga (Underflow)</span>
+              <span class="legend-item"><i class="dot grey dashed"></i> Línea 1:1 Ideal</span>
+            </div>
+          </div>
+
+          <!-- TABLA COMPARATIVA DETALLADA REAL VS BALANCEADA -->
+          <div class="streams-summary">
+            <h4>Detalle Malla por Malla: Mediciones Reales vs. Valores Balanceados</h4>
+            <div class="table-container-sieves-small">
+              <table class="data-table compact">
+                <thead>
+                  <tr>
+                    <th>Malla (µm)</th>
+                    <th>Feed Real</th>
+                    <th>Feed Bal.</th>
+                    <th>Over Real</th>
+                    <th>Over Bal.</th>
+                    <th>Under Real</th>
+                    <th>Under Bal.</th>
+                    <th>Partición Real</th>
+                    <th>Partición Modelo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, idx) in balanceResult.reconciled_sieves" :key="idx">
+                    <td><strong>{{ row.size_microns }}</strong></td>
+                    <td>{{ row.feed_passing.toFixed(2) }}%</td>
+                    <td class="bal-col">{{ row.reconciled_feed_passing.toFixed(2) }}%</td>
+                    <td>{{ row.overflow_passing.toFixed(2) }}%</td>
+                    <td class="bal-col">{{ row.reconciled_overflow_passing.toFixed(2) }}%</td>
+                    <td>{{ row.underflow_passing.toFixed(2) }}%</td>
+                    <td class="bal-col">{{ row.reconciled_underflow_passing.toFixed(2) }}%</td>
+                    <td>{{ row.partition_actual.toFixed(1) }}%</td>
+                    <td>{{ row.partition_fitted.toFixed(1) }}%</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
@@ -946,15 +1216,45 @@ async function executeCycloneSimulation() {
 }
 
 // -----------------------------------------------------------------------------
-// UTILIDADES GRÁFICAS (SVG TROMP PLOT)
+// UTILIDADES GRÁFICAS (SVG PLOTS)
 // -----------------------------------------------------------------------------
+const activeBalanceChartTab = ref('psd_comparison'); // 'psd_comparison' | 'tromp' | 'parity'
+
 function sizeToXCoord(microns) {
-  // Escala logarítmica entre 10 µm y 2000 µm -> X entre 50 y 480 px
+  // Escala logarítmica entre 15 µm y 2000 µm -> X entre 50 y 480 px
   const minLog = Math.log10(15);
-  const maxLog = Math.log10(1500);
-  const curLog = Math.log10(Math.max(15, Math.min(1500, microns)));
+  const maxLog = Math.log10(2000);
+  const curLog = Math.log10(Math.max(15, Math.min(2000, microns)));
   const frac = (curLog - minLog) / (maxLog - minLog);
   return 50 + frac * 430;
+}
+
+function getSortedSievesAsc(sieves) {
+  if (!sieves) return [];
+  return [...sieves].sort((a, b) => a.size_microns - b.size_microns);
+}
+
+function generatePsdPoints(sieves, key) {
+  const sorted = getSortedSievesAsc(sieves);
+  return sorted.map(s => `${sizeToXCoord(s.size_microns).toFixed(1)},${(210 - (s[key] * 1.9)).toFixed(1)}`).join(' ');
+}
+
+function getPsdCoords(sieves, key) {
+  const sorted = getSortedSievesAsc(sieves);
+  return sorted.map(s => ({
+    x: sizeToXCoord(s.size_microns),
+    y: 210 - (s[key] * 1.9),
+    val: s[key],
+    size: s.size_microns
+  }));
+}
+
+function parityToX(val) {
+  return 50 + (val / 100.0) * 430;
+}
+
+function parityToY(val) {
+  return 210 - (val / 100.0) * 190;
 }
 
 function getTrompCoords(sieves, key) {
@@ -1516,4 +1816,102 @@ function formatScientific(val) {
   font-weight: 700;
   color: #0284c7;
 }
+
+.chart-tab-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.chart-tab-btn {
+  padding: 8px 16px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chart-tab-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.chart-tab-btn.active {
+  background: #0284c7;
+  color: white;
+  border-color: #0284c7;
+}
+
+.chart-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.chart-title-row h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #334155;
+}
+
+.chart-hint {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-style: italic;
+}
+
+.chart-axis-title {
+  font-size: 11px;
+  fill: #475569;
+  font-weight: 600;
+}
+
+.symbol {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.symbol.circle {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid;
+  background: white;
+}
+
+.symbol.square {
+  width: 9px;
+  height: 9px;
+  border-radius: 1px;
+  border: 2px solid;
+  background: white;
+}
+
+.symbol.triangle {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 10px solid #f59e0b;
+}
+
+.symbol.blue { border-color: #0284c7; }
+.symbol.green { border-color: #10b981; }
+.symbol.orange { border-color: #f59e0b; }
+
+.bal-col {
+  font-weight: 600;
+  color: #0284c7;
+  background: #f0f9ff;
+}
+
+.dot.grey { background: #94a3b8; }
 </style>
