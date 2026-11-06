@@ -514,14 +514,14 @@
           <!-- 4. DIAGNÓSTICO DE DESBALANCE / ERRORES POR MALLA -->
           <div v-show="activeBalanceChartTab === 'residuals'" class="chart-wrapper">
             <div class="chart-title-row">
-              <h4>Ranking Numérico de Desbalance de Muestreo (|r| = |Feed - Compuesto|)</h4>
-              <span class="chart-hint">Identifica directamente las mallas con mayor error relativo de tamizado en laboratorio</span>
+              <h4>Desbalance y Ajustes Reconciliados en las 3 Corrientes (Feed, Over, Under)</h4>
+              <span class="chart-hint">Muestra cuánto tuvo que corregir el balance a cada corriente (|Medido - Balanceado|)</span>
             </div>
             <div class="residuals-chart-container">
               <div 
                 v-for="item in (balanceResult.top_errors || [])" 
                 :key="item.size_microns" 
-                class="residual-bar-row"
+                class="residual-bar-row-multi"
               >
                 <div class="residual-mesh-info">
                   <span class="residual-rank-badge" :class="`rank-${item.rank}`">
@@ -535,26 +535,49 @@
                     <span v-if="item.mesh_label" class="mesh-subtag">{{ item.mesh_label }}</span>
                   </div>
                 </div>
-                <div class="residual-bar-track">
-                  <div 
-                    class="residual-bar-fill" 
-                    :class="`severity-${item.severity}`" 
-                    :style="{ width: `${Math.max(4, Math.min(100, (item.residual_pct / maxResidual) * 100))}%` }"
-                  >
-                    <span class="residual-bar-pct">{{ item.residual_pct.toFixed(2) }}%</span>
+
+                <!-- 3 Barras comparativas por corriente -->
+                <div class="multi-stream-bars">
+                  <!-- Alimentación -->
+                  <div class="stream-bar-item">
+                    <span class="stream-mini-label">Feed</span>
+                    <div class="stream-track">
+                      <div class="stream-fill feed" :style="{ width: `${Math.min(100, ((item.delta_feed_pct || 0) / maxStreamDelta) * 100)}%` }"></div>
+                    </div>
+                    <span class="stream-val">Δ {{ (item.delta_feed_pct || 0).toFixed(2) }}%</span>
+                  </div>
+                  <!-- Rebose -->
+                  <div class="stream-bar-item">
+                    <span class="stream-mini-label">Over</span>
+                    <div class="stream-track">
+                      <div class="stream-fill over" :style="{ width: `${Math.min(100, ((item.delta_over_pct || 0) / maxStreamDelta) * 100)}%` }"></div>
+                    </div>
+                    <span class="stream-val">Δ {{ (item.delta_over_pct || 0).toFixed(2) }}%</span>
+                  </div>
+                  <!-- Descarga -->
+                  <div class="stream-bar-item">
+                    <span class="stream-mini-label">Under</span>
+                    <div class="stream-track">
+                      <div class="stream-fill under" :style="{ width: `${Math.min(100, ((item.delta_under_pct || 0) / maxStreamDelta) * 100)}%` }"></div>
+                    </div>
+                    <span class="stream-val">Δ {{ (item.delta_under_pct || 0).toFixed(2) }}%</span>
                   </div>
                 </div>
-                <div class="residual-values">
-                  <span class="residual-detail">
-                    Feed: <strong>{{ item.feed_measured.toFixed(2) }}%</strong> vs Comp.: <strong>{{ item.composite_measured.toFixed(2) }}%</strong> (ΔFeed: {{ item.delta_feed_pct.toFixed(2) }}%)
+
+                <div class="residual-stream-diagnosis">
+                  <span class="worst-stream-tag" :class="getStreamClass(item.worst_stream)">
+                    Mayor desvío: <strong>{{ item.worst_stream }} ({{ (item.worst_delta_pct || 0).toFixed(2) }}%)</strong>
+                  </span>
+                  <span class="desbalance-tot">
+                    Desbalance neto: <strong>{{ item.residual_pct.toFixed(2) }}%</strong>
                   </span>
                 </div>
               </div>
             </div>
             <div class="chart-legend">
-              <span class="legend-item"><i class="dot red"></i> Desbalance Alto (&ge; 0.50%)</span>
-              <span class="legend-item"><i class="dot orange"></i> Desbalance Medio (0.20% - 0.50%)</span>
-              <span class="legend-item"><i class="dot green"></i> Desbalance Bajo (&lt; 0.20%)</span>
+              <span class="legend-item"><i class="dot blue"></i> Δ Alimentación (Feed)</span>
+              <span class="legend-item"><i class="dot green"></i> Δ Rebose (Over)</span>
+              <span class="legend-item"><i class="dot orange"></i> Δ Descarga (Under)</span>
             </div>
           </div>
 
@@ -564,8 +587,8 @@
               <div class="diagnostic-title">
                 <span class="diag-icon">🎯</span>
                 <div>
-                  <h5>Diagnóstico de Error de Muestreo: Mallas con Mayor Desbalance</h5>
-                  <span class="diag-sub">Diferencia entre la medición real de laboratorio y el compuesto balanceado de masa</span>
+                  <h5>Diagnóstico de Error de Muestreo: Desvío en las 3 Corrientes</h5>
+                  <span class="diag-sub">Evaluación del error y corrección requerida tanto en Alimentación como en Rebose y Descarga</span>
                 </div>
               </div>
               <div class="table-sort-actions">
@@ -608,13 +631,27 @@
                   <span class="mesh-tag" v-if="errItem.mesh_label">{{ errItem.mesh_label }}</span>
                 </div>
                 <div class="top-error-metric">
-                  <span class="metric-label">Desbalance (|r|):</span>
+                  <span class="metric-label">Desbalance de Masa:</span>
                   <span class="metric-val" :class="`text-${errItem.severity}`">
                     {{ errItem.residual_pct.toFixed(2) }}%
                   </span>
                 </div>
+
+                <!-- Desglose de corrección en las 3 corrientes -->
+                <div class="top-error-stream-breakdown">
+                  <div class="stream-chip feed">
+                    <span>Feed:</span> <strong>Δ {{ (errItem.delta_feed_pct || 0).toFixed(2) }}%</strong>
+                  </div>
+                  <div class="stream-chip over">
+                    <span>Over:</span> <strong>Δ {{ (errItem.delta_over_pct || 0).toFixed(2) }}%</strong>
+                  </div>
+                  <div class="stream-chip under">
+                    <span>Under:</span> <strong>Δ {{ (errItem.delta_under_pct || 0).toFixed(2) }}%</strong>
+                  </div>
+                </div>
+
                 <div class="top-error-sub">
-                  Feed Real: <strong>{{ errItem.feed_measured.toFixed(2) }}%</strong> vs. Compuesto: <strong>{{ errItem.composite_measured.toFixed(2) }}%</strong> (Ajuste reconciliado: {{ errItem.delta_feed_pct.toFixed(2) }}%)
+                  Muestra más corregida: <strong class="worst-highlight">{{ errItem.worst_stream }} (Δ {{ (errItem.worst_delta_pct || 0).toFixed(2) }}%)</strong>
                 </div>
               </div>
             </div>
@@ -623,7 +660,7 @@
           <!-- TABLA COMPARATIVA DETALLADA REAL VS BALANCEADA -->
           <div class="streams-summary">
             <div class="table-title-row">
-              <h4>Detalle Malla por Malla: Mediciones Reales vs. Valores Balanceados</h4>
+              <h4>Detalle Malla por Malla: Errores y Reconciliación en las 3 Corrientes</h4>
               <span class="chart-hint">Mostrando {{ displayedSieves.length }} mallas (Orden: {{ sievesSortMode === 'error' ? 'Mayor Desbalance Numérico' : 'Abertura Descendente' }})</span>
             </div>
             <div class="table-container-sieves-small">
@@ -631,18 +668,19 @@
                 <thead>
                   <tr>
                     <th>Malla</th>
-                    <th>Ranking</th>
+                    <th>Rank</th>
                     <th>Desbalance |r|</th>
                     <th>Feed Real</th>
                     <th>Feed Bal.</th>
-                    <th>Compuesto</th>
-                    <th>Ajuste Δ</th>
+                    <th>Δ Feed</th>
                     <th>Over Real</th>
                     <th>Over Bal.</th>
+                    <th>Δ Over</th>
                     <th>Under Real</th>
                     <th>Under Bal.</th>
+                    <th>Δ Under</th>
+                    <th>Corriente Crítica</th>
                     <th>Partición Bal.</th>
-                    <th>Partición Modelo</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -666,14 +704,22 @@
                     </td>
                     <td>{{ row.feed_passing.toFixed(2) }}%</td>
                     <td class="bal-col">{{ row.reconciled_feed_passing.toFixed(2) }}%</td>
-                    <td>{{ row.composite_passing !== undefined ? row.composite_passing.toFixed(2) + '%' : '-' }}</td>
-                    <td :class="row.delta_feed >= 0.4 ? 'delta-high' : ''">{{ row.delta_feed !== undefined ? row.delta_feed.toFixed(2) + '%' : '-' }}</td>
+                    <td :class="(row.delta_feed || 0) >= 0.3 ? 'delta-high' : ''">{{ row.delta_feed !== undefined ? (row.delta_feed > 0 ? '±' : '') + row.delta_feed.toFixed(2) + '%' : '-' }}</td>
+                    
                     <td>{{ row.overflow_passing.toFixed(2) }}%</td>
                     <td class="bal-col">{{ row.reconciled_overflow_passing.toFixed(2) }}%</td>
+                    <td :class="(row.delta_over || 0) >= 0.3 ? 'delta-high' : ''">{{ row.delta_over !== undefined ? (row.delta_over > 0 ? '±' : '') + row.delta_over.toFixed(2) + '%' : '-' }}</td>
+                    
                     <td>{{ row.underflow_passing.toFixed(2) }}%</td>
                     <td class="bal-col">{{ row.reconciled_underflow_passing.toFixed(2) }}%</td>
+                    <td :class="(row.delta_under || 0) >= 0.3 ? 'delta-high' : ''">{{ row.delta_under !== undefined ? (row.delta_under > 0 ? '±' : '') + row.delta_under.toFixed(2) + '%' : '-' }}</td>
+
+                    <td>
+                      <span class="stream-pill" :class="getStreamClass(row.worst_stream)">
+                        {{ row.worst_stream || '-' }}
+                      </span>
+                    </td>
                     <td class="bal-col">{{ row.partition_actual.toFixed(1) }}%</td>
-                    <td>{{ row.partition_fitted.toFixed(1) }}%</td>
                   </tr>
                 </tbody>
               </table>
@@ -1387,6 +1433,23 @@ const maxResidual = computed(() => {
   if (!balanceResult.value || !balanceResult.value.top_errors || balanceResult.value.top_errors.length === 0) return 1.0;
   return Math.max(...balanceResult.value.top_errors.map(e => e.residual_pct), 0.1);
 });
+
+const maxStreamDelta = computed(() => {
+  if (!balanceResult.value || !balanceResult.value.top_errors || balanceResult.value.top_errors.length === 0) return 1.0;
+  let m = 0.1;
+  balanceResult.value.top_errors.forEach(e => {
+    m = Math.max(m, e.delta_feed_pct || 0, e.delta_over_pct || 0, e.delta_under_pct || 0);
+  });
+  return m;
+});
+
+function getStreamClass(streamName) {
+  if (!streamName) return '';
+  if (streamName.includes('Feed') || streamName.includes('Alimentación')) return 'stream-feed';
+  if (streamName.includes('Over') || streamName.includes('Rebose')) return 'stream-over';
+  if (streamName.includes('Under') || streamName.includes('Descarga')) return 'stream-under';
+  return '';
+}
 
 function sizeToXCoord(microns) {
   // Escala logarítmica entre 15 µm y 2000 µm -> X entre 50 y 480 px
@@ -2445,5 +2508,158 @@ function formatScientific(val) {
 
 .row-highlight {
   background: #fffbfb;
+}
+
+/* -------------------------------------------------------------------------- */
+/* DESGLOSE MULTI-CORRIENTE (FEED, OVER, UNDER) */
+/* -------------------------------------------------------------------------- */
+.residual-bar-row-multi {
+  display: grid;
+  grid-template-columns: 140px 1fr 240px;
+  align-items: center;
+  gap: 14px;
+  background: white;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #edf2f7;
+}
+
+@media (max-width: 900px) {
+  .residual-bar-row-multi {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+.multi-stream-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stream-bar-item {
+  display: grid;
+  grid-template-columns: 45px 1fr 65px;
+  align-items: center;
+  gap: 8px;
+}
+
+.stream-mini-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.stream-track {
+  background: #f1f5f9;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.stream-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.stream-fill.feed { background: #0284c7; }
+.stream-fill.over { background: #10b981; }
+.stream-fill.under { background: #f59e0b; }
+
+.stream-val {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #334155;
+  text-align: right;
+}
+
+.residual-stream-diagnosis {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.worst-stream-tag {
+  font-size: 0.76rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.desbalance-tot {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+/* Chips in Top Error Cards */
+.top-error-stream-breakdown {
+  display: flex;
+  gap: 6px;
+  margin: 6px 0;
+  flex-wrap: wrap;
+}
+
+.stream-chip {
+  flex: 1;
+  min-width: 65px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 0.74rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stream-chip.feed {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.stream-chip.over {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.stream-chip.under {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.worst-highlight {
+  color: #b91c1c;
+}
+
+/* Stream Pill in Table */
+.stream-pill {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.stream-pill.stream-feed, .worst-stream-tag.stream-feed {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.stream-pill.stream-over, .worst-stream-tag.stream-over {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.stream-pill.stream-under, .worst-stream-tag.stream-under {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
 }
 </style>
