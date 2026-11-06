@@ -51,10 +51,21 @@
         <!-- FORMULARIO DE ENTRADA -->
         <section class="card input-card">
           <div class="card-header">
-            <h3>📊 Datos de Muestreo (Survey Granulométrico)</h3>
-            <button class="btn btn-secondary btn-sm" @click="loadTypicalSurveyPreset">
-              🧪 Cargar Datos Típicos de Planta
-            </button>
+            <div>
+              <h3>📊 Datos de Muestreo (Survey Granulométrico)</h3>
+              <small class="header-note">Base: Informe Quebrada Honda (Southern Perú) Ensayo GM-2101-26473</small>
+            </div>
+            <div class="preset-buttons-group">
+              <button class="btn btn-secondary btn-sm" @click="loadQuebradaHondaNido1" title="Línea 1 C-02 (Dique Principal)">
+                📍 Quebrada Honda Nido 1
+              </button>
+              <button class="btn btn-secondary btn-sm" @click="loadQuebradaHondaNido2" title="Línea 3 C-05 (Dique Principal)">
+                📍 Quebrada Honda Nido 2
+              </button>
+              <button class="btn btn-outline btn-sm" @click="loadTypicalSurveyPreset">
+                🧪 Molienda Estándar
+              </button>
+            </div>
           </div>
 
           <div class="operating-conditions-row">
@@ -661,27 +672,25 @@ const errorMessage = ref('');
 const successMessage = ref('');
 
 // -----------------------------------------------------------------------------
-// SUBMÓDULO 1: ESTADO DEL BALANCE GRANULOMÉTRICO
+// SUBMÓDULO 1: ESTADO DEL BALANCE GRANULOMÉTRICO (DEFAULT: QUEBRADA HONDA NIDO 1)
 // -----------------------------------------------------------------------------
 const balanceForm = reactive({
-  feed_solids_tph: 550.0,
-  feed_cp: 56.0,
-  overflow_cp: 34.0,
-  underflow_cp: 74.5,
-  solids_density: 2.75,
+  feed_solids_tph: 1128.0,
+  feed_cp: 42.93,
+  overflow_cp: 27.98,
+  underflow_cp: 72.20,
+  solids_density: 2.79,
   liquid_density: 1.0,
   sieves: [
-    { size_microns: 1180, feed_passing: 99.8, overflow_passing: 100.0, underflow_passing: 99.6 },
-    { size_microns: 850,  feed_passing: 98.5, overflow_passing: 100.0, underflow_passing: 97.2 },
-    { size_microns: 600,  feed_passing: 95.2, overflow_passing: 100.0, underflow_passing: 90.8 },
-    { size_microns: 425,  feed_passing: 88.4, overflow_passing: 99.8,  underflow_passing: 78.2 },
-    { size_microns: 300,  feed_passing: 79.1, overflow_passing: 98.9,  underflow_passing: 61.4 },
-    { size_microns: 212,  feed_passing: 68.3, overflow_passing: 96.5,  underflow_passing: 43.1 },
-    { size_microns: 150,  feed_passing: 57.2, overflow_passing: 91.2,  underflow_passing: 26.8 },
-    { size_microns: 106,  feed_passing: 46.5, overflow_passing: 82.4,  underflow_passing: 14.5 },
-    { size_microns: 75,   feed_passing: 37.1, overflow_passing: 70.8,  underflow_passing: 7.2  },
-    { size_microns: 53,   feed_passing: 29.4, overflow_passing: 59.2,  underflow_passing: 2.8  },
-    { size_microns: 38,   feed_passing: 22.8, overflow_passing: 48.6,  underflow_passing: 1.1  }
+    { size_microns: 1680, feed_passing: 100.0, overflow_passing: 100.0, underflow_passing: 99.90 },
+    { size_microns: 841,  feed_passing: 99.90, overflow_passing: 99.99, underflow_passing: 99.60 },
+    { size_microns: 297,  feed_passing: 89.08, overflow_passing: 99.73, underflow_passing: 73.65 },
+    { size_microns: 210,  feed_passing: 78.33, overflow_passing: 99.24, underflow_passing: 52.82 },
+    { size_microns: 149,  feed_passing: 67.91, overflow_passing: 97.77, underflow_passing: 30.06 },
+    { size_microns: 105,  feed_passing: 58.96, overflow_passing: 93.14, underflow_passing: 16.10 },
+    { size_microns: 74,   feed_passing: 52.01, overflow_passing: 84.83, underflow_passing: 10.46 },
+    { size_microns: 44,   feed_passing: 42.08, overflow_passing: 71.40, underflow_passing: 6.51 },
+    { size_microns: 37,   feed_passing: 39.87, overflow_passing: 66.28, underflow_passing: 6.13 }
   ]
 });
 
@@ -705,6 +714,50 @@ function removeSieveRow(idx) {
   }
 }
 
+function loadQuebradaHondaNido1() {
+  balanceForm.feed_solids_tph = 1128.0;
+  balanceForm.feed_cp = 42.93;
+  balanceForm.overflow_cp = 27.98;
+  balanceForm.underflow_cp = 72.20;
+  balanceForm.solids_density = 2.79;
+  balanceForm.sieves = [
+    { size_microns: 1680, feed_passing: 100.0, overflow_passing: 100.0, underflow_passing: 99.90 },
+    { size_microns: 841,  feed_passing: 99.90, overflow_passing: 99.99, underflow_passing: 99.60 },
+    { size_microns: 297,  feed_passing: 89.08, overflow_passing: 99.73, underflow_passing: 73.65 },
+    { size_microns: 210,  feed_passing: 78.33, overflow_passing: 99.24, underflow_passing: 52.82 },
+    { size_microns: 149,  feed_passing: 67.91, overflow_passing: 97.77, underflow_passing: 30.06 },
+    { size_microns: 105,  feed_passing: 58.96, overflow_passing: 93.14, underflow_passing: 16.10 },
+    { size_microns: 74,   feed_passing: 52.01, overflow_passing: 84.83, underflow_passing: 10.46 },
+    { size_microns: 44,   feed_passing: 42.08, overflow_passing: 71.40, underflow_passing: 6.51 },
+    { size_microns: 37,   feed_passing: 39.87, overflow_passing: 66.28, underflow_passing: 6.13 }
+  ];
+  calibForm.pressure_kpa = 124.1; // 18.0 psi
+  calibForm.feed_slurry_flow_m3h = 1904.0;
+  successMessage.value = 'Muestreo Quebrada Honda - Nido 1 (Línea 1 C-02) cargado desde ciclones.pdf.';
+}
+
+function loadQuebradaHondaNido2() {
+  balanceForm.feed_solids_tph = 1196.8;
+  balanceForm.feed_cp = 42.71;
+  balanceForm.overflow_cp = 27.93;
+  balanceForm.underflow_cp = 73.06;
+  balanceForm.solids_density = 2.79;
+  balanceForm.sieves = [
+    { size_microns: 1680, feed_passing: 99.83, overflow_passing: 100.0, underflow_passing: 99.77 },
+    { size_microns: 841,  feed_passing: 99.77, overflow_passing: 100.0, underflow_passing: 99.03 },
+    { size_microns: 297,  feed_passing: 89.01, overflow_passing: 99.68, underflow_passing: 56.09 },
+    { size_microns: 210,  feed_passing: 78.92, overflow_passing: 98.58, underflow_passing: 32.62 },
+    { size_microns: 149,  feed_passing: 69.33, overflow_passing: 96.11, underflow_passing: 21.24 },
+    { size_microns: 105,  feed_passing: 60.66, overflow_passing: 90.79, underflow_passing: 14.42 },
+    { size_microns: 74,   feed_passing: 53.17, overflow_passing: 82.34, underflow_passing: 10.63 },
+    { size_microns: 44,   feed_passing: 43.82, overflow_passing: 70.58, underflow_passing: 7.70 },
+    { size_microns: 37,   feed_passing: 40.47, overflow_passing: 65.59, underflow_passing: 7.18 }
+  ];
+  calibForm.pressure_kpa = 131.0; // 19.0 psi
+  calibForm.feed_slurry_flow_m3h = 2035.0;
+  successMessage.value = 'Muestreo Quebrada Honda - Nido 2 (Línea 3 C-05) cargado desde ciclones.pdf.';
+}
+
 function loadTypicalSurveyPreset() {
   balanceForm.feed_solids_tph = 550.0;
   balanceForm.feed_cp = 56.0;
@@ -724,7 +777,7 @@ function loadTypicalSurveyPreset() {
     { size_microns: 53,   feed_passing: 29.4, overflow_passing: 59.2,  underflow_passing: 2.8  },
     { size_microns: 38,   feed_passing: 22.8, overflow_passing: 48.6,  underflow_passing: 1.1  }
   ];
-  successMessage.value = 'Muestreo de planta cargado correctamente.';
+  successMessage.value = 'Muestreo estándar cargado.';
 }
 
 async function executeCycloneBalance() {
@@ -1063,9 +1116,25 @@ function formatScientific(val) {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-bottom: 16px;
   border-bottom: 1px solid #f1f5f9;
   padding-bottom: 12px;
+}
+
+.header-note {
+  display: block;
+  font-size: 0.78rem;
+  color: #0284c7;
+  font-weight: 500;
+  margin-top: 3px;
+}
+
+.preset-buttons-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .card-header h3 {
