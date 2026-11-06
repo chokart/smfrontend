@@ -760,6 +760,10 @@
               <input type="number" v-model.number="calibForm.underflow_cp" step="0.5" min="40" max="88" />
             </div>
             <div class="form-group">
+              <label>Recup. Sólidos Under Rs (%):</label>
+              <input type="number" v-model.number="calibForm.solids_recovery_underflow_pct" step="0.5" min="5" max="95" placeholder="Auto de balance" />
+            </div>
+            <div class="form-group">
               <label>Agudeza m (Lynch):</label>
               <input type="number" v-model.number="calibForm.sharpness_m" step="0.1" min="1" max="5" />
             </div>
@@ -811,6 +815,11 @@
               <span class="kpi-label">Caudal por Ciclón</span>
               <span class="kpi-value">{{ calibResult.q_per_cyclone_m3h }} <small>m³/h</small></span>
               <span class="kpi-desc">Por unidad individual</span>
+            </div>
+            <div class="kpi-card highlight">
+              <span class="kpi-label">Recup. Sólidos Under (Rs)</span>
+              <span class="kpi-value">{{ calibResult.solids_recovery_underflow_pct }}%</span>
+              <span class="kpi-desc">Reparto de sólidos al ápex</span>
             </div>
           </div>
 
@@ -1047,6 +1056,11 @@
               <span class="kpi-label">Caudal por Ciclón</span>
               <span class="kpi-value">{{ simResult.q_per_cyclone_m3h }} <small>m³/h</small></span>
               <span class="kpi-desc">Total batería: {{ simResult.total_slurry_flow_m3h }} m³/h</span>
+            </div>
+            <div class="kpi-card highlight">
+              <span class="kpi-label">Recup. Sólidos Under (Rs)</span>
+              <span class="kpi-value">{{ simResult.solids_recovery_underflow_pct ?? simResult.solids_split_underflow_pct }}%</span>
+              <span class="kpi-desc">Reparto de sólidos a molienda</span>
             </div>
           </div>
 
@@ -1304,6 +1318,7 @@ function transferBalanceToCalibration() {
   calibForm.solids_density = balanceForm.solids_density;
   calibForm.d50c_microns = balanceResult.value.d50c_microns;
   calibForm.water_recovery_underflow_pct = balanceResult.value.water_recovery_underflow_pct;
+  calibForm.solids_recovery_underflow_pct = balanceResult.value.solids_split_underflow_pct;
   calibForm.sharpness_m = balanceResult.value.sharpness_m;
   calibForm.sieves = balanceResult.value.reconciled_sieves || [];
   
@@ -1338,6 +1353,7 @@ const calibForm = reactive({
   liquid_density: 1.0,
   d50c_microns: 93.8,
   water_recovery_underflow_pct: 12.76,
+  solids_recovery_underflow_pct: 44.05,
   sharpness_m: 2.44,
   feed_fines_pct_minus_38um: 39.87,
   sieves: []
@@ -1360,6 +1376,7 @@ function loadQuebradaHondaGMAX20Geometry() {
   calibForm.solids_density = 2.79;
   calibForm.d50c_microns = 93.8;
   calibForm.water_recovery_underflow_pct = 12.76;
+  calibForm.solids_recovery_underflow_pct = balanceResult.value ? balanceResult.value.solids_split_underflow_pct : 44.05;
   calibForm.sharpness_m = 2.44;
   calibForm.feed_fines_pct_minus_38um = 39.87;
   calibForm.sieves = balanceResult.value?.reconciled_sieves || balanceForm.sieves;
@@ -1480,6 +1497,8 @@ async function executeCycloneSimulation() {
         p80_over: balanceResult.value?.overflow?.p80_microns ?? 145.0,
         p80_under: balanceResult.value?.underflow?.p80_microns ?? 320.0,
         water_recovery_underflow_pct: balanceResult.value?.water_recovery_underflow_pct ?? calibForm.water_recovery_underflow_pct,
+        solids_recovery_underflow_pct: balanceResult.value?.solids_split_underflow_pct ?? calibResult.value?.solids_recovery_underflow_pct ?? calibForm.solids_recovery_underflow_pct ?? 44.05,
+        solids_split_underflow_pct: balanceResult.value?.solids_split_underflow_pct ?? calibResult.value?.solids_recovery_underflow_pct ?? calibForm.solids_recovery_underflow_pct ?? 44.05,
         circulating_load_pct: balanceResult.value?.circulating_load_pct ?? 186.0,
         total_q_m3h: balanceResult.value?.feed?.pulp_flow_m3h,
         q_per_cyclone_m3h: calibResult.value?.q_per_cyclone_m3h,
