@@ -685,10 +685,20 @@
         <!-- ENTRADAS DE GEOMETRÍA Y OPERACIÓN -->
         <section class="card input-card">
           <div class="card-header">
-            <h3>⚙️ Geometría del Hidrociclón y Operación de Planta</h3>
-            <button class="btn btn-secondary btn-sm" @click="loadStandardGeometryPreset">
-              📐 Geometría Estándar (D500)
-            </button>
+            <div>
+              <h3>⚙️ Geometría del Hidrociclón y Operación de Planta</h3>
+              <small class="header-blueprint-tag" style="display:block; color:#0284c7; font-weight:600; margin-top:2px;">
+                📐 Plano FLSmidth Krebs GMAX20-3588 (SPCC Quebrada Honda - medidas ciclones.pdf)
+              </small>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-accent btn-sm" @click="loadQuebradaHondaGMAX20Geometry">
+                🏷️ FLSmidth GMAX20 (Plano)
+              </button>
+              <button class="btn btn-secondary btn-sm" @click="loadStandardGeometryPreset">
+                📐 Estándar D500
+              </button>
+            </div>
           </div>
 
           <h4 class="section-subtitle">1. Dimensiones Físicas del Ciclón</h4>
@@ -1190,27 +1200,47 @@ function transferBalanceToCalibration() {
 // -----------------------------------------------------------------------------
 const calibForm = reactive({
   geometry: {
-    dc_mm: 500,
-    di_mm: 125,
-    do_mm: 175,
-    du_mm: 100,
-    lc_mm: 1200,
-    theta_deg: 20
+    dc_mm: 508,     // FLSmidth Krebs GMAX20 (20 pulg)
+    di_mm: 140,     // Entrada Victaulic 8" Involute
+    do_mm: 171.5,   // Vortex Finder 6.75" (Item 8 plano)
+    du_mm: 101.6,   // Apex Insert 4.0" (Item 18 plano)
+    lc_mm: 1086,    // Cuerpo cilíndrico 42 3/4" plano
+    theta_deg: 22.5 // Ángulo cono 2 x 11.25°
   },
-  num_cyclones_operating: 4,
-  pressure_kpa: 110.0,
-  feed_solids_tph: 550.0,
-  feed_cp: 56.0,
-  underflow_cp: 74.5,
-  solids_density: 2.75,
+  num_cyclones_operating: 6, // Tag 2102-CY-001 al 006 (6 unidades)
+  pressure_kpa: 113.8,       // 16.5 psi (Nido 1 ensayo GM-2101-26473)
+  feed_solids_tph: 1128.0,
+  feed_cp: 42.93,
+  underflow_cp: 72.20,
+  solids_density: 2.79,
   liquid_density: 1.0,
-  d50c_microns: 145.0,
-  water_recovery_underflow_pct: 26.5,
-  sharpness_m: 2.45,
-  feed_fines_pct_minus_38um: 22.8
+  d50c_microns: 93.8,
+  water_recovery_underflow_pct: 12.76,
+  sharpness_m: 2.44,
+  feed_fines_pct_minus_38um: 39.87
 });
 
 const calibResult = ref(null);
+
+function loadQuebradaHondaGMAX20Geometry() {
+  calibForm.geometry.dc_mm = 508;
+  calibForm.geometry.di_mm = 140;
+  calibForm.geometry.do_mm = 171.5;
+  calibForm.geometry.du_mm = 101.6;
+  calibForm.geometry.lc_mm = 1086;
+  calibForm.geometry.theta_deg = 22.5;
+  calibForm.num_cyclones_operating = 6;
+  calibForm.pressure_kpa = 113.8;
+  calibForm.feed_solids_tph = 1128.0;
+  calibForm.feed_cp = 42.93;
+  calibForm.underflow_cp = 72.20;
+  calibForm.solids_density = 2.79;
+  calibForm.d50c_microns = 93.8;
+  calibForm.water_recovery_underflow_pct = 12.76;
+  calibForm.sharpness_m = 2.44;
+  calibForm.feed_fines_pct_minus_38um = 39.87;
+  successMessage.value = 'Geometría oficial FLSmidth Krebs GMAX20-3588 (Plano medidas ciclones.pdf) cargada para Quebrada Honda.';
+}
 
 function loadStandardGeometryPreset() {
   calibForm.geometry.dc_mm = 500;
@@ -1261,22 +1291,22 @@ function transferCalibrationToSimulation() {
 // -----------------------------------------------------------------------------
 const simForm = reactive({
   geometry: {
-    dc_mm: 500,
-    di_mm: 125,
-    do_mm: 175,
-    du_mm: 100,
-    lc_mm: 1200,
-    theta_deg: 20
+    dc_mm: 508,     // Krebs GMAX20
+    di_mm: 140,     // Victaulic 8"
+    do_mm: 171.5,   // Vortex Finder 6.75"
+    du_mm: 101.6,   // Apex Insert 4.0"
+    lc_mm: 1086,    // Cuerpo cilíndrico 42 3/4"
+    theta_deg: 22.5 // Ángulo cono 2 x 11.25°
   },
-  num_cyclones_operating: 4,
-  kd0: 0.00045,
-  kq0: 480.0,
-  kw0: 9.8,
-  ks0: 0.052,
-  sharpness_m: 2.45,
-  feed_solids_tph: 600.0,
-  feed_cp: 55.0,
-  solids_density: 2.75,
+  num_cyclones_operating: 6,
+  kd0: 8.35e-5,
+  kq0: 0.19,
+  kw0: 11.50,
+  ks0: 2.15,
+  sharpness_m: 2.44,
+  feed_solids_tph: 1128.0,
+  feed_cp: 42.93,
+  solids_density: 2.79,
   liquid_density: 1.0,
   feed_psd: []
 });
