@@ -203,7 +203,7 @@
               :class="['chart-tab-btn', { active: activeBalanceChartTab === 'residuals' }]"
               @click="activeBalanceChartTab = 'residuals'"
             >
-              🎯 Ranking de Error y Desbalance por Malla
+              🎯 Desbalance y Residuos por Malla
             </button>
           </div>
 
@@ -514,22 +514,16 @@
           <!-- 4. DIAGNÓSTICO DE DESBALANCE / ERRORES POR MALLA -->
           <div v-show="activeBalanceChartTab === 'residuals'" class="chart-wrapper">
             <div class="chart-title-row">
-              <h4>Desbalance y Ajustes Reconciliados en las 3 Corrientes (Feed, Over, Under)</h4>
-              <span class="chart-hint">Muestra cuánto tuvo que corregir el balance a cada corriente (|Medido - Balanceado|)</span>
+              <h4>Desbalance de Muestreo y Ajustes Reconciliados (Feed, Over, Under)</h4>
+              <span class="chart-hint">Corrección individual (|Medido - Balanceado|) calculada por mínimos cuadrados para cada corriente</span>
             </div>
             <div class="residuals-chart-container">
               <div 
-                v-for="item in (balanceResult.top_errors || [])" 
+                v-for="item in displayedSieves" 
                 :key="item.size_microns" 
                 class="residual-bar-row-multi"
               >
                 <div class="residual-mesh-info">
-                  <span class="residual-rank-badge" :class="`rank-${item.rank}`">
-                    <template v-if="item.rank === 1">🥇 1°</template>
-                    <template v-else-if="item.rank === 2">🥈 2°</template>
-                    <template v-else-if="item.rank === 3">🥉 3°</template>
-                    <template v-else>#{{ item.rank }}</template>
-                  </span>
                   <div class="mesh-label-group">
                     <strong class="mesh-microns">{{ item.size_microns }} µm</strong>
                     <span v-if="item.mesh_label" class="mesh-subtag">{{ item.mesh_label }}</span>
@@ -542,34 +536,34 @@
                   <div class="stream-bar-item">
                     <span class="stream-mini-label">Feed</span>
                     <div class="stream-track">
-                      <div class="stream-fill feed" :style="{ width: `${Math.min(100, ((item.delta_feed_pct || 0) / maxStreamDelta) * 100)}%` }"></div>
+                      <div class="stream-fill feed" :style="{ width: `${Math.min(100, ((item.delta_feed || 0) / maxStreamDelta) * 100)}%` }"></div>
                     </div>
-                    <span class="stream-val">Δ {{ (item.delta_feed_pct || 0).toFixed(2) }}%</span>
+                    <span class="stream-val">Δ {{ (item.delta_feed || 0).toFixed(2) }}%</span>
                   </div>
                   <!-- Rebose -->
                   <div class="stream-bar-item">
                     <span class="stream-mini-label">Over</span>
                     <div class="stream-track">
-                      <div class="stream-fill over" :style="{ width: `${Math.min(100, ((item.delta_over_pct || 0) / maxStreamDelta) * 100)}%` }"></div>
+                      <div class="stream-fill over" :style="{ width: `${Math.min(100, ((item.delta_over || 0) / maxStreamDelta) * 100)}%` }"></div>
                     </div>
-                    <span class="stream-val">Δ {{ (item.delta_over_pct || 0).toFixed(2) }}%</span>
+                    <span class="stream-val">Δ {{ (item.delta_over || 0).toFixed(2) }}%</span>
                   </div>
                   <!-- Descarga -->
                   <div class="stream-bar-item">
                     <span class="stream-mini-label">Under</span>
                     <div class="stream-track">
-                      <div class="stream-fill under" :style="{ width: `${Math.min(100, ((item.delta_under_pct || 0) / maxStreamDelta) * 100)}%` }"></div>
+                      <div class="stream-fill under" :style="{ width: `${Math.min(100, ((item.delta_under || 0) / maxStreamDelta) * 100)}%` }"></div>
                     </div>
-                    <span class="stream-val">Δ {{ (item.delta_under_pct || 0).toFixed(2) }}%</span>
+                    <span class="stream-val">Δ {{ (item.delta_under || 0).toFixed(2) }}%</span>
                   </div>
                 </div>
 
                 <div class="residual-stream-diagnosis">
                   <span class="worst-stream-tag" :class="getStreamClass(item.worst_stream)">
-                    Mayor desvío: <strong>{{ item.worst_stream }} ({{ (item.worst_delta_pct || 0).toFixed(2) }}%)</strong>
+                    Mayor ajuste: <strong>{{ item.worst_stream }}</strong>
                   </span>
                   <span class="desbalance-tot">
-                    Desbalance neto: <strong>{{ item.residual_pct.toFixed(2) }}%</strong>
+                    Desbalance neto: <strong>{{ (item.residual_pct || 0).toFixed(2) }}%</strong>
                   </span>
                 </div>
               </div>
@@ -581,94 +575,17 @@
             </div>
           </div>
 
-          <!-- PANEL DE DIAGNÓSTICO DE ERROR Y TOP MALLAS DISCREPANTES -->
-          <div v-if="balanceResult.top_errors && balanceResult.top_errors.length > 0" class="error-diagnostic-panel">
-            <div class="diagnostic-header">
-              <div class="diagnostic-title">
-                <span class="diag-icon">🎯</span>
-                <div>
-                  <h5>Diagnóstico de Error de Muestreo: Desvío en las 3 Corrientes</h5>
-                  <span class="diag-sub">Evaluación del error y corrección requerida tanto en Alimentación como en Rebose y Descarga</span>
-                </div>
-              </div>
-              <div class="table-sort-actions">
-                <span class="sort-label">Ordenar tabla por:</span>
-                <button 
-                  type="button"
-                  class="btn-sort" 
-                  :class="{ active: sievesSortMode === 'mesh' }" 
-                  @click="sievesSortMode = 'mesh'"
-                >
-                  Malla (µm) ↓
-                </button>
-                <button 
-                  type="button"
-                  class="btn-sort" 
-                  :class="{ active: sievesSortMode === 'error' }" 
-                  @click="sievesSortMode = 'error'"
-                >
-                  🎯 Mayor Error
-                </button>
-              </div>
-            </div>
-
-            <!-- CARDS DE LAS 3 MALLAS CON MAYOR ERROR -->
-            <div class="top-error-cards">
-              <div 
-                v-for="errItem in balanceResult.top_errors.slice(0, 3)" 
-                :key="`card-${errItem.size_microns}`" 
-                class="top-error-card"
-                :class="`rank-card-${errItem.rank}`"
-              >
-                <div class="top-error-rank">
-                  <span v-if="errItem.rank === 1">🥇 1° Mayor Error</span>
-                  <span v-else-if="errItem.rank === 2">🥈 2° Mayor Error</span>
-                  <span v-else-if="errItem.rank === 3">🥉 3° Mayor Error</span>
-                  <span v-else>#{{ errItem.rank }}</span>
-                </div>
-                <div class="top-error-mesh">
-                  <span class="mesh-val">{{ errItem.size_microns }} µm</span>
-                  <span class="mesh-tag" v-if="errItem.mesh_label">{{ errItem.mesh_label }}</span>
-                </div>
-                <div class="top-error-metric">
-                  <span class="metric-label">Desbalance de Masa:</span>
-                  <span class="metric-val" :class="`text-${errItem.severity}`">
-                    {{ errItem.residual_pct.toFixed(2) }}%
-                  </span>
-                </div>
-
-                <!-- Desglose de corrección en las 3 corrientes -->
-                <div class="top-error-stream-breakdown">
-                  <div class="stream-chip feed">
-                    <span>Feed:</span> <strong>Δ {{ (errItem.delta_feed_pct || 0).toFixed(2) }}%</strong>
-                  </div>
-                  <div class="stream-chip over">
-                    <span>Over:</span> <strong>Δ {{ (errItem.delta_over_pct || 0).toFixed(2) }}%</strong>
-                  </div>
-                  <div class="stream-chip under">
-                    <span>Under:</span> <strong>Δ {{ (errItem.delta_under_pct || 0).toFixed(2) }}%</strong>
-                  </div>
-                </div>
-
-                <div class="top-error-sub">
-                  Muestra más corregida: <strong class="worst-highlight">{{ errItem.worst_stream }} (Δ {{ (errItem.worst_delta_pct || 0).toFixed(2) }}%)</strong>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <!-- TABLA COMPARATIVA DETALLADA REAL VS BALANCEADA -->
           <div class="streams-summary">
             <div class="table-title-row">
-              <h4>Detalle Malla por Malla: Errores y Reconciliación en las 3 Corrientes</h4>
-              <span class="chart-hint">Mostrando {{ displayedSieves.length }} mallas (Orden: {{ sievesSortMode === 'error' ? 'Mayor Desbalance Numérico' : 'Abertura Descendente' }})</span>
+              <h4>Detalle Malla por Malla: Mediciones Reales vs. Valores Reconciliados</h4>
+              <span class="chart-hint">Mostrando {{ displayedSieves.length }} mallas en abertura descendente (tamizado estándar)</span>
             </div>
             <div class="table-container-sieves-small">
               <table class="data-table compact">
                 <thead>
                   <tr>
                     <th>Malla</th>
-                    <th>Rank</th>
                     <th>Desbalance |r|</th>
                     <th>Feed Real</th>
                     <th>Feed Bal.</th>
@@ -679,23 +596,16 @@
                     <th>Under Real</th>
                     <th>Under Bal.</th>
                     <th>Δ Under</th>
-                    <th>Corriente Crítica</th>
+                    <th>Mayor Ajuste</th>
                     <th>Partición Bal.</th>
+                    <th>Partición Modelo</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(row, idx) in displayedSieves" :key="idx" :class="{ 'row-highlight': row.rank <= 2 }">
+                  <tr v-for="(row, idx) in displayedSieves" :key="idx">
                     <td>
                       <strong>{{ row.size_microns }} µm</strong>
                       <small v-if="row.mesh_label" class="mesh-badge">{{ row.mesh_label }}</small>
-                    </td>
-                    <td>
-                      <span class="rank-pill" :class="`rank-${row.rank}`">
-                        <template v-if="row.rank === 1">🥇 1°</template>
-                        <template v-else-if="row.rank === 2">🥈 2°</template>
-                        <template v-else-if="row.rank === 3">🥉 3°</template>
-                        <template v-else>#{{ row.rank }}</template>
-                      </span>
                     </td>
                     <td>
                       <span class="error-badge" :class="`severity-${row.severity}`">
@@ -720,6 +630,7 @@
                       </span>
                     </td>
                     <td class="bal-col">{{ row.partition_actual.toFixed(1) }}%</td>
+                    <td>{{ row.partition_fitted.toFixed(1) }}%</td>
                   </tr>
                 </tbody>
               </table>
@@ -1415,30 +1326,20 @@ async function executeCycloneSimulation() {
 }
 
 // -----------------------------------------------------------------------------
-// UTILIDADES GRÁFICAS (SVG PLOTS) Y ORDENAMIENTO DE MALLAS
+// UTILIDADES GRÁFICAS (SVG PLOTS) Y DATOS DE MALLAS
 // -----------------------------------------------------------------------------
 const activeBalanceChartTab = ref('psd_comparison'); // 'psd_comparison' | 'tromp' | 'parity' | 'residuals'
-const sievesSortMode = ref('mesh'); // 'mesh' | 'error'
 
 const displayedSieves = computed(() => {
   if (!balanceResult.value || !balanceResult.value.reconciled_sieves) return [];
-  const list = [...balanceResult.value.reconciled_sieves];
-  if (sievesSortMode.value === 'error') {
-    return list.sort((a, b) => (b.residual_pct || 0) - (a.residual_pct || 0));
-  }
-  return list.sort((a, b) => b.size_microns - a.size_microns);
-});
-
-const maxResidual = computed(() => {
-  if (!balanceResult.value || !balanceResult.value.top_errors || balanceResult.value.top_errors.length === 0) return 1.0;
-  return Math.max(...balanceResult.value.top_errors.map(e => e.residual_pct), 0.1);
+  return [...balanceResult.value.reconciled_sieves].sort((a, b) => b.size_microns - a.size_microns);
 });
 
 const maxStreamDelta = computed(() => {
-  if (!balanceResult.value || !balanceResult.value.top_errors || balanceResult.value.top_errors.length === 0) return 1.0;
+  if (!balanceResult.value || !balanceResult.value.reconciled_sieves) return 1.0;
   let m = 0.1;
-  balanceResult.value.top_errors.forEach(e => {
-    m = Math.max(m, e.delta_feed_pct || 0, e.delta_over_pct || 0, e.delta_under_pct || 0);
+  balanceResult.value.reconciled_sieves.forEach(e => {
+    m = Math.max(m, e.delta_feed || 0, e.delta_over || 0, e.delta_under || 0);
   });
   return m;
 });
@@ -2226,94 +2127,6 @@ function formatScientific(val) {
   gap: 12px;
 }
 
-.top-error-card {
-  background: white;
-  border-radius: 8px;
-  padding: 12px 14px;
-  border-left: 4px solid #cbd5e1;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.top-error-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 6px rgba(0,0,0,0.06);
-}
-
-.top-error-card.rank-card-1 {
-  border-left-color: #ef4444;
-  background: #fffafa;
-}
-
-.top-error-card.rank-card-2 {
-  border-left-color: #f97316;
-  background: #fffcf9;
-}
-
-.top-error-card.rank-card-3 {
-  border-left-color: #eab308;
-  background: #fffef5;
-}
-
-.top-error-rank {
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: #64748b;
-}
-
-.top-error-mesh {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-}
-
-.mesh-val {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.mesh-tag {
-  background: #e2e8f0;
-  color: #334155;
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.top-error-metric {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 2px;
-}
-
-.metric-label {
-  font-size: 0.8rem;
-  color: #475569;
-}
-
-.metric-val {
-  font-size: 1rem;
-  font-weight: 700;
-}
-
-.text-high { color: #dc2626; }
-.text-medium { color: #d97706; }
-.text-low { color: #16a34a; }
-
-.top-error-sub {
-  font-size: 0.75rem;
-  color: #64748b;
-  margin-top: 4px;
-  line-height: 1.3;
-}
-
 /* Gráfico de Barras de Residuos */
 .residuals-chart-container {
   display: flex;
@@ -2325,53 +2138,10 @@ function formatScientific(val) {
   border-radius: 8px;
 }
 
-.residual-bar-row {
-  display: grid;
-  grid-template-columns: 140px 1fr 280px;
-  align-items: center;
-  gap: 12px;
-}
-
-@media (max-width: 900px) {
-  .residual-bar-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-}
-
 .residual-mesh-info {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.residual-rank-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 28px;
-  height: 22px;
-  padding: 0 4px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  background: #e2e8f0;
-  color: #475569;
-}
-
-.residual-rank-badge.rank-1 {
-  background: #fee2e2;
-  color: #b91c1c;
-}
-
-.residual-rank-badge.rank-2 {
-  background: #ffedd5;
-  color: #c2410c;
-}
-
-.residual-rank-badge.rank-3 {
-  background: #fef9c3;
-  color: #854d0e;
 }
 
 .mesh-label-group {
@@ -2388,81 +2158,6 @@ function formatScientific(val) {
 .mesh-subtag {
   font-size: 0.75rem;
   color: #64748b;
-}
-
-.residual-bar-track {
-  background: #e2e8f0;
-  height: 20px;
-  border-radius: 4px;
-  overflow: hidden;
-  position: relative;
-}
-
-.residual-bar-fill {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-right: 6px;
-  border-radius: 4px;
-  transition: width 0.4s ease;
-}
-
-.residual-bar-fill.severity-high {
-  background: linear-gradient(90deg, #f87171, #ef4444);
-}
-
-.residual-bar-fill.severity-medium {
-  background: linear-gradient(90deg, #fbbf24, #f59e0b);
-}
-
-.residual-bar-fill.severity-low {
-  background: linear-gradient(90deg, #34d399, #10b981);
-}
-
-.residual-bar-pct {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: white;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-}
-
-.residual-values {
-  font-size: 0.78rem;
-  color: #475569;
-  text-align: right;
-}
-
-.residual-detail strong {
-  color: #0f172a;
-}
-
-/* Badges de Tabla */
-.rank-pill {
-  display: inline-block;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  background: #f1f5f9;
-  color: #475569;
-}
-
-.rank-pill.rank-1 {
-  background: #fee2e2;
-  color: #b91c1c;
-  font-weight: 800;
-}
-
-.rank-pill.rank-2 {
-  background: #ffedd5;
-  color: #c2410c;
-  font-weight: 800;
-}
-
-.rank-pill.rank-3 {
-  background: #fef9c3;
-  color: #854d0e;
 }
 
 .error-badge {
