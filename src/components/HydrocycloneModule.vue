@@ -363,14 +363,14 @@
                   Bypass Rf = {{ balanceResult.bypass_rf_pct }}%
                 </text>
 
-                <!-- Curva Tromp Real -->
+                <!-- Curva Tromp con Datos Balanceados (Línea sólida azul) -->
                 <polyline 
                   :points="generateTrompPoints(balanceResult.reconciled_sieves, 'partition_actual')" 
                   fill="none" 
                   stroke="#0284c7" 
                   stroke-width="2.5" 
                 />
-                <!-- Curva Tromp Corregida -->
+                <!-- Curva Tromp Corregida/Reducida (Línea segmentada verde) -->
                 <polyline 
                   :points="generateTrompPoints(balanceResult.reconciled_sieves, 'partition_reduced')" 
                   fill="none" 
@@ -379,7 +379,19 @@
                   stroke-dasharray="4,2" 
                 />
 
-                <!-- Puntos de datos -->
+                <!-- Puntos con Datos Iniciales / Crudos de Laboratorio (Círculos huecos celestes) -->
+                <circle 
+                  v-for="(pt, pIdx) in getTrompCoords(balanceResult.reconciled_sieves, 'partition_raw')" 
+                  :key="`raw-${pIdx}`"
+                  :cx="pt.x" 
+                  :cy="pt.y" 
+                  r="4" 
+                  fill="#ffffff" 
+                  stroke="#38bdf8" 
+                  stroke-width="1.8" 
+                />
+
+                <!-- Puntos con Datos Balanceados / Reconciliados (Puntos azules sólidos) -->
                 <circle 
                   v-for="(pt, pIdx) in getTrompCoords(balanceResult.reconciled_sieves, 'partition_actual')" 
                   :key="`act-${pIdx}`"
@@ -402,8 +414,9 @@
               </svg>
             </div>
             <div class="chart-legend">
-              <span class="legend-item"><i class="dot blue"></i> Eficiencia Real Tromp</span>
-              <span class="legend-item"><i class="dot green dashed"></i> Eficiencia Reducida (Corregida)</span>
+              <span class="legend-item"><i class="dot blue"></i> Eficiencia Balanceada (Línea)</span>
+              <span class="legend-item"><i class="symbol circle blue"></i> Eficiencia Inicial Cruda (Puntos ○)</span>
+              <span class="legend-item"><i class="dot green dashed"></i> Eficiencia Reducida (Sin Bypass)</span>
               <span class="legend-item"><i class="dot orange"></i> Bypass Rf</span>
               <span class="legend-item"><i class="dot red"></i> d50c</span>
             </div>
@@ -506,7 +519,8 @@
                     <th>Over Bal.</th>
                     <th>Under Real</th>
                     <th>Under Bal.</th>
-                    <th>Partición Real</th>
+                    <th>Partición Inicial</th>
+                    <th>Partición Balanceada</th>
                     <th>Partición Modelo</th>
                   </tr>
                 </thead>
@@ -519,7 +533,8 @@
                     <td class="bal-col">{{ row.reconciled_overflow_passing.toFixed(2) }}%</td>
                     <td>{{ row.underflow_passing.toFixed(2) }}%</td>
                     <td class="bal-col">{{ row.reconciled_underflow_passing.toFixed(2) }}%</td>
-                    <td>{{ row.partition_actual.toFixed(1) }}%</td>
+                    <td>{{ row.partition_raw ? row.partition_raw.toFixed(1) + '%' : '-' }}</td>
+                    <td class="bal-col">{{ row.partition_actual.toFixed(1) }}%</td>
                     <td>{{ row.partition_fitted.toFixed(1) }}%</td>
                   </tr>
                 </tbody>
@@ -1259,9 +1274,12 @@ function parityToY(val) {
 
 function getTrompCoords(sieves, key) {
   if (!sieves) return [];
-  return sieves.map(s => ({
+  const sorted = getSortedSievesAsc(sieves);
+  return sorted.map(s => ({
     x: sizeToXCoord(s.size_microns),
-    y: 210 - (s[key] * 1.9)
+    y: 210 - (s[key] * 1.9),
+    val: s[key],
+    size: s.size_microns
   }));
 }
 
