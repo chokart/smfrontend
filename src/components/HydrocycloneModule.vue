@@ -1059,6 +1059,104 @@
             </div>
           </div>
 
+          <!-- COMPARACIÓN DE PARÁMETROS GLOBALES: LÍNEA BASE vs. SIMULACIÓN -->
+          <div v-if="simResult.comparison_kpis && simResult.comparison_kpis.length" class="comparison-section">
+            <div class="table-title-row">
+              <h4>⚖️ Comparación de Variables: Línea Base Balanceada vs. Escenario Simulado</h4>
+              <span class="chart-hint">Impacto operacional al modificar variables de alimentación o geometría</span>
+            </div>
+            <div class="table-container-sieves-small">
+              <table class="data-table compact">
+                <thead>
+                  <tr>
+                    <th>Variable / Parámetro</th>
+                    <th>Unidad</th>
+                    <th>Línea Base (Balance)</th>
+                    <th>Escenario Simulado</th>
+                    <th>Variación (Δ)</th>
+                    <th>Variación (%)</th>
+                    <th>Tendencia</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(kpi, kidx) in simResult.comparison_kpis" :key="kidx">
+                    <td><strong>{{ kpi.parameter }}</strong></td>
+                    <td><code>{{ kpi.unit }}</code></td>
+                    <td class="bal-col">{{ kpi.baseline }} {{ kpi.unit !== '-' ? kpi.unit : '' }}</td>
+                    <td class="mod-col">{{ kpi.simulated }} {{ kpi.unit !== '-' ? kpi.unit : '' }}</td>
+                    <td :class="typeof kpi.delta === 'number' && kpi.delta > 0 ? 'trend-up-val' : (typeof kpi.delta === 'number' && kpi.delta < 0 ? 'trend-down-val' : '')">
+                      {{ typeof kpi.delta === 'number' ? (kpi.delta > 0 ? '+' : '') + kpi.delta.toFixed(2) : kpi.delta }}
+                    </td>
+                    <td>
+                      <span v-if="typeof kpi.delta_pct === 'number'" class="badge" :class="Math.abs(kpi.delta_pct) < 1 ? 'badge-good' : (kpi.delta_pct > 0 ? 'badge-trend-up' : 'badge-trend-down')">
+                        {{ (kpi.delta_pct > 0 ? '+' : '') + kpi.delta_pct.toFixed(1) }}%
+                      </span>
+                      <span v-else>-</span>
+                    </td>
+                    <td>
+                      <span v-if="kpi.trend === 'up'" class="trend-badge up">▲ Incrementa</span>
+                      <span v-else-if="kpi.trend === 'down'" class="trend-badge down">▼ Disminuye</span>
+                      <span v-else class="trend-badge equal">〓 Sin Cambio</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- COMPARACIÓN GRANULOMÉTRICA MALLA A MALLA: LÍNEA BASE vs. SIMULACIÓN -->
+          <div v-if="simResult.comparison_sieves && simResult.comparison_sieves.length" class="comparison-section">
+            <div class="table-title-row">
+              <h4>📊 Comparación Granulométrica Malla a Malla: Balance vs. Escenario Simulado</h4>
+              <span class="chart-hint">Desplazamiento del pasante en Rebose (Over), Descarga (Under) y Partición Tromp</span>
+            </div>
+            <div class="table-container-sieves-small">
+              <table class="data-table compact">
+                <thead>
+                  <tr>
+                    <th>Malla</th>
+                    <th>Feed (%)</th>
+                    <th>Over Base (%)</th>
+                    <th>Over Sim. (%)</th>
+                    <th>Δ Over</th>
+                    <th>Under Base (%)</th>
+                    <th>Under Sim. (%)</th>
+                    <th>Δ Under</th>
+                    <th>Tromp Base (%)</th>
+                    <th>Tromp Sim. (%)</th>
+                    <th>Δ Tromp</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, ridx) in simResult.comparison_sieves" :key="ridx">
+                    <td>
+                      <strong>{{ row.size_microns }} µm</strong>
+                      <small v-if="row.mesh_label" class="mesh-badge">{{ row.mesh_label }}</small>
+                    </td>
+                    <td>{{ row.feed_passing.toFixed(2) }}%</td>
+                    <td class="bal-col">{{ row.baseline_overflow.toFixed(2) }}%</td>
+                    <td class="mod-col">{{ row.simulated_overflow.toFixed(2) }}%</td>
+                    <td :class="row.delta_overflow > 0 ? 'trend-up-val' : (row.delta_overflow < 0 ? 'trend-down-val' : '')">
+                      {{ (row.delta_overflow > 0 ? '+' : '') + row.delta_overflow.toFixed(2) }}%
+                    </td>
+
+                    <td class="bal-col">{{ row.baseline_underflow.toFixed(2) }}%</td>
+                    <td class="mod-col">{{ row.simulated_underflow.toFixed(2) }}%</td>
+                    <td :class="row.delta_underflow > 0 ? 'trend-up-val' : (row.delta_underflow < 0 ? 'trend-down-val' : '')">
+                      {{ (row.delta_underflow > 0 ? '+' : '') + row.delta_underflow.toFixed(2) }}%
+                    </td>
+
+                    <td class="bal-col">{{ row.baseline_partition.toFixed(2) }}%</td>
+                    <td class="mod-col">{{ row.simulated_partition.toFixed(2) }}%</td>
+                    <td :class="row.delta_partition > 0 ? 'trend-up-val' : (row.delta_partition < 0 ? 'trend-down-val' : '')">
+                      {{ (row.delta_partition > 0 ? '+' : '') + row.delta_partition.toFixed(2) }}%
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           <!-- TABLA DE BALANCE PREDICHO -->
           <div class="streams-summary">
             <h4>Balance Másico Predicho por Corriente</h4>
@@ -1443,9 +1541,29 @@ async function executeCycloneSimulation() {
   }
   isLoading.value = true;
   try {
-    const res = await api.simulateCyclone(simForm);
+    const payload = {
+      ...simForm,
+      baseline: {
+        num_cyclones: calibForm.num_cyclones_operating,
+        pressure_kpa: calibForm.pressure_kpa,
+        feed_solids_tph: balanceResult.value?.feed?.solids_tph ?? calibForm.feed_solids_tph,
+        feed_cp: balanceResult.value?.feed?.solids_cp ?? calibForm.feed_cp,
+        overflow_cp: balanceResult.value?.overflow?.solids_cp ?? 27.98,
+        underflow_cp: balanceResult.value?.underflow?.solids_cp ?? calibForm.underflow_cp,
+        d50c_microns: balanceResult.value?.d50c_microns ?? calibForm.d50c_microns,
+        p80_over: balanceResult.value?.overflow?.p80_microns ?? 145.0,
+        p80_under: balanceResult.value?.underflow?.p80_microns ?? 320.0,
+        water_recovery_underflow_pct: balanceResult.value?.water_recovery_underflow_pct ?? calibForm.water_recovery_underflow_pct,
+        circulating_load_pct: balanceResult.value?.circulating_load_pct ?? 186.0,
+        total_q_m3h: balanceResult.value?.feed?.pulp_flow_m3h,
+        q_per_cyclone_m3h: calibResult.value?.q_per_cyclone_m3h,
+        underflow_cv_pct: calibResult.value?.underflow_cv_pct,
+        sieves: balanceResult.value?.reconciled_sieves ?? (calibForm.sieves?.length ? calibForm.sieves : balanceForm.sieves)
+      }
+    };
+    const res = await api.simulateCyclone(payload);
     simResult.value = res;
-    successMessage.value = `Simulación completada. Presión: ${res.predicted_pressure_kpa} kPa, d50c: ${res.d50c_microns} µm.`;
+    successMessage.value = `Simulación completada. Presión: ${res.predicted_pressure_kpa} kPa, d50c: ${res.d50c_microns} µm. Comparativa generada contra línea base.`;
   } catch (err) {
     errorMessage.value = err.message || 'Error en simulación predictiva.';
   } finally {
@@ -2251,6 +2369,53 @@ function formatScientific(val) {
   background: #fef9c3;
   color: #854d0e;
   border: 1px solid #fde047;
+}
+
+.trend-up-val {
+  color: #0284c7;
+  font-weight: 600;
+}
+
+.trend-down-val {
+  color: #d97706;
+  font-weight: 600;
+}
+
+.trend-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.trend-badge.up {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.trend-badge.down {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.trend-badge.equal {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.badge-trend-up {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.badge-trend-down {
+  background: #fef3c7;
+  color: #b45309;
 }
 
 .dot.grey { background: #94a3b8; }
