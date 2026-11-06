@@ -824,6 +824,103 @@
             </div>
           </div>
 
+          <!-- COMPARACIÓN DE PARÁMETROS GLOBALES: BALANCE vs. MODELO -->
+          <div v-if="calibResult.comparison_kpis && calibResult.comparison_kpis.length" class="comparison-section">
+            <div class="table-title-row">
+              <h4>⚖️ Comparación de Variables Globales (Balance vs. Modelo Nageswararao)</h4>
+              <span class="chart-hint">Verificación de calibración entre datos balanceados y modelo empírico</span>
+            </div>
+            <div class="table-container-sieves-small">
+              <table class="data-table compact">
+                <thead>
+                  <tr>
+                    <th>Variable de Operación</th>
+                    <th>Unidad</th>
+                    <th>Valor Balanceado (Encuesta)</th>
+                    <th>Valor Modelo (Nageswararao)</th>
+                    <th>Desviación |Δ|</th>
+                    <th>Error Relativo (%)</th>
+                    <th>Estado de Ajuste</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(kpi, kidx) in calibResult.comparison_kpis" :key="kidx">
+                    <td><strong>{{ kpi.parameter || kpi.variable }}</strong></td>
+                    <td><code>{{ kpi.unit }}</code></td>
+                    <td class="bal-col">{{ kpi.balanced !== undefined ? kpi.balanced : kpi.measured_balanced }} {{ kpi.unit }}</td>
+                    <td class="mod-col">{{ kpi.modeled !== undefined ? kpi.modeled : kpi.modeled_value }} {{ kpi.unit }}</td>
+                    <td :class="kpi.delta > 0.05 ? 'delta-high' : 'delta-zero'">
+                      {{ kpi.delta === 0 ? '0.00' : (kpi.delta > 0 ? '±' : '') + kpi.delta.toFixed(2) }}
+                    </td>
+                    <td>
+                      <span class="badge" :class="(kpi.delta_pct ?? kpi.relative_error_pct ?? 0) < 0.1 ? 'badge-success' : ((kpi.delta_pct ?? kpi.relative_error_pct ?? 0) < 2.0 ? 'badge-good' : 'badge-warning')">
+                        {{ (kpi.delta_pct !== undefined ? kpi.delta_pct : (kpi.relative_error_pct || 0)).toFixed(2) }}%
+                      </span>
+                    </td>
+                    <td>
+                      <span v-if="(kpi.delta_pct ?? kpi.relative_error_pct ?? 0) < 0.05" class="status-pill status-exact">🎯 Calibración Exacta</span>
+                      <span v-else-if="(kpi.delta_pct ?? kpi.relative_error_pct ?? 0) < 2.0" class="status-pill status-good">🟢 Excelente Ajuste</span>
+                      <span v-else class="status-pill status-acceptable">🟡 Ajuste Aceptable</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- COMPARACIÓN DETALLADA MALLA A MALLA: BALANCE vs. MODELO -->
+          <div v-if="calibResult.modeled_sieves && calibResult.modeled_sieves.length" class="comparison-section">
+            <div class="table-title-row">
+              <h4>📊 Comparación Granulométrica Malla a Malla (Balance vs. Modelo Nageswararao)</h4>
+              <span class="chart-hint">Flujos Reconciliados vs. Distribución Teórica Calculada por Curva Lynch-Rao</span>
+            </div>
+            <div class="table-container-sieves-small">
+              <table class="data-table compact">
+                <thead>
+                  <tr>
+                    <th>Malla</th>
+                    <th>% Alimentación</th>
+                    <th>Over Bal. (%)</th>
+                    <th>Over Mod. (%)</th>
+                    <th>Δ Over</th>
+                    <th>Under Bal. (%)</th>
+                    <th>Under Mod. (%)</th>
+                    <th>Δ Under</th>
+                    <th>Partición Bal. (%)</th>
+                    <th>Partición Mod. (%)</th>
+                    <th>Δ Partición</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, ridx) in calibResult.modeled_sieves" :key="ridx">
+                    <td>
+                      <strong>{{ row.size_microns }} µm</strong>
+                      <small v-if="row.mesh_label" class="mesh-badge">{{ row.mesh_label }}</small>
+                    </td>
+                    <td>{{ (row.feed_passing !== undefined ? row.feed_passing : row.feed_pct || 0).toFixed(2) }}%</td>
+                    <td class="bal-col">{{ (row.overflow_balanced !== undefined ? row.overflow_balanced : row.balanced_over_pct || 0).toFixed(2) }}%</td>
+                    <td class="mod-col">{{ (row.overflow_modeled !== undefined ? row.overflow_modeled : row.modeled_over_pct || 0).toFixed(2) }}%</td>
+                    <td :class="(row.delta_overflow ?? row.delta_over ?? 0) >= 0.5 ? 'delta-high' : ''">
+                      {{ ((row.delta_overflow !== undefined ? row.delta_overflow : row.delta_over) > 0 ? '±' : '') + (row.delta_overflow !== undefined ? row.delta_overflow : row.delta_over || 0).toFixed(2) }}%
+                    </td>
+                    
+                    <td class="bal-col">{{ (row.underflow_balanced !== undefined ? row.underflow_balanced : row.balanced_under_pct || 0).toFixed(2) }}%</td>
+                    <td class="mod-col">{{ (row.underflow_modeled !== undefined ? row.underflow_modeled : row.modeled_under_pct || 0).toFixed(2) }}%</td>
+                    <td :class="(row.delta_underflow ?? row.delta_under ?? 0) >= 0.5 ? 'delta-high' : ''">
+                      {{ ((row.delta_underflow !== undefined ? row.delta_underflow : row.delta_under) > 0 ? '±' : '') + (row.delta_underflow !== undefined ? row.delta_underflow : row.delta_under || 0).toFixed(2) }}%
+                    </td>
+
+                    <td class="bal-col">{{ (row.partition_balanced !== undefined ? row.partition_balanced : row.balanced_tromp_pct || 0).toFixed(2) }}%</td>
+                    <td class="mod-col">{{ (row.partition_modeled !== undefined ? row.partition_modeled : row.modeled_tromp_pct || 0).toFixed(2) }}%</td>
+                    <td :class="(row.delta_partition ?? row.delta_tromp ?? 0) >= 1.0 ? 'delta-high' : ''">
+                      {{ ((row.delta_partition !== undefined ? row.delta_partition : row.delta_tromp) > 0 ? '±' : '') + (row.delta_partition !== undefined ? row.delta_partition : row.delta_tromp || 0).toFixed(2) }}%
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           <div class="model-reference-card">
             <h4>Ecuaciones Calibradas para este Circuito</h4>
             <div class="equations-preview">
@@ -1184,6 +1281,7 @@ function transferBalanceToCalibration() {
   calibForm.d50c_microns = balanceResult.value.d50c_microns;
   calibForm.water_recovery_underflow_pct = balanceResult.value.water_recovery_underflow_pct;
   calibForm.sharpness_m = balanceResult.value.sharpness_m;
+  calibForm.sieves = balanceResult.value.reconciled_sieves || [];
   
   // Buscar pasante 38 µm
   const f38 = balanceResult.value.reconciled_sieves.find(s => s.size_microns <= 45);
@@ -1217,7 +1315,8 @@ const calibForm = reactive({
   d50c_microns: 93.8,
   water_recovery_underflow_pct: 12.76,
   sharpness_m: 2.44,
-  feed_fines_pct_minus_38um: 39.87
+  feed_fines_pct_minus_38um: 39.87,
+  sieves: []
 });
 
 const calibResult = ref(null);
@@ -1239,6 +1338,7 @@ function loadQuebradaHondaGMAX20Geometry() {
   calibForm.water_recovery_underflow_pct = 12.76;
   calibForm.sharpness_m = 2.44;
   calibForm.feed_fines_pct_minus_38um = 39.87;
+  calibForm.sieves = balanceResult.value?.reconciled_sieves || balanceForm.sieves;
   successMessage.value = 'Geometría oficial FLSmidth Krebs GMAX20-3588 (Plano medidas ciclones.pdf) cargada para Quebrada Honda.';
 }
 
@@ -1258,9 +1358,17 @@ async function executeCycloneCalibration() {
   successMessage.value = '';
   isLoading.value = true;
   try {
-    const res = await api.calibrateCyclone(calibForm);
+    const payload = { ...calibForm };
+    if (!payload.sieves || payload.sieves.length === 0) {
+      if (balanceResult.value?.reconciled_sieves?.length) {
+        payload.sieves = balanceResult.value.reconciled_sieves;
+      } else if (balanceForm.sieves?.length) {
+        payload.sieves = balanceForm.sieves;
+      }
+    }
+    const res = await api.calibrateCyclone(payload);
     calibResult.value = res;
-    successMessage.value = 'Constantes KD0, KQ0, KW0, KS0 calibradas exitosamente.';
+    successMessage.value = 'Constantes KD0, KQ0, KW0, KS0 calibradas y datos comparativos (Balance vs. Modelo) generados exitosamente.';
   } catch (err) {
     errorMessage.value = err.message || 'Error calibrando modelo de Nageswararao.';
   } finally {
@@ -2100,6 +2208,49 @@ function formatScientific(val) {
   font-weight: 600;
   color: #0284c7;
   background: #f0f9ff;
+}
+
+.mod-col {
+  font-weight: 600;
+  color: #7c3aed;
+  background: #f5f3ff;
+}
+
+.delta-zero {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.comparison-section {
+  margin-top: 20px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+.badge-good {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.status-exact {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.status-good {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.status-acceptable {
+  background: #fef9c3;
+  color: #854d0e;
+  border: 1px solid #fde047;
 }
 
 .dot.grey { background: #94a3b8; }
