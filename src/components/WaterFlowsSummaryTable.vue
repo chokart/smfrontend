@@ -18,6 +18,8 @@
           <th>De -> A</th>
           <th>Sólido Seco (tph)</th>
           <th>% Sólidos (Cp)</th>
+          <th>G.E.</th>
+          <th>Caudal Pulpa (m³/h)</th>
           <th>Pulpa (tph)</th>
           <th>Agua (tph)</th>
           <th class="status-col">¿Ajustar?</th>
@@ -75,6 +77,27 @@
                 <span class="error-val">±{{ flow.data.corrected_data.porcentaje_solidos_error.toFixed(1) }}</span>
               </div>
             </template>
+          </td>
+
+          <!-- G.E. SÓLIDOS -->
+          <td class="data-cell">
+            <template v-if="flow.data?.is_water_only">
+              <span style="color: #64748b;">1.00</span>
+            </template>
+            <template v-else>
+              <span>{{ getFlowGe(flow).toFixed(2) }}</span>
+            </template>
+          </td>
+
+          <!-- CAUDAL PULPA (m³/h) -->
+          <td class="data-cell highlight-p" style="color: #0284c7; font-weight: 600;">
+            <div v-if="flow.data?.corrected_data">
+              {{ (flow.data.corrected_data.caudal_pulpa_m3h ?? getEstimatedFlowM3h(flow) ?? 0).toFixed(2) }} m³/h
+            </div>
+            <div v-else-if="getEstimatedFlowM3h(flow) != null">
+              <span>{{ getEstimatedFlowM3h(flow).toFixed(2) }} m³/h</span>
+            </div>
+            <div v-else>--</div>
           </td>
 
           <!-- PULPA (CALCULADO) -->
@@ -149,6 +172,21 @@ function getFlowSolidValue(flow) {
     return Number(flow.data.tonelaje_pulpa) * (Number(flow.data.porcentaje_solidos) / 100.0)
   }
   return 0
+}
+
+function getFlowGe(flow) {
+  return Number(flow.data?.gravedad_especifica) || 2.7
+}
+
+function getEstimatedFlowM3h(flow) {
+  if (flow.data?.is_water_only) {
+    return flow.data?.tonelaje_agua != null ? Number(flow.data.tonelaje_agua) : 0
+  }
+  const s = getFlowSolidValue(flow)
+  const w = getEstimatedWater(flow)
+  if (s == null || w == null) return null
+  const ge = getFlowGe(flow)
+  return (s / ge) + w
 }
 
 function getEstimatedPulp(flow) {
@@ -245,7 +283,7 @@ function toggleSolidosFixed(flow) {
 
 async function copyTableToClipboard() {
   if (!props.flows || props.flows.length === 0) return
-  const headers = ['ID Flujo', 'De', 'A', '¿Ajustar Sólido?', 'Sólido Seco (tph)', '% Sólidos (Cp)', '¿% Sólidos Fijo?', 'Pulpa (tph)', 'Agua (tph)', 'Estado']
+  const headers = ['ID Flujo', 'De', 'A', '¿Ajustar Sólido?', 'Sólido Seco (tph)', '% Sólidos (Cp)', 'G.E.', 'Caudal Pulpa (m³/h)', '¿% Sólidos Fijo?', 'Pulpa (tph)', 'Agua (tph)', 'Estado']
   let tsv = headers.join('\t') + '\n'
 
   props.flows.forEach(flow => {
@@ -259,6 +297,8 @@ async function copyTableToClipboard() {
       getAdjustmentLabel(flow),
       sVal != null ? sVal : '',
       flow.data?.porcentaje_solidos != null ? flow.data.porcentaje_solidos : '',
+      getFlowGe(flow).toFixed(2),
+      flow.data?.corrected_data ? (flow.data.corrected_data.caudal_pulpa_m3h ?? getEstimatedFlowM3h(flow) ?? 0).toFixed(2) : (getEstimatedFlowM3h(flow)?.toFixed(2) ?? '--'),
       flow.data?.porcentaje_solidos_fixed ? 'Sí' : 'No',
       pCalc,
       wCalc,

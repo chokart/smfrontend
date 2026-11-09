@@ -76,6 +76,7 @@
         :modelValue="selectedElement" 
         @update:modelValue="handlePropertiesUpdate"
         @delete="handleDeleteSelected"
+        @apply-ge-to-all="handleApplyGeToAll"
       />
       <WaterPropertiesPanel 
         v-if="activeModule === 'water'"
@@ -261,6 +262,7 @@ const createDefaultFlowData = () => {
       porcentaje_solidos: 30.0,
       porcentaje_solidos_error: 0.5,
       porcentaje_solidos_fixed: false,
+      gravedad_especifica: 2.7,
       corrected_data: null,
       tonelaje_pulpa: 100.0,
       tonelaje_pulpa_error: 1.0,
@@ -438,6 +440,9 @@ function loadSavedOrInitialDiagram() {
               if (edge.data.tonelaje_solido_fixed === undefined && edge.data.tonelaje_pulpa_fixed !== undefined) {
                 edge.data.tonelaje_solido_fixed = !!edge.data.tonelaje_pulpa_fixed;
               }
+              if (edge.data.gravedad_especifica == null) {
+                edge.data.gravedad_especifica = 2.7;
+              }
             }
           });
         }
@@ -596,6 +601,23 @@ function handleSelection(element) {
   selectedElement.value = element
 }
 
+function handleApplyGeToAll(newGe) {
+  const geVal = Number(newGe) || 2.7;
+  const currentEdges = getEdges();
+  currentEdges.forEach(edge => {
+    if (edge.data) {
+      edge.data.gravedad_especifica = geVal;
+    }
+  });
+  if (diagramRef.value && diagramRef.value.setEdges) {
+    diagramRef.value.setEdges([...currentEdges]);
+  }
+  if (selectedElement.value && selectedElement.value.data) {
+    selectedElement.value.data.gravedad_especifica = geVal;
+  }
+  scheduleSave();
+}
+
 function handlePropertiesUpdate(payload) {
   if (!payload) {
     selectedElement.value = null;
@@ -703,7 +725,8 @@ async function reconcile() {
               porcentaje_solidos_fixed: isWater ? true : !!f.data.porcentaje_solidos_fixed,
               tonelaje_pulpa: isWater ? wVal : f.data.tonelaje_pulpa,
               tonelaje_pulpa_error: isWater ? wErr : f.data.tonelaje_pulpa_error,
-              tonelaje_pulpa_fixed: isWater ? wFixed : sFixed
+              tonelaje_pulpa_fixed: isWater ? wFixed : sFixed,
+              gravedad_especifica: Number(f.data.gravedad_especifica) || 2.7
             }
           };
         })
@@ -810,7 +833,8 @@ async function handleVerifyEquations() {
               porcentaje_solidos_not_measured: f.data.porcentaje_solidos_not_measured || false,
               tonelaje_pulpa: isWater ? wVal : f.data.tonelaje_pulpa,
               tonelaje_pulpa_error: isWater ? wErr : f.data.tonelaje_pulpa_error,
-              tonelaje_pulpa_fixed: isWater ? wFixed : sFixed
+              tonelaje_pulpa_fixed: isWater ? wFixed : sFixed,
+              gravedad_especifica: Number(f.data.gravedad_especifica) || 2.7
             },
           };
         }),

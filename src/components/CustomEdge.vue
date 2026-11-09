@@ -54,6 +54,18 @@ function getWaterValue(d) {
   return Math.max(0, getPulpValue(d) - getSolidValue(d))
 }
 
+function getSpecificGravity(d) {
+  return Number(d.gravedad_especifica) || 2.7
+}
+
+function getPulpFlowM3h(d) {
+  if (d.is_water_only) return getWaterValue(d)
+  const s = getSolidValue(d)
+  const w = getWaterValue(d)
+  const ge = getSpecificGravity(d)
+  return (s / ge) + w
+}
+
 const edgeStyle = computed(() => {
   if (props.data?.is_water_only) {
     return {
@@ -98,17 +110,20 @@ const edgeStyle = computed(() => {
           <span v-if="data.tonelaje_solido_fixed || data.tonelaje_pulpa_fixed" class="edge-fixed-badge">🔒 Sólido Fijo</span>
           <span v-else-if="data.not_measured" class="edge-unmeasured-badge">🚫 No med.</span>
           <span v-if="data.porcentaje_solidos_fixed" class="edge-solidos-badge">🔒 %S Fijo</span>
+          <span class="edge-ge-badge" :title="'Gravedad Específica: ' + getSpecificGravity(data)">GE {{ getSpecificGravity(data).toFixed(1) }}</span>
         </div>
         <template v-if="data.corrected_data">
-          <div><strong>T.Sol:</strong> {{ getSolidValue(data).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_solido_corregido ?? data.corrected_data.tonelaje_solido_calculado ?? 0).toFixed(2) }}</span></div>
-          <div><strong>%Sol:</strong> {{ Number(data.porcentaje_solidos).toFixed(1) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.porcentaje_solidos_corregido).toFixed(1) }}</span></div>
-          <div><strong>Pulpa:</strong> {{ getPulpValue(data).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_pulpa_calculado ?? data.corrected_data.tonelaje_pulpa_corregido ?? 0).toFixed(2) }}</span></div>
-          <div><strong>T.Agua:</strong> {{ getWaterValue(data).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_agua_calculado).toFixed(2) }}</span></div>
+          <div><strong>T.Sol:</strong> {{ getSolidValue(data).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_solido_corregido ?? data.corrected_data.tonelaje_solido_calculado ?? 0).toFixed(2) }} t/h</span></div>
+          <div><strong>%Sol:</strong> {{ Number(data.porcentaje_solidos).toFixed(1) }}% <span style="color: #007bff;">➔ {{ Number(data.corrected_data.porcentaje_solidos_corregido).toFixed(1) }}%</span></div>
+          <div><strong>Pulpa:</strong> {{ getPulpValue(data).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_pulpa_calculado ?? data.corrected_data.tonelaje_pulpa_corregido ?? 0).toFixed(2) }} t/h</span></div>
+          <div><strong>Q.Pulpa:</strong> {{ getPulpFlowM3h(data).toFixed(2) }} <span style="color: #0284c7;">➔ {{ Number(data.corrected_data.caudal_pulpa_m3h ?? getPulpFlowM3h({ ...data, tonelaje_solido: data.corrected_data.tonelaje_solido_corregido, porcentaje_solidos: data.corrected_data.porcentaje_solidos_corregido })).toFixed(2) }} m³/h</span></div>
+          <div><strong>T.Agua:</strong> {{ getWaterValue(data).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_agua_calculado).toFixed(2) }} t/h</span></div>
         </template>
         <template v-else>
           <div><strong>T.Sol:</strong> {{ getSolidValue(data).toFixed(2) }} t/h</div>
-          <div><strong>%Sol:</strong> {{ Number(data.porcentaje_solidos).toFixed(1) }} %</div>
+          <div><strong>%Sol:</strong> {{ Number(data.porcentaje_solidos).toFixed(1) }}%</div>
           <div><strong>Pulpa:</strong> {{ getPulpValue(data).toFixed(2) }} t/h</div>
+          <div style="color: #0284c7;"><strong>Q.Pulpa:</strong> {{ getPulpFlowM3h(data).toFixed(2) }} m³/h</div>
           <div><strong>T.Agua:</strong> {{ getWaterValue(data).toFixed(2) }} t/h</div>
         </template>
       </div>
@@ -139,6 +154,16 @@ const edgeStyle = computed(() => {
   background-color: #f8f9fa;
   border-color: #007bff;
   cursor: pointer;
+}
+
+.edge-ge-badge {
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 8px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  border: 1px solid #cbd5e1;
+  font-weight: 600;
 }
 
 .edge-badges-container {

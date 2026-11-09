@@ -196,7 +196,61 @@
             <label>Fijo</label>
           </div>
 
-          <!-- RESULTADOS CALCULADOS TRAS RECONCILIACIÓN -->
+          <div class="section-title">Flujo de Pulpa & Gravedad Específica</div>
+
+<div class="form-group">
+  <div class="label-with-presets">
+    <label>Gravedad Específica Sólidos (G.E.):</label>
+    <div class="preset-buttons">
+      <span class="preset-label">Pre:</span>
+      <button type="button" class="preset-btn" @click="setGe(2.65)" title="Cuarzo / Típico pórfido">2.65</button>
+      <button type="button" class="preset-btn" @click="setGe(2.70)" title="Valor estándar">2.70</button>
+      <button type="button" class="preset-btn" @click="setGe(2.80)" title="Sulfuros moderados">2.80</button>
+      <button type="button" class="preset-btn" @click="setGe(3.00)" title="Sulfuros densos">3.00</button>
+    </div>
+  </div>
+  <input 
+    v-model.number="localData.gravedad_especifica" 
+    type="number" 
+    step="0.05" 
+    min="1.0" 
+    max="6.0" 
+    placeholder="2.7" 
+    @input="update" 
+  />
+  <small class="rel-hint">
+    Densidad del mineral seco (t/m³ o g/cm³).
+  </small>
+</div>
+
+<div class="ge-all-action-row">
+  <button 
+    type="button" 
+    class="btn-apply-all-ge" 
+    @click="applyGeToAll" 
+    title="Aplica este valor de G.E. a todos los flujos de pulpa del diagrama"
+  >
+    🌐 Aplicar {{ (Number(localData.gravedad_especifica) || 2.7).toFixed(2) }} a todos los flujos
+  </button>
+</div>
+
+<!-- TARJETA INFORMATIVA DE PULPA CALCULADA EN VIVO -->
+<div class="pulp-live-summary-card">
+  <div class="pulp-live-row">
+    <span class="pulp-live-label">Caudal de Pulpa:</span>
+    <strong class="pulp-live-val highlight-val">{{ calculatedPulpFlowM3h.toFixed(2) }} m³/h</strong>
+  </div>
+  <div class="pulp-live-row">
+    <span class="pulp-live-label">Flujo Másico Pulpa:</span>
+    <strong class="pulp-live-val">{{ calculatedPulpMassTph.toFixed(2) }} tph</strong>
+  </div>
+  <div class="pulp-live-row">
+    <span class="pulp-live-label">Densidad Pulpa (ρp):</span>
+    <strong class="pulp-live-val">{{ calculatedPulpDensity.toFixed(3) }} t/m³</strong>
+  </div>
+</div>
+
+<!-- RESULTADOS CALCULADOS TRAS RECONCILIACIÓN -->
           <div v-if="localData.corrected_data" class="results-section">
             <div class="section-title">Resultados Ajustados</div>
             <div class="result-item">
@@ -216,6 +270,14 @@
             <div class="result-item highlight">
               <span>Pulpa (Calc.):</span> 
               <strong>{{ (localData.corrected_data.tonelaje_pulpa_calculado ?? localData.corrected_data.tonelaje_pulpa_corregido ?? 0).toFixed(2) }} tph</strong>
+            </div>
+            <div class="result-item highlight" style="color: #0284c7;">
+              <span>Caudal Pulpa:</span> 
+              <strong>{{ (localData.corrected_data.caudal_pulpa_m3h ?? 0).toFixed(2) }} m³/h</strong>
+            </div>
+            <div class="result-item">
+              <span>Densidad Pulpa:</span> 
+              <strong>{{ (localData.corrected_data.densidad_pulpa ?? 0).toFixed(3) }} t/m³</strong>
             </div>
             <div class="result-item highlight">
               <span>Agua (Calc.):</span> 
@@ -245,7 +307,7 @@ const props = defineProps({
   modelValue: Object
 })
 
-const emit = defineEmits(['update:modelValue', 'delete'])
+const emit = defineEmits(['update:modelValue', 'delete', 'apply-ge-to-all'])
 
 const isNode = computed(() => props.modelValue && props.modelValue.position)
 const title = computed(() => isNode.value ? 'Nodo' : 'Flujo')
@@ -254,12 +316,52 @@ const localData = ref({})
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
     localData.value = JSON.parse(JSON.stringify(newVal.data || {}))
+    if (localData.value.gravedad_especifica == null) localData.value.gravedad_especifica = 2.7
     if (newVal.position) {
       if (!localData.value.targetPosition) localData.value.targetPosition = newVal.targetPosition || 'left'
       if (!localData.value.sourcePosition) localData.value.sourcePosition = newVal.sourcePosition || 'right'
     }
   }
 }, { immediate: true, deep: true })
+
+const calculatedPulpMassTph = computed(() => {
+  if (localData.value.is_water_only) return localData.value.tonelaje_agua || 0
+  const s = Number(localData.value.tonelaje_solido) || 0
+  const cp = Number(localData.value.porcentaje_solidos) || 0
+  if (cp > 0) return s / (cp / 100.0)
+  return 0
+})
+
+const calculatedWaterMassTph = computed(() => {
+  if (localData.value.is_water_only) return localData.value.tonelaje_agua || 0
+  return Math.max(0, calculatedPulpMassTph.value - (Number(localData.value.tonelaje_solido) || 0))
+})
+
+const calculatedPulpDensity = computed(() => {
+  if (localData.value.is_water_only) return 1.0
+  const cp = Number(localData.value.porcentaje_solidos) || 0
+  const ge = Number(localData.value.gravedad_especifica) || 2.7
+  if (cp <= 0) return 1.0
+  return 100.0 / ((cp / ge) + ((100.0 - cp) / 1.0))
+})
+
+const calculatedPulpFlowM3h = computed(() => {
+  if (localData.value.is_water_only) return localData.value.tonelaje_agua || 0
+  const s = Number(localData.value.tonelaje_solido) || 0
+  const w = calculatedWaterMassTph.value
+  const ge = Number(localData.value.gravedad_especifica) || 2.7
+  return (s / ge) + w
+})
+
+function setGe(val) {
+  localData.value.gravedad_especifica = val
+  update()
+}
+
+function applyGeToAll() {
+  const val = Number(localData.value.gravedad_especifica) || 2.7
+  emit("apply-ge-to-all", val)
+}
 
 function onNotMeasuredChange() {
   if (localData.value.not_measured) {
@@ -523,4 +625,42 @@ input:disabled {
   color: #0369a1 !important;
   border-color: #bae6fd !important;
 }
+.ge-all-action-row {
+  margin-top: 6px;
+  margin-bottom: 12px;
+}
+.btn-apply-all-ge {
+  width: 100%;
+  padding: 6px 10px;
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-apply-all-ge:hover {
+  background: #dcfce7;
+  border-color: #86efac;
+}
+.pulp-live-summary-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+.pulp-live-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+}
+.pulp-live-row:last-child { margin-bottom: 0; }
+.pulp-live-label { color: #64748b; }
+.pulp-live-val { color: #1e293b; }
+.highlight-val { color: #0284c7; }
 </style>
