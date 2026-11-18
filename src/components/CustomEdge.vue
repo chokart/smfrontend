@@ -66,6 +66,11 @@ function getPulpFlowM3h(d) {
   return (s / ge) + w
 }
 
+const ELEMENT_COLORS = ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#64748b']
+function getElementColor(index) {
+  return ELEMENT_COLORS[index % ELEMENT_COLORS.length]
+}
+
 const edgeStyle = computed(() => {
   if (props.data?.is_water_only) {
     return {
@@ -96,15 +101,20 @@ const edgeStyle = computed(() => {
           <span v-if="data.tonelaje_agua_fixed" class="edge-fixed-badge">🔒 Fijo</span>
           <span v-else-if="data.not_measured" class="edge-unmeasured-badge">🚫 No med.</span>
         </div>
-        <template v-if="data.corrected_data">
-          <div><strong>Agua:</strong> {{ (data.tonelaje_agua || 0).toFixed(2) }} <span style="color: #0284c7;">➔ {{ Number(data.corrected_data.tonelaje_agua_calculado ?? 0).toFixed(2) }} t/h</span></div>
-        </template>
-        <template v-else>
-          <div><strong>Agua:</strong> {{ data.not_measured ? '🚫 Deducir' : ((data.tonelaje_agua || 0).toFixed(2) + ' t/h') }}</div>
-        </template>
+        <div class="edge-val-row" title="Flujo de Agua">
+          <div class="val-left">
+            <span class="val-bullet bullet-water"></span>
+            <span v-if="data.not_measured && !data.corrected_data" class="val-number unmeasured">🚫 Deducir</span>
+            <template v-else>
+              <span class="val-number">{{ (data.tonelaje_agua || 0).toFixed(2) }}</span>
+              <span v-if="data.corrected_data" class="val-rec water">➔ {{ Number(data.corrected_data.tonelaje_agua_calculado ?? 0).toFixed(2) }}</span>
+            </template>
+          </div>
+          <span class="val-unit">t/h</span>
+        </div>
       </div>
 
-      <!-- FLUJO DE PULPA MINERAL -->
+      <!-- FLUJO DE PULPA MINERAL (BALANCE DE AGUA) -->
       <div v-else-if="'tonelaje_solido' in data || 'tonelaje_pulpa' in data">
         <div class="edge-badges-container">
           <span v-if="data.tonelaje_solido_fixed || data.tonelaje_pulpa_fixed" class="edge-fixed-badge">🔒 Sólido Fijo</span>
@@ -112,38 +122,89 @@ const edgeStyle = computed(() => {
           <span v-if="data.porcentaje_solidos_fixed" class="edge-solidos-badge">🔒 %S Fijo</span>
           <span class="edge-ge-badge" :title="'Gravedad Específica: ' + getSpecificGravity(data)">GE {{ getSpecificGravity(data).toFixed(1) }}</span>
         </div>
-        <template v-if="data.corrected_data">
-          <div><strong>T.Sol:</strong> {{ getSolidValue(data).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_solido_corregido ?? data.corrected_data.tonelaje_solido_calculado ?? 0).toFixed(2) }} t/h</span></div>
-          <div><strong>%Sol:</strong> {{ Number(data.porcentaje_solidos).toFixed(1) }}% <span style="color: #007bff;">➔ {{ Number(data.corrected_data.porcentaje_solidos_corregido).toFixed(1) }}%</span></div>
-          <div><strong>Pulpa:</strong> {{ getPulpValue(data).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_pulpa_calculado ?? data.corrected_data.tonelaje_pulpa_corregido ?? 0).toFixed(2) }} t/h</span></div>
-          <div><strong>Q.Pulpa:</strong> {{ getPulpFlowM3h(data).toFixed(2) }} <span style="color: #0284c7;">➔ {{ Number(data.corrected_data.caudal_pulpa_m3h ?? getPulpFlowM3h({ ...data, tonelaje_solido: data.corrected_data.tonelaje_solido_corregido, porcentaje_solidos: data.corrected_data.porcentaje_solidos_corregido })).toFixed(2) }} m³/h</span></div>
-          <div><strong>T.Agua:</strong> {{ getWaterValue(data).toFixed(2) }} <span style="color: #007bff;">➔ {{ Number(data.corrected_data.tonelaje_agua_calculado).toFixed(2) }} t/h</span></div>
-        </template>
-        <template v-else>
-          <div><strong>T.Sol:</strong> {{ getSolidValue(data).toFixed(2) }} t/h</div>
-          <div><strong>%Sol:</strong> {{ Number(data.porcentaje_solidos).toFixed(1) }}%</div>
-          <div><strong>Pulpa:</strong> {{ getPulpValue(data).toFixed(2) }} t/h</div>
-          <div style="color: #0284c7;"><strong>Q.Pulpa:</strong> {{ getPulpFlowM3h(data).toFixed(2) }} m³/h</div>
-          <div><strong>T.Agua:</strong> {{ getWaterValue(data).toFixed(2) }} t/h</div>
-        </template>
+
+        <!-- Fila 1: Sólido Seco -->
+        <div class="edge-val-row" title="1. Tonelaje Sólido Seco (t/h)">
+          <div class="val-left">
+            <span class="val-bullet bullet-solid"></span>
+            <span class="val-number">{{ getSolidValue(data).toFixed(2) }}</span>
+            <span v-if="data.corrected_data" class="val-rec water">➔ {{ Number(data.corrected_data.tonelaje_solido_corregido ?? data.corrected_data.tonelaje_solido_calculado ?? 0).toFixed(2) }}</span>
+          </div>
+          <span class="val-unit">t/h</span>
+        </div>
+
+        <!-- Fila 2: % Sólidos -->
+        <div class="edge-val-row" title="2. Porcentaje de Sólidos (% Cp)">
+          <div class="val-left">
+            <span class="val-bullet bullet-cp"></span>
+            <span class="val-number">{{ Number(data.porcentaje_solidos).toFixed(1) }}</span>
+            <span v-if="data.corrected_data" class="val-rec water">➔ {{ Number(data.corrected_data.porcentaje_solidos_corregido).toFixed(1) }}</span>
+          </div>
+          <span class="val-unit">%</span>
+        </div>
+
+        <!-- Fila 3: Flujo Pulpa -->
+        <div class="edge-val-row" title="3. Flujo de Pulpa (t/h)">
+          <div class="val-left">
+            <span class="val-bullet bullet-pulp"></span>
+            <span class="val-number">{{ getPulpValue(data).toFixed(2) }}</span>
+            <span v-if="data.corrected_data" class="val-rec water">➔ {{ Number(data.corrected_data.tonelaje_pulpa_calculado ?? data.corrected_data.tonelaje_pulpa_corregido ?? 0).toFixed(2) }}</span>
+          </div>
+          <span class="val-unit">t/h</span>
+        </div>
+
+        <!-- Fila 4: Caudal Pulpa -->
+        <div class="edge-val-row row-highlight-caudal" title="4. Caudal de Pulpa (m³/h)">
+          <div class="val-left">
+            <span class="val-bullet bullet-flow"></span>
+            <span class="val-number">{{ getPulpFlowM3h(data).toFixed(2) }}</span>
+            <span v-if="data.corrected_data" class="val-rec water">➔ {{ Number(data.corrected_data.caudal_pulpa_m3h ?? getPulpFlowM3h({ ...data, tonelaje_solido: data.corrected_data.tonelaje_solido_corregido, porcentaje_solidos: data.corrected_data.porcentaje_solidos_corregido })).toFixed(2) }}</span>
+          </div>
+          <span class="val-unit">m³/h</span>
+        </div>
+
+        <!-- Fila 5: Flujo Agua -->
+        <div class="edge-val-row" title="5. Flujo de Agua (t/h)">
+          <div class="val-left">
+            <span class="val-bullet bullet-water"></span>
+            <span class="val-number">{{ getWaterValue(data).toFixed(2) }}</span>
+            <span v-if="data.corrected_data" class="val-rec water">➔ {{ Number(data.corrected_data.tonelaje_agua_calculado).toFixed(2) }}</span>
+          </div>
+          <span class="val-unit">t/h</span>
+        </div>
       </div>
+
+      <!-- FLUJO METALÚRGICO (LEYES) -->
       <div v-else-if="'tonelaje' in data">
         <div class="edge-badges-container">
           <span v-if="data.tonelaje_fixed" class="edge-fixed-badge">🔒 Fijo</span>
           <span v-else-if="data.not_measured" class="edge-unmeasured-badge">🚫 No med.</span>
         </div>
-        <template v-if="data.corrected_tonelaje != null">
-          <div><strong>Ton:</strong> {{ Number(data.tonelaje).toFixed(2) }} <span style="color: #28a745;">➔ {{ Number(data.corrected_tonelaje).toFixed(2) }}</span></div>
-          <div v-for="el in (data.elementos || [])" :key="el.name">
-            <strong>{{ el.name }}:</strong> {{ Number(el.ley).toFixed(2) }} <span v-if="el.corrected_data" style="color: #28a745;">➔ {{ Number(el.corrected_data.ley_corregida).toFixed(2) }}</span>
+
+        <!-- Fila 1: Tonelaje Seco -->
+        <div class="edge-val-row" title="1. Tonelaje Seco (t/h)">
+          <div class="val-left">
+            <span class="val-bullet bullet-ton"></span>
+            <span class="val-number">{{ Number(data.tonelaje).toFixed(2) }}</span>
+            <span v-if="data.corrected_tonelaje != null" class="val-rec metal">➔ {{ Number(data.corrected_tonelaje).toFixed(2) }}</span>
           </div>
-        </template>
-        <template v-else>
-          <div><strong>Ton:</strong> {{ Number(data.tonelaje).toFixed(2) }} t/h</div>
-          <div v-for="el in (data.elementos || [])" :key="el.name">
-            <strong>{{ el.name }}:</strong> {{ Number(el.ley).toFixed(2) }} %
+          <span class="val-unit">t/h</span>
+        </div>
+
+        <!-- Filas 2..N: Leyes de Elementos -->
+        <div 
+          v-for="(el, idx) in (data.elementos || [])" 
+          :key="el.name" 
+          class="edge-val-row" 
+          :title="`Fila ${idx + 2}: Ley ${el.name} (%)`"
+        >
+          <div class="val-left">
+            <span class="val-bullet" :style="{ backgroundColor: getElementColor(idx) }"></span>
+            <span class="val-number">{{ Number(el.ley).toFixed(2) }}</span>
+            <span v-if="el.corrected_data" class="val-rec metal">➔ {{ Number(el.corrected_data.ley_corregida).toFixed(2) }}</span>
           </div>
-        </template>
+          <span class="val-unit">%</span>
+        </div>
       </div>
     </div>
   </EdgeLabelRenderer>
@@ -154,6 +215,65 @@ const edgeStyle = computed(() => {
   background-color: #f8f9fa;
   border-color: #007bff;
   cursor: pointer;
+}
+
+.edge-val-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  line-height: 1.35;
+  padding: 1px 0;
+  white-space: nowrap;
+}
+
+.val-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.val-bullet {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.bullet-ton { background-color: #4b5563; }
+.bullet-solid { background-color: #8d6e63; }
+.bullet-cp { background-color: #7c3aed; }
+.bullet-pulp { background-color: #ea580c; }
+.bullet-flow { background-color: #0284c7; }
+.bullet-water { background-color: #06b6d4; }
+
+.val-number {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.val-rec {
+  font-weight: 700;
+  margin-left: 2px;
+}
+.val-rec.water { color: #0284c7; }
+.val-rec.metal { color: #16a34a; }
+
+.val-unit {
+  color: #64748b;
+  font-size: 8.5px;
+  font-weight: 500;
+  margin-left: 2px;
+}
+
+.row-highlight-caudal .val-number,
+.row-highlight-caudal .val-unit {
+  color: #0284c7;
+}
+
+.unmeasured {
+  color: #94a3b8;
+  font-style: italic;
 }
 
 .edge-ge-badge {

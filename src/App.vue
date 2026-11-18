@@ -88,6 +88,8 @@
           :key="`${activeModule}-${diagramKey}`"
           :nodes="initialNodes" 
           :edges="initialEdges"
+          :active-module="activeModule"
+          :element-names="elementNames"
           @connect="onConnect"
           @element-click="handleSelection"
           @change="scheduleSave"

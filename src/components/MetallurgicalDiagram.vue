@@ -2,10 +2,13 @@
 import { Handle, Position, VueFlow, useVueFlow } from '@vue-flow/core'
 import { ref, watch, nextTick } from 'vue'
 import CustomEdge from './CustomEdge.vue'
+import DiagramLegend from './DiagramLegend.vue'
 
 const props = defineProps({
   nodes: { type: Array, default: () => [] },
   edges: { type: Array, default: () => [] },
+  activeModule: { type: String, default: 'metallurgical' },
+  elementNames: { type: Array, default: () => ['Cu'] },
 })
 
 const emit = defineEmits(['element-click', 'connect', 'change'])
@@ -262,6 +265,12 @@ const getNodeStyle = (node) => {
         <CustomEdge v-bind="props" @click="onEdgeClick({ edge: props })" />
       </template>
     </VueFlow>
+
+    <!-- LEYENDA DEL DIAGRAMA -->
+    <DiagramLegend 
+      :module="activeModule" 
+      :element-names="elementNames" 
+    />
 
     <!-- BOTONES DE ZOOM -->
     <div class="zoom-controls">
