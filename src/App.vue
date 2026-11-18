@@ -99,24 +99,11 @@
           {{ isSummaryExpanded ? '▼ Contraer' : '▲ Expandir' }}
         </button>
         
-        <!-- TABLAS DE RESUMEN DINÁMICAS -->
+        <!-- TABLAS DE RESUMEN POR NODO -->
         <template v-if="activeModule === 'metallurgical'">
-          <FlowsSummaryTable 
-            :nodes="currentNodes" 
-            :flows="currentEdges" 
-            :element-names="elementNames" 
-            @open-excel="isExcelModalVisible = true"
-            @update-flow="handleFlowUpdate"
-          />
           <NodesSummaryTable :nodes="currentNodes" :flows="currentEdges" :element-names="elementNames" />
         </template>
         <template v-else>
-          <WaterFlowsSummaryTable 
-            :nodes="currentNodes" 
-            :flows="currentEdges" 
-            @open-excel="isExcelModalVisible = true"
-            @update-flow="handleFlowUpdate"
-          />
           <NodesSummaryTable :nodes="currentNodes" :flows="currentEdges" :element-names="[]" />
         </template>
       </div>
@@ -173,8 +160,6 @@ import MetallurgicalDiagram from './components/MetallurgicalDiagram.vue'
 import Toolbar from './components/Toolbar.vue'
 import PropertiesPanel from './components/PropertiesPanel.vue'
 import WaterPropertiesPanel from './components/WaterPropertiesPanel.vue'
-import FlowsSummaryTable from './components/FlowsSummaryTable.vue'
-import WaterFlowsSummaryTable from './components/WaterFlowsSummaryTable.vue'
 import NodesSummaryTable from './components/NodesSummaryTable.vue'
 import ElementConfigPanel from './components/ElementConfigPanel.vue'
 import LoadingSpinner from './components/LoadingSpinner.vue'
