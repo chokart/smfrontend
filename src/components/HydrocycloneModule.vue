@@ -6,7 +6,7 @@
         <span class="cyclone-icon">🌪️</span>
         <div>
           <h2>Módulo de Hidrociclones (Modelo Nageswararao)</h2>
-          <p class="subtitle">Balance granulométrico, calibración de constantes JKMRC y simulación predictiva de clasificación</p>
+          <p class="subtitle">Balance granulométrico, calibración de constantes de Nageswararao y simulación predictiva de clasificación</p>
         </div>
       </div>
 
@@ -779,7 +779,7 @@
         <!-- RESULTADOS DE CALIBRACIÓN -->
         <section v-if="calibResult" class="card results-card">
           <div class="card-header">
-            <h3>🎯 Constantes Calibradas de Nageswararao (JKMRC)</h3>
+            <h3>🎯 Constantes Calibradas de Nageswararao</h3>
             <button class="btn btn-accent btn-sm" @click="transferCalibrationToSimulation">
               ➡️ Transferir a Simulación
             </button>
