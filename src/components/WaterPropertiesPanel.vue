@@ -18,7 +18,8 @@
             <option value="initial">Alimento</option>
             <option value="process">Proceso (Cajón)</option>
             <option value="product">Producto</option>
-            <option value="water_source">💧 Fuente de Agua (Tanque / Suministro)</option>
+            <option value="water_source">💧 Fuente de Agua (Entrada)</option>
+            <option value="water_sink">💧 Salida de Agua (Recuperada / Efluente)</option>
           </select>
         </div>
         <div class="section-title">Puntos de Conexión del Nodo</div>
@@ -31,7 +32,7 @@
             <option value="bottom">Abajo (Bottom) ⬇️</option>
           </select>
         </div>
-        <div class="form-group" v-if="localData.node_type === 'initial' || localData.node_type === 'process' || localData.node_type === 'water_source'">
+        <div class="form-group" v-if="localData.node_type === 'initial' || localData.node_type === 'process' || localData.node_type === 'water_source' || localData.node_type === 'water_sink'">
           <label>Punto de Salida (s):</label>
           <select v-model="localData.sourcePosition" @change="update">
             <option value="right">Derecha (Right) ➡️</option>
@@ -47,7 +48,7 @@
         <!-- SELECTOR DE TIPO DE FLUJO: AGUA PURA O PULPA MINERAL -->
         <div class="checkbox-group highlight-water-checkbox">
           <input id="chk-is-water-only" v-model="localData.is_water_only" type="checkbox" @change="onWaterOnlyChange" />
-          <label for="chk-is-water-only"><strong>💧 Corriente de Solo Agua</strong> (Dilución / Agua Fresca)</label>
+          <label for="chk-is-water-only"><strong>💧 Corriente de Solo Agua</strong> (Agua Fresca / Agua Recuperada / Efluente)</label>
         </div>
 
         <!-- CASO 1: FLUJO DE SOLO AGUA PURA -->
