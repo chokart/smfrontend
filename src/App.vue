@@ -30,12 +30,6 @@
         >
           <span class="icon">🌪️</span> Hidrociclones
         </button>
-        <button 
-          :class="{ active: activeModule === 'level' }" 
-          @click="switchModule('level')"
-        >
-          <span class="icon">📶</span> Sensor de Nivel
-        </button>
       </nav>
       <div class="sidebar-footer">
         <p>Desarrollado por:</p>
@@ -87,7 +81,6 @@
       
       <div class="main-content">
         <PulpCalculator v-if="activeModule === 'pulp'" />
-        <LevelSensor v-else-if="activeModule === 'level'" />
         <HydrocycloneModule v-else-if="activeModule === 'cyclone'" />
         <MetallurgicalDiagram 
           v-else
@@ -175,7 +168,6 @@
 <script setup>
 import { ref, nextTick, computed, onMounted, onBeforeUnmount } from 'vue'
 import PulpCalculator from './components/PulpCalculator.vue'
-import LevelSensor from './components/LevelSensor.vue'
 import HydrocycloneModule from './components/HydrocycloneModule.vue'
 import MetallurgicalDiagram from './components/MetallurgicalDiagram.vue'
 import Toolbar from './components/Toolbar.vue'
@@ -199,12 +191,12 @@ const STORAGE_KEY_WATER = 'suiteminerals_state_water';
 
 // Recuperar módulo activo previo si existe
 const savedActiveModule = localStorage.getItem(STORAGE_KEY_ACTIVE_MODULE);
-const initialActiveModule = (savedActiveModule && ['metallurgical', 'water', 'pulp', 'level', 'cyclone'].includes(savedActiveModule))
+const initialActiveModule = (savedActiveModule && ['metallurgical', 'water', 'pulp', 'cyclone'].includes(savedActiveModule))
   ? savedActiveModule
   : 'metallurgical';
 
 // --- ESTADO REACTIVO PRINCIPAL ---
-const activeModule = ref(initialActiveModule) // 'metallurgical' | 'water' | 'pulp' | 'level' | 'cyclone'
+const activeModule = ref(initialActiveModule) // 'metallurgical' | 'water' | 'pulp' | 'cyclone'
 let id = 5
 const diagramKey = ref(0)
 const elementNames = ref(['Cu'])
