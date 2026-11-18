@@ -53,14 +53,14 @@
           <div class="card-header">
             <div>
               <h3>📊 Datos de Muestreo (Survey Granulométrico)</h3>
-              <small class="header-note">Base: Informe Quebrada Honda (Southern Perú) Ensayo GM-2101-26473</small>
+              <small class="header-note">Base: Muestreo industrial de batería de hidrociclones</small>
             </div>
             <div class="preset-buttons-group">
-              <button class="btn btn-secondary btn-sm" @click="loadQuebradaHondaNido1" title="Línea 1 C-02 (Dique Principal)">
-                📍 Quebrada Honda Nido 1
+              <button class="btn btn-secondary btn-sm" @click="loadNido1" title="Línea 1 C-02">
+                📍 Muestreo Nido 1
               </button>
-              <button class="btn btn-secondary btn-sm" @click="loadQuebradaHondaNido2" title="Línea 3 C-05 (Dique Principal)">
-                📍 Quebrada Honda Nido 2
+              <button class="btn btn-secondary btn-sm" @click="loadNido2" title="Línea 3 C-05">
+                📍 Muestreo Nido 2
               </button>
               <button class="btn btn-outline btn-sm" @click="loadTypicalSurveyPreset">
                 🧪 Molienda Estándar
@@ -688,11 +688,11 @@
             <div>
               <h3>⚙️ Geometría del Hidrociclón y Operación de Planta</h3>
               <small class="header-blueprint-tag" style="display:block; color:#0284c7; font-weight:600; margin-top:2px;">
-                📐 Plano FLSmidth Krebs GMAX20-3588 (SPCC Quebrada Honda - medidas ciclones.pdf)
+                📐 Plano FLSmidth Krebs GMAX20-3588 (medidas ciclones.pdf)
               </small>
             </div>
             <div style="display:flex; gap:8px;">
-              <button class="btn btn-accent btn-sm" @click="loadQuebradaHondaGMAX20Geometry">
+              <button class="btn btn-accent btn-sm" @click="loadGMAX20Geometry">
                 🏷️ FLSmidth GMAX20 (Plano)
               </button>
               <button class="btn btn-secondary btn-sm" @click="loadStandardGeometryPreset">
@@ -1187,7 +1187,7 @@ const errorMessage = ref('');
 const successMessage = ref('');
 
 // -----------------------------------------------------------------------------
-// SUBMÓDULO 1: ESTADO DEL BALANCE GRANULOMÉTRICO (DEFAULT: QUEBRADA HONDA NIDO 1)
+// SUBMÓDULO 1: ESTADO DEL BALANCE GRANULOMÉTRICO (DEFAULT: NIDO 1)
 // -----------------------------------------------------------------------------
 const balanceForm = reactive({
   feed_solids_tph: 1128.0,
@@ -1229,7 +1229,7 @@ function removeSieveRow(idx) {
   }
 }
 
-function loadQuebradaHondaNido1() {
+function loadNido1() {
   balanceForm.feed_solids_tph = 1128.0;
   balanceForm.feed_cp = 42.93;
   balanceForm.overflow_cp = 27.98;
@@ -1248,10 +1248,10 @@ function loadQuebradaHondaNido1() {
   ];
   calibForm.pressure_kpa = 124.1; // 18.0 psi
   calibForm.feed_slurry_flow_m3h = 1904.0;
-  successMessage.value = 'Muestreo Quebrada Honda - Nido 1 (Línea 1 C-02) cargado desde ciclones.pdf.';
+  successMessage.value = 'Muestreo Nido 1 (Línea 1 C-02) cargado desde ciclones.pdf.';
 }
 
-function loadQuebradaHondaNido2() {
+function loadNido2() {
   balanceForm.feed_solids_tph = 1196.8;
   balanceForm.feed_cp = 42.71;
   balanceForm.overflow_cp = 27.93;
@@ -1270,7 +1270,7 @@ function loadQuebradaHondaNido2() {
   ];
   calibForm.pressure_kpa = 131.0; // 19.0 psi
   calibForm.feed_slurry_flow_m3h = 2035.0;
-  successMessage.value = 'Muestreo Quebrada Honda - Nido 2 (Línea 3 C-05) cargado desde ciclones.pdf.';
+  successMessage.value = 'Muestreo Nido 2 (Línea 3 C-05) cargado desde ciclones.pdf.';
 }
 
 function loadTypicalSurveyPreset() {
@@ -1361,7 +1361,7 @@ const calibForm = reactive({
 
 const calibResult = ref(null);
 
-function loadQuebradaHondaGMAX20Geometry() {
+function loadGMAX20Geometry() {
   calibForm.geometry.dc_mm = 508;
   calibForm.geometry.di_mm = 140;
   calibForm.geometry.do_mm = 171.5;
@@ -1380,7 +1380,7 @@ function loadQuebradaHondaGMAX20Geometry() {
   calibForm.sharpness_m = 2.44;
   calibForm.feed_fines_pct_minus_38um = 39.87;
   calibForm.sieves = balanceResult.value?.reconciled_sieves || balanceForm.sieves;
-  successMessage.value = 'Geometría oficial FLSmidth Krebs GMAX20-3588 (Plano medidas ciclones.pdf) cargada para Quebrada Honda.';
+  successMessage.value = 'Geometría oficial FLSmidth Krebs GMAX20-3588 (Plano medidas ciclones.pdf) cargada.';
 }
 
 function loadStandardGeometryPreset() {
