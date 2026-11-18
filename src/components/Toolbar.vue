@@ -1,8 +1,7 @@
 <template>
   <div class="toolbar">
     <button @click="$emit('add-node')">{{ addNodeLabel }}</button>
-    <button v-if="showAddWater" @click="$emit('add-water-node')" class="water-button" title="Añadir fuente de agua limpia para dilución / adición">💧 Entrada Agua</button>
-    <button v-if="showAddWater" @click="$emit('add-water-output-node')" class="water-button" title="Añadir salida de agua recuperada / efluente">💧 Salida Agua</button>
+    <button v-if="showAddWater" @click="$emit('add-water-node')" class="water-button" title="Añadir fuente de agua limpia para dilución">💧 Añadir Agua</button>
     <button v-if="showConfig" @click="$emit('open-config')">Configurar Elementos</button>
     <button @click="$emit('open-diagrams')" class="diagrams-button">📁 Guardar / Cargar</button>
     <button @click="$emit('export')" class="export-button">Reconciliar</button>
@@ -16,7 +15,6 @@
 const emit = defineEmits([
   'add-node', 
   'add-water-node',
-  'add-water-output-node',
   'export', 
   'open-config', 
   'save-diagram', 

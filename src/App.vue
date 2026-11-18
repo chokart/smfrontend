@@ -48,7 +48,6 @@
         <Toolbar 
           @add-node="addNewNode" 
           @add-water-node="addNewWaterNode"
-          @add-water-output-node="addNewWaterOutputNode"
           @export="reconcile" 
           @open-config="isConfigPanelVisible = true" 
           @save-diagram="handleSaveDiagram"
@@ -498,10 +497,9 @@ function handleResetDiagram() {
 function onConnect(connection) {
   const currentNodes = getNodes();
   const sourceNode = currentNodes.find(n => n.id === connection.source);
-  const targetNode = currentNodes.find(n => n.id === connection.target);
   const defaultData = createDefaultFlowData();
 
-  if (activeModule.value === 'water' && (sourceNode?.data?.node_type === 'water_source' || targetNode?.data?.node_type === 'water_sink')) {
+  if (activeModule.value === 'water' && sourceNode?.data?.node_type === 'water_source') {
     defaultData.is_water_only = true;
     defaultData.tonelaje_agua = 100.0;
     defaultData.tonelaje_agua_error = 2.0;
@@ -527,7 +525,7 @@ function onConnect(connection) {
 
 function addNewWaterNode() {
   const newId = getNextNodeId();
-  const newLabel = getNextNodeLabel('Fuente Agua');
+  const newLabel = getNextNodeLabel('Agua');
   const newNode = {
     id: newId,
     type: 'water_source',
@@ -540,32 +538,6 @@ function addNewWaterNode() {
     position: { x: Math.random() * 250 + 150, y: Math.random() * 150 + 50 },
     sourcePosition: 'bottom',
     targetPosition: 'top'
-  }
-  if (diagramRef.value && diagramRef.value.addNode) {
-    diagramRef.value.addNode(newNode);
-  }
-  const exists = initialNodes.value.some(n => n.id === newNode.id);
-  if (!exists) {
-    initialNodes.value.push(newNode);
-  }
-  scheduleSave();
-}
-
-function addNewWaterOutputNode() {
-  const newId = getNextNodeId();
-  const newLabel = getNextNodeLabel('Salida Agua');
-  const newNode = {
-    id: newId,
-    type: 'water_sink',
-    data: { 
-      label: newLabel, 
-      node_type: 'water_sink', 
-      sourcePosition: 'right', 
-      targetPosition: 'left' 
-    },
-    position: { x: Math.random() * 200 + 650, y: Math.random() * 150 + 50 },
-    sourcePosition: 'right',
-    targetPosition: 'left'
   }
   if (diagramRef.value && diagramRef.value.addNode) {
     diagramRef.value.addNode(newNode);
