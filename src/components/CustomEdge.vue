@@ -123,8 +123,8 @@ const edgeStyle = computed(() => {
           <span class="edge-ge-badge" :title="'Gravedad Específica: ' + getSpecificGravity(data)">GE {{ getSpecificGravity(data).toFixed(1) }}</span>
         </div>
 
-        <!-- Fila 1: Sólido Seco -->
-        <div class="edge-val-row" title="1. Tonelaje Sólido Seco (t/h)">
+        <!-- 1. Sólido Seco -->
+        <div class="edge-val-row" title="Sólido Seco (t/h)">
           <div class="val-left">
             <span class="val-bullet bullet-solid"></span>
             <span class="val-number">{{ getSolidValue(data).toFixed(2) }}</span>
@@ -133,18 +133,18 @@ const edgeStyle = computed(() => {
           <span class="val-unit">t/h</span>
         </div>
 
-        <!-- Fila 2: % Sólidos -->
-        <div class="edge-val-row" title="2. Porcentaje de Sólidos (% Cp)">
+        <!-- 2. Flujo Agua -->
+        <div class="edge-val-row" title="Flujo Agua (t/h)">
           <div class="val-left">
-            <span class="val-bullet bullet-cp"></span>
-            <span class="val-number">{{ Number(data.porcentaje_solidos).toFixed(1) }}</span>
-            <span v-if="data.corrected_data" class="val-rec water">➔ {{ Number(data.corrected_data.porcentaje_solidos_corregido).toFixed(1) }}</span>
+            <span class="val-bullet bullet-water"></span>
+            <span class="val-number">{{ getWaterValue(data).toFixed(2) }}</span>
+            <span v-if="data.corrected_data" class="val-rec water">➔ {{ Number(data.corrected_data.tonelaje_agua_calculado).toFixed(2) }}</span>
           </div>
-          <span class="val-unit">%</span>
+          <span class="val-unit">t/h</span>
         </div>
 
-        <!-- Fila 3: Flujo Pulpa -->
-        <div class="edge-val-row" title="3. Flujo de Pulpa (t/h)">
+        <!-- 3. Flujo Pulpa -->
+        <div class="edge-val-row" title="Flujo Pulpa (t/h)">
           <div class="val-left">
             <span class="val-bullet bullet-pulp"></span>
             <span class="val-number">{{ getPulpValue(data).toFixed(2) }}</span>
@@ -153,24 +153,24 @@ const edgeStyle = computed(() => {
           <span class="val-unit">t/h</span>
         </div>
 
-        <!-- Fila 4: Caudal Pulpa -->
-        <div class="edge-val-row row-highlight-caudal" title="4. Caudal de Pulpa (m³/h)">
+        <!-- 4. % Sólidos -->
+        <div class="edge-val-row" title="% Sólidos (%)">
+          <div class="val-left">
+            <span class="val-bullet bullet-cp"></span>
+            <span class="val-number">{{ Number(data.porcentaje_solidos).toFixed(1) }}</span>
+            <span v-if="data.corrected_data" class="val-rec water">➔ {{ Number(data.corrected_data.porcentaje_solidos_corregido).toFixed(1) }}</span>
+          </div>
+          <span class="val-unit">%</span>
+        </div>
+
+        <!-- 5. Caudal Pulpa -->
+        <div class="edge-val-row row-highlight-caudal" title="Caudal Pulpa (m³/h)">
           <div class="val-left">
             <span class="val-bullet bullet-flow"></span>
             <span class="val-number">{{ getPulpFlowM3h(data).toFixed(2) }}</span>
             <span v-if="data.corrected_data" class="val-rec water">➔ {{ Number(data.corrected_data.caudal_pulpa_m3h ?? getPulpFlowM3h({ ...data, tonelaje_solido: data.corrected_data.tonelaje_solido_corregido, porcentaje_solidos: data.corrected_data.porcentaje_solidos_corregido })).toFixed(2) }}</span>
           </div>
           <span class="val-unit">m³/h</span>
-        </div>
-
-        <!-- Fila 5: Flujo Agua -->
-        <div class="edge-val-row" title="5. Flujo de Agua (t/h)">
-          <div class="val-left">
-            <span class="val-bullet bullet-water"></span>
-            <span class="val-number">{{ getWaterValue(data).toFixed(2) }}</span>
-            <span v-if="data.corrected_data" class="val-rec water">➔ {{ Number(data.corrected_data.tonelaje_agua_calculado).toFixed(2) }}</span>
-          </div>
-          <span class="val-unit">t/h</span>
         </div>
       </div>
 
@@ -181,8 +181,8 @@ const edgeStyle = computed(() => {
           <span v-else-if="data.not_measured" class="edge-unmeasured-badge">🚫 No med.</span>
         </div>
 
-        <!-- Fila 1: Tonelaje Seco -->
-        <div class="edge-val-row" title="1. Tonelaje Seco (t/h)">
+        <!-- Tonelaje Seco -->
+        <div class="edge-val-row" title="Tonelaje Seco (t/h)">
           <div class="val-left">
             <span class="val-bullet bullet-ton"></span>
             <span class="val-number">{{ Number(data.tonelaje).toFixed(2) }}</span>
@@ -191,12 +191,12 @@ const edgeStyle = computed(() => {
           <span class="val-unit">t/h</span>
         </div>
 
-        <!-- Filas 2..N: Leyes de Elementos -->
+        <!-- Leyes de Elementos -->
         <div 
           v-for="(el, idx) in (data.elementos || [])" 
           :key="el.name" 
           class="edge-val-row" 
-          :title="`Fila ${idx + 2}: Ley ${el.name} (%)`"
+          :title="`Ley ${el.name} (%)`"
         >
           <div class="val-left">
             <span class="val-bullet" :style="{ backgroundColor: getElementColor(idx) }"></span>
