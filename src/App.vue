@@ -3,6 +3,7 @@
     <!-- NAVBAR GLOBAL SUPERIOR -->
     <header class="global-navbar">
       <div class="navbar-brand" @click="setActiveSection('inicio')">
+        <img src="@/assets/logo.png" alt="SuiteMinerals" class="navbar-logo" />
         <span class="brand-name">SUITE MINERALS</span>
       </div>
       <nav class="navbar-nav">
@@ -50,6 +51,7 @@
         <!-- BARRA LATERAL (SIDEBAR DE MÓDULOS) -->
         <aside class="sidebar">
           <div class="sidebar-header">
+            <img src="@/assets/logo.png" alt="SuiteMinerals" class="sidebar-logo" />
             <h3>MÓDULOS</h3>
           </div>
           <nav class="sidebar-nav">
@@ -1163,6 +1165,16 @@ body {
   user-select: none;
 }
 
+.navbar-logo {
+  height: 32px;
+  width: auto;
+  border-radius: 4px;
+  background-color: #ffffff;
+  padding: 2px 4px;
+  margin-right: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
 .brand-name {
   color: #ffffff;
   font-size: 1.15rem;
@@ -1232,15 +1244,28 @@ body {
   box-shadow: 2px 0 5px rgba(0,0,0,0.1);
 }
 .sidebar-header {
-  padding: 20px;
+  padding: 16px 20px 14px 20px;
   background: #34495e;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.sidebar-logo {
+  height: 48px;
+  width: auto;
+  border-radius: 8px;
+  background-color: #ffffff;
+  padding: 4px 8px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 .sidebar-header h3 {
   margin: 0;
-  font-size: 1.2rem;
-  font-weight: 600;
+  font-size: 1.1rem;
+  font-weight: 700;
   color: #ffffff;
+  letter-spacing: 0.5px;
 }
 .sidebar-nav {
   display: flex;

@@ -2,6 +2,9 @@
   <div class="home-container">
     <!-- HERO SECTION -->
     <section class="hero-section">
+      <div class="hero-logo-box">
+        <img src="@/assets/logo.png" alt="SuiteMinerals Logo" class="hero-logo" />
+      </div>
       <div class="hero-badge">Ingeniería Metalúrgica & Procesamiento de Minerales</div>
       <h1 class="hero-title">SUITE MINERALS</h1>
       <p class="hero-subtitle">
@@ -114,7 +117,10 @@
     <!-- FOOTER MINIMALISTA -->
     <footer class="home-footer">
       <div class="footer-content">
-        <p class="brand">SUITE MINERALS</p>
+        <div class="footer-brand-box">
+          <img src="@/assets/logo.png" alt="SuiteMinerals" class="footer-logo" />
+          <span class="brand">SUITE MINERALS</span>
+        </div>
         <p class="developer">
           Desarrollado por 
           <a href="https://www.linkedin.com/in/lchoquehuancaa/" target="_blank" rel="noopener noreferrer">
@@ -168,9 +174,22 @@ function contactForCourse() {
 /* HERO */
 .hero-section {
   text-align: center;
-  padding: 50px 20px 40px 20px;
+  padding: 40px 20px 40px 20px;
   max-width: 800px;
   margin: 0 auto;
+}
+
+.hero-logo-box {
+  margin-bottom: 24px;
+}
+
+.hero-logo {
+  max-height: 150px;
+  width: auto;
+  border-radius: 12px;
+  background-color: #ffffff;
+  padding: 8px;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.08);
 }
 
 .hero-badge {
@@ -422,6 +441,18 @@ function contactForCourse() {
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.footer-brand-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.footer-logo {
+  height: 28px;
+  width: auto;
+  border-radius: 4px;
 }
 
 .footer-content .brand {
