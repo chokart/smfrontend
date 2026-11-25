@@ -81,7 +81,7 @@
           </div>
 
           <p class="fixed-note">
-            ℹ️ La <strong>Leyenda</strong>, el <strong>Logo</strong>, la <strong>Fecha de Impresión</strong> y el texto <em>"DESARROLLADA EN LA HERRAMIENTA SUITEMINERALS"</em> se incluyen automáticamente.
+            ℹ️ La <strong>Leyenda</strong>, el <strong>Logo</strong>, la <strong>Fecha de Impresión</strong> y el texto <em>"DESARROLLADA EN LA HERRAMIENTA SUITEMINERALS.COM"</em> se incluyen automáticamente.
           </p>
         </div>
 
@@ -165,11 +165,16 @@ async function generatePdf(overrideOrientation = null) {
     : orientation.value
 
   const savedPathStyles = []
+  let savedViewport = null
+  let savedElStyle = null
+  let diagramElRef = null
+
   try {
     const diagramEl = props.diagramRef?.getContainerEl?.()
     if (!diagramEl) {
       throw new Error('No se encontró el contenedor del diagrama para exportar.')
     }
+    diagramElRef = diagramEl
 
     const diagramRect = diagramEl.getBoundingClientRect()
     const printFrameRect = props.printAreaActive ? props.diagramRef?.getPrintAreaRect?.() : null
@@ -182,49 +187,113 @@ async function generatePdf(overrideOrientation = null) {
       p.setAttribute('fill', 'none')
     })
 
-    const maxContainerDim = Math.max(diagramRect.width, diagramRect.height, 1)
-    const pixelRatio = Math.min(8, Math.max(4, Math.floor((8500 / maxContainerDim) * 10) / 10))
+    const viewportEl = diagramEl.querySelector('.vue-flow__viewport')
+    const currentVp = props.diagramRef?.getViewport?.()
+    const canHighZoom = !!(viewportEl && currentVp && props.diagramRef?.setViewport && printFrameRect && printFrameRect.width > 10)
 
-    // Capturar el contenedor completo (excluyendo controles de zoom, leyenda flotante y marco A4)
-    const fullPng = await toPng(diagramEl, {
-      pixelRatio,
-      backgroundColor: '#ffffff',
-      cacheBust: true,
-      filter: (node) => {
-        const cls = node?.classList
-        if (!cls) return true
-        return (
-          !cls.contains('zoom-controls') &&
-          !cls.contains('diagram-legend') &&
-          !cls.contains('print-area-root')
-        )
-      }
-    })
-
-    let imgData = fullPng
+    let imgData = ''
     let boxW = diagramRect.width
     let boxH = diagramRect.height
 
-    // Si hay un rectángulo A4 activo, recortar exactamente esa zona en alta resolución
-    if (printFrameRect && printFrameRect.width > 10 && printFrameRect.height > 10) {
-      const img = await loadImageElement(fullPng)
+    if (canHighZoom) {
+      // Convertir el área A4 seleccionada a coordenadas reales (1:1) del circuito
+      const vpRect = viewportEl.getBoundingClientRect()
+      const z = currentVp.zoom || 1
+      const worldX = (printFrameRect.left - vpRect.left) / z
+      const worldY = (printFrameRect.top - vpRect.top) / z
+      const worldW = printFrameRect.width / z
+      const worldH = printFrameRect.height / z
 
-      const sx = Math.max(0, (printFrameRect.left - diagramRect.left) * pixelRatio)
-      const sy = Math.max(0, (printFrameRect.top - diagramRect.top) * pixelRatio)
-      const sw = Math.min(img.width - sx, printFrameRect.width * pixelRatio)
-      const sh = Math.min(img.height - sy, printFrameRect.height * pixelRatio)
+      // Escalar el circuito a zoom nativo alto (1.5x a 2.5x) para que cada número sea vectorialmente grande al rasterizar
+      const exportScale = Math.max(1.5, Math.min(2.5, 4200 / Math.max(worldW, worldH)))
+      const capW = Math.max(1, Math.round(worldW * exportScale))
+      const capH = Math.max(1, Math.round(worldH * exportScale))
 
-      const cropCanvas = document.createElement('canvas')
-      cropCanvas.width = Math.max(1, Math.round(sw))
-      cropCanvas.height = Math.max(1, Math.round(sh))
-      const ctx = cropCanvas.getContext('2d')
-      ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, cropCanvas.width, cropCanvas.height)
-      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cropCanvas.width, cropCanvas.height)
+      savedViewport = { ...currentVp }
+      savedElStyle = {
+        position: diagramEl.style.position,
+        left: diagramEl.style.left,
+        top: diagramEl.style.top,
+        width: diagramEl.style.width,
+        height: diagramEl.style.height,
+        zIndex: diagramEl.style.zIndex
+      }
 
-      imgData = cropCanvas.toDataURL('image/png')
-      boxW = printFrameRect.width
-      boxH = printFrameRect.height
+      // Redimensionar temporalmente detrás del modal (zIndex 1500 < modal 2000)
+      diagramEl.style.position = 'fixed'
+      diagramEl.style.left = '0px'
+      diagramEl.style.top = '0px'
+      diagramEl.style.width = `${capW}px`
+      diagramEl.style.height = `${capH}px`
+      diagramEl.style.zIndex = '1500'
+
+      props.diagramRef.setViewport({
+        x: -worldX * exportScale,
+        y: -worldY * exportScale,
+        zoom: exportScale
+      })
+
+      await new Promise(resolve => setTimeout(resolve, 200))
+
+      const pixelRatio = Math.min(2, Math.max(1.2, Math.floor((6800 / Math.max(capW, capH)) * 10) / 10))
+      imgData = await toPng(diagramEl, {
+        width: capW,
+        height: capH,
+        pixelRatio,
+        backgroundColor: '#ffffff',
+        cacheBust: true,
+        filter: (node) => {
+          const cls = node?.classList
+          if (!cls) return true
+          return (
+            !cls.contains('zoom-controls') &&
+            !cls.contains('diagram-legend') &&
+            !cls.contains('print-area-root')
+          )
+        }
+      })
+
+      boxW = capW
+      boxH = capH
+    } else {
+      const maxContainerDim = Math.max(diagramRect.width, diagramRect.height, 1)
+      const pixelRatio = Math.min(8, Math.max(4, Math.floor((8500 / maxContainerDim) * 10) / 10))
+
+      const fullPng = await toPng(diagramEl, {
+        pixelRatio,
+        backgroundColor: '#ffffff',
+        cacheBust: true,
+        filter: (node) => {
+          const cls = node?.classList
+          if (!cls) return true
+          return (
+            !cls.contains('zoom-controls') &&
+            !cls.contains('diagram-legend') &&
+            !cls.contains('print-area-root')
+          )
+        }
+      })
+
+      imgData = fullPng
+      if (printFrameRect && printFrameRect.width > 10 && printFrameRect.height > 10) {
+        const img = await loadImageElement(fullPng)
+        const sx = Math.max(0, (printFrameRect.left - diagramRect.left) * pixelRatio)
+        const sy = Math.max(0, (printFrameRect.top - diagramRect.top) * pixelRatio)
+        const sw = Math.min(img.width - sx, printFrameRect.width * pixelRatio)
+        const sh = Math.min(img.height - sy, printFrameRect.height * pixelRatio)
+
+        const cropCanvas = document.createElement('canvas')
+        cropCanvas.width = Math.max(1, Math.round(sw))
+        cropCanvas.height = Math.max(1, Math.round(sh))
+        const ctx = cropCanvas.getContext('2d')
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, cropCanvas.width, cropCanvas.height)
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cropCanvas.width, cropCanvas.height)
+
+        imgData = cropCanvas.toDataURL('image/png')
+        boxW = printFrameRect.width
+        boxH = printFrameRect.height
+      }
     }
 
     const doc = new jsPDF({
@@ -406,7 +475,7 @@ async function generatePdf(overrideOrientation = null) {
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(6)
     doc.setTextColor(180, 83, 9)
-    doc.text('DESARROLLADA EN LA HERRAMIENTA SUITEMINERALS', infoX + infoW / 2, row3Y + 3.2, { align: 'center' })
+    doc.text('DESARROLLADA EN LA HERRAMIENTA SUITEMINERALS.COM', infoX + infoW / 2, row3Y + 3.2, { align: 'center' })
 
     const fileSuffix = isWater ? 'Balance_Agua' : 'Balance_Leyes'
     const timestamp = new Date().toISOString().slice(0, 10)
@@ -417,6 +486,17 @@ async function generatePdf(overrideOrientation = null) {
     console.error('Error generando PDF:', err)
     errorMsg.value = err.message || 'Ocurrió un error al generar el PDF.'
   } finally {
+    if (diagramElRef && savedElStyle) {
+      diagramElRef.style.position = savedElStyle.position
+      diagramElRef.style.left = savedElStyle.left
+      diagramElRef.style.top = savedElStyle.top
+      diagramElRef.style.width = savedElStyle.width
+      diagramElRef.style.height = savedElStyle.height
+      diagramElRef.style.zIndex = savedElStyle.zIndex
+    }
+    if (savedViewport && props.diagramRef?.setViewport) {
+      props.diagramRef.setViewport(savedViewport)
+    }
     // Restaurar estilos originales de las rutas SVG
     savedPathStyles.forEach(({ el, fill, attrFill }) => {
       el.style.fill = fill
