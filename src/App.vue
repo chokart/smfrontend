@@ -55,6 +55,7 @@
         <Toolbar 
           @add-node="addNewNode" 
           @add-water-node="addNewWaterNode"
+          @add-text-node="addNewTextNode"
           @export="reconcile" 
           @open-config="isConfigPanelVisible = true" 
           @save-diagram="handleSaveDiagram"
@@ -640,6 +641,37 @@ function addNewNode() {
   scheduleSave();
 }
 
+function addNewTextNode() {
+  const newId = getNextNodeId();
+  const newNode = {
+    id: newId,
+    type: 'text',
+    data: {
+      label: 'Texto libre',
+      node_type: 'text',
+      fontSize: 16,
+      fontWeight: '600',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      textColor: '#0f172a',
+      hasBox: false
+    },
+    position: { x: Math.random() * 250 + 200, y: Math.random() * 150 + 80 }
+  };
+  if (diagramRef.value && diagramRef.value.addNode) {
+    diagramRef.value.addNode(newNode);
+  }
+  const exists = initialNodes.value.some(n => n.id === newNode.id);
+  if (!exists) {
+    initialNodes.value.push(newNode);
+  }
+  nextTick(() => {
+    const added = getNodes().find(n => n.id === newId);
+    if (added) selectedElement.value = added;
+  });
+  scheduleSave();
+}
+
 function handleSelection(element) {
   selectedElement.value = element
 }
@@ -720,7 +752,7 @@ async function reconcile() {
     let data;
     if (activeModule.value === 'metallurgical') {
       const body = {
-        nodes: currentNodes.map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
+        nodes: currentNodes.filter(n => n.data?.node_type !== 'text').map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
         flows: currentEdges.map(f => ({
           id: f.id, source: f.source, target: f.target,
           data: {
@@ -735,7 +767,7 @@ async function reconcile() {
       data = await api.reconcile(body);
     } else {
       const body = {
-        nodes: currentNodes.map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
+        nodes: currentNodes.filter(n => n.data?.node_type !== 'text').map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
         flows: currentEdges.map(f => {
           const isWater = !!f.data.is_water_only;
           const sVal = isWater ? 0.0 : (f.data.tonelaje_solido != null
@@ -817,7 +849,7 @@ async function handleVerifyEquations() {
     let data;
     if (activeModule.value === 'metallurgical') {
       const exportObject = {
-        nodes: currentNodes.map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
+        nodes: currentNodes.filter(n => n.data?.node_type !== 'text').map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
         flows: currentEdges.map(f => ({
           id: f.id,
           source: f.source,
@@ -840,7 +872,7 @@ async function handleVerifyEquations() {
       data = await api.previewEquations(exportObject);
     } else {
       const exportObject = {
-        nodes: currentNodes.map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
+        nodes: currentNodes.filter(n => n.data?.node_type !== 'text').map(n => ({ id: n.id, label: n.data.label, node_type: n.data.node_type })),
         flows: currentEdges.map(f => {
           const isWater = !!f.data.is_water_only;
           const sVal = isWater ? 0.0 : (f.data.tonelaje_solido != null

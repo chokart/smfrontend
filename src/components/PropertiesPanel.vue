@@ -8,39 +8,46 @@
     <div class="panel-content">
       <!-- CONFIGURACIÓN DE NODO -->
       <div v-if="isNode">
-        <div class="form-group">
-          <label>Nombre:</label>
-          <input v-model="localData.label" type="text" @input="update" />
-        </div>
-        <div class="form-group">
-          <label>Tipo:</label>
-          <select v-model="localData.node_type" @change="update">
-            <option value="initial">Alimento</option>
-            <option value="process">Proceso</option>
-            <option value="concentrate">Concentrado</option>
-            <option value="tailing">Relave</option>
-          </select>
-        </div>
-        <NodeColorPicker v-model="localData.customColor" @update:modelValue="update" />
-        <div class="section-title">Puntos de Conexión</div>
-        <div class="form-group" v-if="localData.node_type !== 'initial'">
-          <label>Punto de Ingreso (i):</label>
-          <select v-model="localData.targetPosition" @change="update">
-            <option value="left">Izquierda (Left) ⬅️</option>
-            <option value="top">Arriba (Top) ⬆️</option>
-            <option value="right">Derecha (Right) ➡️</option>
-            <option value="bottom">Abajo (Bottom) ⬇️</option>
-          </select>
-        </div>
-        <div class="form-group" v-if="localData.node_type === 'initial' || localData.node_type === 'process'">
-          <label>Punto de Salida (s):</label>
-          <select v-model="localData.sourcePosition" @change="update">
-            <option value="right">Derecha (Right) ➡️</option>
-            <option value="bottom">Abajo (Bottom) ⬇️</option>
-            <option value="left">Izquierda (Left) ⬅️</option>
-            <option value="top">Arriba (Top) ⬆️</option>
-          </select>
-        </div>
+        <TextNodeProperties
+          v-if="localData.node_type === 'text'"
+          :local-data="localData"
+          @update="update"
+        />
+        <template v-else>
+          <div class="form-group">
+            <label>Nombre:</label>
+            <input v-model="localData.label" type="text" @input="update" />
+          </div>
+          <div class="form-group">
+            <label>Tipo:</label>
+            <select v-model="localData.node_type" @change="update">
+              <option value="initial">Alimento</option>
+              <option value="process">Proceso</option>
+              <option value="concentrate">Concentrado</option>
+              <option value="tailing">Relave</option>
+            </select>
+          </div>
+          <NodeColorPicker v-model="localData.customColor" @update:modelValue="update" />
+          <div class="section-title">Puntos de Conexión</div>
+          <div class="form-group" v-if="localData.node_type !== 'initial'">
+            <label>Punto de Ingreso (i):</label>
+            <select v-model="localData.targetPosition" @change="update">
+              <option value="left">Izquierda (Left) ⬅️</option>
+              <option value="top">Arriba (Top) ⬆️</option>
+              <option value="right">Derecha (Right) ➡️</option>
+              <option value="bottom">Abajo (Bottom) ⬇️</option>
+            </select>
+          </div>
+          <div class="form-group" v-if="localData.node_type === 'initial' || localData.node_type === 'process'">
+            <label>Punto de Salida (s):</label>
+            <select v-model="localData.sourcePosition" @change="update">
+              <option value="right">Derecha (Right) ➡️</option>
+              <option value="bottom">Abajo (Bottom) ⬇️</option>
+              <option value="left">Izquierda (Left) ⬅️</option>
+              <option value="top">Arriba (Top) ⬆️</option>
+            </select>
+          </div>
+        </template>
       </div>
 
       <!-- CONFIGURACIÓN DE FLUJO -->
@@ -183,6 +190,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import NodeColorPicker from './NodeColorPicker.vue'
+import TextNodeProperties from './TextNodeProperties.vue'
 
 const props = defineProps({
   modelValue: Object
@@ -191,7 +199,10 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'delete'])
 
 const isNode = computed(() => props.modelValue && props.modelValue.position)
-const title = computed(() => isNode.value ? 'Nodo' : 'Flujo')
+const title = computed(() => {
+  if (!isNode.value) return 'Flujo'
+  return localData.value?.node_type === 'text' ? 'Texto' : 'Nodo'
+})
 const localData = ref({})
 
 watch(() => props.modelValue, (newVal) => {

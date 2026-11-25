@@ -77,6 +77,61 @@ function onConnect(params) {
   emit('connect', params)
 }
 
+const editingTextNodeId = ref(null)
+const editingTextValue = ref('')
+
+function startEditingText(nodeId, data) {
+  editingTextNodeId.value = nodeId
+  editingTextValue.value = data?.label ?? ''
+  nextTick(() => {
+    const el = diagramContainerRef.value?.querySelector(`[data-text-editor="${nodeId}"]`)
+    if (el) {
+      el.focus()
+      el.select()
+    }
+  })
+}
+
+function commitEditingText(nodeId, data) {
+  if (editingTextNodeId.value !== nodeId) return
+  if (data) {
+    data.label = editingTextValue.value
+  }
+  const node = flowNodes.value.find(n => n.id === nodeId)
+  if (node && node.data) {
+    node.data.label = editingTextValue.value
+  }
+  editingTextNodeId.value = null
+  emit('change')
+}
+
+function cancelEditingText() {
+  editingTextNodeId.value = null
+}
+
+function getTextNodeStyle(data) {
+  const style = {
+    fontSize: `${Number(data?.fontSize) || 16}px`,
+    fontWeight: data?.fontWeight || '600',
+    fontStyle: data?.fontStyle || 'normal',
+    textAlign: data?.textAlign || 'left',
+    color: data?.textColor || '#0f172a',
+  }
+  if (data?.hasBox) {
+    const cc = data?.customColor
+    style.background = cc?.bg || (typeof cc === 'string' ? cc : '#ffffff')
+    style.borderColor = cc?.border || '#94a3b8'
+    style.borderWidth = '2px'
+    style.borderStyle = 'solid'
+    style.borderRadius = '8px'
+    style.padding = '8px 14px'
+    if (cc?.text && !data?.textColor) {
+      style.color = cc.text
+    }
+  }
+  return style
+}
+
 // Expose reactive methods and state to the parent
 defineExpose({
   addNode: (node) => addNodes(node),
@@ -285,6 +340,38 @@ const getNodeStyle = (node) => {
         </div>
       </template>
 
+      <!-- PLANTILLA PARA NODOS DE TEXTO LIBRE -->
+      <template #node-text="{ id: nodeId, data }">
+        <div
+          class="custom-text-node"
+          :class="{ 'has-box': !!data?.hasBox, 'is-editing': editingTextNodeId === nodeId }"
+          :style="getTextNodeStyle(data)"
+          @dblclick.stop="startEditingText(nodeId, data)"
+        >
+          <textarea
+            v-if="editingTextNodeId === nodeId"
+            v-model="editingTextValue"
+            :data-text-editor="nodeId"
+            class="nodrag nopan text-node-inline-editor"
+            :style="{
+              fontSize: `${Number(data?.fontSize) || 16}px`,
+              fontWeight: data?.fontWeight || '600',
+              fontStyle: data?.fontStyle || 'normal',
+              textAlign: data?.textAlign || 'left',
+              color: data?.textColor || '#0f172a'
+            }"
+            rows="2"
+            @blur="commitEditingText(nodeId, data)"
+            @keydown.enter.exact.prevent="commitEditingText(nodeId, data)"
+            @keydown.escape.prevent="cancelEditingText"
+            @click.stop
+          ></textarea>
+          <div v-else class="text-node-display">
+            {{ data?.label || 'Texto libre' }}
+          </div>
+        </div>
+      </template>
+
       <template #edge-custom="edgeProps">
         <CustomEdge
           v-bind="edgeProps"
@@ -336,6 +423,51 @@ const getNodeStyle = (node) => {
   font-weight: 600;
   font-size: 0.95rem;
   letter-spacing: -0.2px;
+}
+
+.custom-text-node {
+  min-width: 60px;
+  max-width: 520px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px dashed transparent;
+  cursor: grab;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+}
+
+.custom-text-node:hover {
+  border-color: #94a3b8;
+}
+
+.vue-flow__node.selected .custom-text-node {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18);
+}
+
+.custom-text-node.is-editing {
+  cursor: text;
+  border-color: #2563eb;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.text-node-display {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.text-node-inline-editor {
+  width: 220px;
+  min-height: 44px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  line-height: 1.35;
+  resize: both;
+  padding: 0;
+  margin: 0;
 }
 
 .custom-diagram-node:hover .node-rotate-controls {

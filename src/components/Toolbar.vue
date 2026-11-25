@@ -2,6 +2,7 @@
   <div class="toolbar">
     <button @click="$emit('add-node')">{{ addNodeLabel }}</button>
     <button v-if="showAddWater" @click="$emit('add-water-node')" class="water-button" title="Añadir fuente de agua limpia para dilución">💧 Añadir Agua</button>
+    <button @click="$emit('add-text-node')" class="text-button" title="Añadir texto o etiqueta libre al diagrama">📝 Añadir Texto</button>
     <button v-if="showConfig" @click="$emit('open-config')">Configurar Elementos</button>
     <button @click="$emit('open-diagrams')" class="diagrams-button">📁 Guardar / Cargar</button>
     <button @click="$emit('export')" class="export-button">Reconciliar</button>
@@ -29,6 +30,7 @@
 const emit = defineEmits([
   'add-node', 
   'add-water-node',
+  'add-text-node',
   'export', 
   'open-config', 
   'save-diagram', 
