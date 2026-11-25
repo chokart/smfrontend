@@ -33,7 +33,8 @@ const {
   onNodesChange,
   onEdgesChange,
   zoomIn, 
-  zoomOut 
+  zoomOut,
+  getViewport
 } = useVueFlow()
 const vueFlowInstance = ref(null)
 const diagramContainerRef = ref(null)
@@ -92,7 +93,7 @@ defineExpose({
   zoomIn: () => zoomIn(),
   zoomOut: () => zoomOut(),
   getContainerEl: () => diagramContainerRef.value,
-  getViewport: () => vueFlowInstance.value?.getViewport?.() ?? { x: 0, y: 0, zoom: 1 },
+  getViewport: () => getViewport(),
   getPrintAreaRect: () => printAreaRef.value?.getFrameRect?.() || null
 })
 

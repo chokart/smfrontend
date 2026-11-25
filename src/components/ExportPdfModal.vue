@@ -197,18 +197,151 @@ async function generatePdf(overrideOrientation = null) {
     const pageW = doc.internal.pageSize.getWidth()
     const pageH = doc.internal.pageSize.getHeight()
     const margin = 6
+    const innerW = pageW - margin * 2
+    const cajetinH = 25
+    const cajetinY = pageH - margin - cajetinH
 
-    const availW = pageW - margin * 2
-    const availH = pageH - margin * 2
-    const ratio = Math.min(availW / boxW, availH / boxH)
+    // 1. Área de dibujo del diagrama (arriba del cajetín)
+    const diagPad = 2
+    const diagAvailW = innerW - diagPad * 2
+    const diagAvailH = (cajetinY - margin) - diagPad * 2
+    const ratio = Math.min(diagAvailW / boxW, diagAvailH / boxH)
     const drawW = boxW * ratio
     const drawH = boxH * ratio
-    const offsetX = margin + (availW - drawW) / 2
-    const offsetY = margin + (availH - drawH) / 2
+    const offsetX = margin + diagPad + (diagAvailW - drawW) / 2
+    const offsetY = margin + diagPad + (diagAvailH - drawH) / 2
 
     doc.addImage(imgData, 'PNG', offsetX, offsetY, drawW, drawH, undefined, 'FAST')
 
+    // 2. Marco exterior de lámina técnica
+    doc.setDrawColor(51, 65, 85)
+    doc.setLineWidth(0.35)
+    doc.rect(margin, margin, innerW, pageH - margin * 2)
+
+    // Línea divisoria superior del cajetín / leyenda
+    doc.setLineWidth(0.35)
+    doc.line(margin, cajetinY, pageW - margin, cajetinY)
+
+    // 3. Bloque Izquierdo: LEYENDA
+    const leyendaW = innerW * 0.48
+    const cajetinX = margin + leyendaW
+    const cajetinW = innerW - leyendaW
+
+    // Divisor vertical entre Leyenda y Cajetín
+    doc.line(cajetinX, cajetinY, cajetinX, pageH - margin)
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7.2)
+    doc.setTextColor(71, 85, 105)
+    doc.text('LEYENDA', margin + 3, cajetinY + 4.5)
+
     const isWater = props.activeModule === 'water'
+    const ELEMENT_COLORS = ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#64748b']
+    const legendItems = isWater
+      ? [
+          { color: '#8d6e63', label: 'Sólido Seco (t/h)' },
+          { color: '#7c3aed', label: '% Sólidos (%)' },
+          { color: '#06b6d4', label: 'Flujo Agua (t/h)' },
+          { color: '#ea580c', label: 'Flujo Pulpa (t/h)' },
+          { color: '#0284c7', label: 'Caudal Pulpa (m³/h)' },
+          { color: '#16a34a', label: 'Valor Fijo (Verde)' }
+        ]
+      : [
+          { color: '#4b5563', label: 'Tonelaje Seco (t/h)' },
+          ...props.elementNames.map((el, idx) => ({
+            color: ELEMENT_COLORS[idx % ELEMENT_COLORS.length],
+            label: `Ley ${el} (%)`
+          })),
+          { color: '#16a34a', label: 'Valor Fijo (Verde)' }
+        ]
+
+    const cols = legendItems.length > 4 ? 2 : 1
+    const colWidth = (leyendaW - 6) / cols
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(6.8)
+
+    legendItems.slice(0, 6).forEach((item, idx) => {
+      const col = idx % cols
+      const row = Math.floor(idx / cols)
+      const ix = margin + 4 + col * colWidth
+      const iy = cajetinY + 9 + row * 5.2
+
+      // Convertir hex a RGB
+      const hex = item.color.replace('#', '')
+      const r = parseInt(hex.substring(0, 2), 16)
+      const g = parseInt(hex.substring(2, 4), 16)
+      const b = parseInt(hex.substring(4, 6), 16)
+      doc.setFillColor(r, g, b)
+      doc.circle(ix, iy - 0.9, 1.05, 'F')
+
+      doc.setTextColor(30, 41, 59)
+      doc.text(item.label, ix + 2.8, iy, { maxWidth: colWidth - 4 })
+    })
+
+    // 4. Bloque Derecho: CAJETÍN TÉCNICO Y DATOS
+    const row1Y = cajetinY + 7.5
+    const row2Y = cajetinY + 17.5
+
+    doc.setDrawColor(148, 163, 184)
+    doc.setLineWidth(0.25)
+    doc.line(cajetinX, row1Y, pageW - margin, row1Y)
+    doc.line(cajetinX, row2Y, pageW - margin, row2Y)
+
+    // Fila 1: Marca y desarrollador
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9.5)
+    doc.setTextColor(180, 83, 9) // Cobre institucional
+    doc.text('SUITE MINERALS', cajetinX + 3, cajetinY + 5.2)
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(6.8)
+    doc.setTextColor(100, 116, 139)
+    doc.text('SUITECH PERU  •  suitechpe.com', pageW - margin - 3, cajetinY + 5.2, { align: 'right' })
+
+    // Fila 2: Título del plano y datos del circuito
+    const planTitle = isWater ? 'BALANCE HÍDRICO DE CIRCUITO' : 'BALANCE METALÚRGICO DE LEYES'
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8.2)
+    doc.setTextColor(15, 23, 42)
+    doc.text(planTitle, cajetinX + 3, row1Y + 4.3)
+
+    const nodesCount = props.nodes.length
+    const flowsCount = props.flows.length
+    const vistaLabel = props.showOnlyReconciled ? 'Solo Reconciliados' : 'Medido / Reconciliado'
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(6.8)
+    doc.setTextColor(51, 65, 85)
+    doc.text(`Nodos: ${nodesCount}   |   Flujos: ${flowsCount}   |   Vista: ${vistaLabel}`, cajetinX + 3, row1Y + 8.3)
+
+    // Fila 3: 3 celdas de metadatos (Estado, Fecha, Formato)
+    const c3W = cajetinW / 3
+    doc.line(cajetinX + c3W, row2Y, cajetinX + c3W, pageH - margin)
+    doc.line(cajetinX + c3W * 2, row2Y, cajetinX + c3W * 2, pageH - margin)
+
+    const hasReconciled = props.flows.some(f => f.data?.corrected_data || f.data?.corrected_tonelaje != null)
+    const dateStr = new Date().toLocaleString('es-PE', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+    const formatLabel = `${pageFormat.value.toUpperCase()} ${targetOrientation === 'landscape' ? 'HORIZ.' : 'VERT.'}`
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(6)
+    doc.setTextColor(100, 116, 139)
+    doc.text('ESTADO', cajetinX + 2.5, row2Y + 3)
+    doc.text('FECHA', cajetinX + c3W + 2.5, row2Y + 3)
+    doc.text('FORMATO', cajetinX + c3W * 2 + 2.5, row2Y + 3)
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(6.8)
+    doc.setTextColor(15, 23, 42)
+    doc.text(hasReconciled ? 'RECONCILIADO' : 'BORRADOR', cajetinX + 2.5, row2Y + 6.2)
+    doc.text(dateStr, cajetinX + c3W + 2.5, row2Y + 6.2)
+    doc.text(formatLabel, cajetinX + c3W * 2 + 2.5, row2Y + 6.2)
+
     const fileSuffix = isWater ? 'Balance_Agua' : 'Balance_Leyes'
     const timestamp = new Date().toISOString().slice(0, 10)
     doc.save(`SuiteMinerals_${fileSuffix}_${targetOrientation}_${timestamp}.pdf`)
