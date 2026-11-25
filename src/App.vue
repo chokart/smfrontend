@@ -1,64 +1,22 @@
 <template>
-  <div class="app-root">
-    <!-- NAVBAR GLOBAL SUPERIOR -->
-    <header class="global-navbar">
-      <div class="navbar-brand" @click="setActiveSection('inicio')">
-        <img src="@/assets/logo.png" alt="SuiteMinerals" class="navbar-logo" />
-        <span class="brand-name">SUITE MINERALS</span>
+  <div class="app-layout">
+    <!-- BARRA LATERAL (SIDEBAR ÚNICO) -->
+    <aside class="sidebar">
+      <div class="sidebar-header" @click="switchModule('home')" style="cursor: pointer;" title="Ir al Inicio">
+        <img src="@/assets/logo.png" alt="SuiteMinerals" class="sidebar-logo" />
+        <h3>SUITE MINERALS</h3>
       </div>
-      <nav class="navbar-nav">
+      <nav class="sidebar-nav">
         <button 
-          class="nav-tab-btn" 
-          :class="{ active: activeSection === 'inicio' }" 
-          @click="setActiveSection('inicio')"
+          :class="{ active: activeModule === 'home' }" 
+          @click="switchModule('home')"
         >
-          Inicio
+          <span class="icon">🏠</span> Inicio
         </button>
         <button 
-          class="nav-tab-btn" 
-          :class="{ active: activeSection === 'herramientas' }" 
-          @click="setActiveSection('herramientas')"
+          :class="{ active: activeModule === 'metallurgical' }" 
+          @click="switchModule('metallurgical')"
         >
-          Herramientas
-        </button>
-        <button 
-          class="nav-tab-btn" 
-          :class="{ active: activeSection === 'cursos' }" 
-          @click="setActiveSection('cursos')"
-        >
-          Cursos
-        </button>
-      </nav>
-    </header>
-
-    <!-- CUERPO PRINCIPAL -->
-    <main class="global-content">
-      <!-- VISTA INICIO -->
-      <div v-show="activeSection === 'inicio'" class="page-scroll-container">
-        <HomeView 
-          @select-section="setActiveSection" 
-          @open-tool="openSpecificTool" 
-        />
-      </div>
-
-      <!-- VISTA CURSOS -->
-      <div v-show="activeSection === 'cursos'" class="page-scroll-container">
-        <CoursesView />
-      </div>
-
-      <!-- VISTA HERRAMIENTAS (ENTORNO COMPLETO) -->
-      <div v-show="activeSection === 'herramientas'" class="app-layout">
-        <!-- BARRA LATERAL (SIDEBAR DE MÓDULOS) -->
-        <aside class="sidebar">
-          <div class="sidebar-header">
-            <img src="@/assets/logo.png" alt="SuiteMinerals" class="sidebar-logo" />
-            <h3>MÓDULOS</h3>
-          </div>
-          <nav class="sidebar-nav">
-            <button 
-              :class="{ active: activeModule === 'metallurgical' }" 
-              @click="switchModule('metallurgical')"
-            >
           <span class="icon">⚖️</span> Balance de Leyes
         </button>
         <button 
@@ -129,20 +87,26 @@
       />
       
       <div class="main-content">
+        <!-- VISTA INICIO -->
+        <div v-show="activeModule === 'home'" class="page-scroll-container">
+          <HomeView @open-tool="switchModule" />
+        </div>
+
         <PulpCalculator v-if="activeModule === 'pulp'" />
         <HydrocycloneModule v-else-if="activeModule === 'cyclone'" />
-        <MetallurgicalDiagram 
-          v-else
-          ref="diagramRef"
-          :key="`${activeModule}-${diagramKey}`"
-          :nodes="initialNodes" 
-          :edges="initialEdges"
-          :active-module="activeModule"
-          :element-names="elementNames"
-          @connect="onConnect"
-          @element-click="handleSelection"
-          @change="scheduleSave"
-        />
+        <div v-show="activeModule === 'metallurgical' || activeModule === 'water'" style="width: 100%; height: 100%;">
+          <MetallurgicalDiagram 
+            ref="diagramRef"
+            :key="`${activeModule}-${diagramKey}`"
+            :nodes="initialNodes" 
+            :edges="initialEdges"
+            :active-module="activeModule"
+            :element-names="elementNames"
+            @connect="onConnect"
+            @element-click="handleSelection"
+            @change="scheduleSave"
+          />
+        </div>
       </div>
       
       <div v-if="activeModule === 'metallurgical' || activeModule === 'water'" class="summary-footer" :class="{ 'is-expanded': isSummaryExpanded }">
@@ -199,16 +163,13 @@
         @close="isConfigPanelVisible = false" 
         @save="handleSaveElements" 
       />
-      </div>
     </div>
-  </main>
-</div>
+  </div>
 </template>
 
 <script setup>
 import { ref, nextTick, computed, onMounted, onBeforeUnmount } from 'vue'
 import HomeView from './views/HomeView.vue'
-import CoursesView from './views/CoursesView.vue'
 import PulpCalculator from './components/PulpCalculator.vue'
 import HydrocycloneModule from './components/HydrocycloneModule.vue'
 import MetallurgicalDiagram from './components/MetallurgicalDiagram.vue'
@@ -225,43 +186,18 @@ import ExcelFlowsModal from './components/ExcelFlowsModal.vue'
 import api from './services/api'
 
 // Claves para persistencia de sesión en localStorage
-const STORAGE_KEY_ACTIVE_SECTION = 'suiteminerals_active_section';
 const STORAGE_KEY_ACTIVE_MODULE = 'suiteminerals_active_module';
 const STORAGE_KEY_METALLURGICAL = 'suiteminerals_state_metallurgical';
 const STORAGE_KEY_WATER = 'suiteminerals_state_water';
 
-// Recuperar sección y módulo activo previo si existen
-const savedActiveSection = localStorage.getItem(STORAGE_KEY_ACTIVE_SECTION);
-const activeSection = ref(
-  (savedActiveSection && ['inicio', 'herramientas', 'cursos'].includes(savedActiveSection))
-    ? savedActiveSection
-    : 'inicio'
-);
-
-function setActiveSection(section) {
-  activeSection.value = section;
-  localStorage.setItem(STORAGE_KEY_ACTIVE_SECTION, section);
-  if (section === 'herramientas') {
-    nextTick(() => {
-      if (diagramRef.value?.fitView) {
-        diagramRef.value.fitView();
-      }
-    });
-  }
-}
-
-function openSpecificTool(toolName) {
-  setActiveSection('herramientas');
-  switchModule(toolName);
-}
-
+// Recuperar módulo activo previo si existe
 const savedActiveModule = localStorage.getItem(STORAGE_KEY_ACTIVE_MODULE);
-const initialActiveModule = (savedActiveModule && ['metallurgical', 'water', 'pulp', 'cyclone'].includes(savedActiveModule))
+const initialActiveModule = (savedActiveModule && ['home', 'metallurgical', 'water', 'pulp', 'cyclone'].includes(savedActiveModule))
   ? savedActiveModule
-  : 'metallurgical';
+  : 'home';
 
 // --- ESTADO REACTIVO PRINCIPAL ---
-const activeModule = ref(initialActiveModule) // 'metallurgical' | 'water' | 'pulp' | 'cyclone'
+const activeModule = ref(initialActiveModule) // 'home' | 'metallurgical' | 'water' | 'pulp' | 'cyclone'
 let id = 5
 const diagramKey = ref(0)
 const elementNames = ref(['Cu'])
@@ -548,6 +484,9 @@ function switchModule(module) {
     diagramKey.value++;
     nextTick(() => {
       saveCurrentState();
+      if (diagramRef.value?.fitView) {
+        diagramRef.value.fitView();
+      }
     });
   }
 }
@@ -1135,85 +1074,13 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
-.app-root {
+.app-layout {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   height: 100vh;
   width: 100vw;
   overflow: hidden;
   background-color: #f5f7fa;
-}
-
-/* NAVBAR SUPERIOR GLOBAL */
-.global-navbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 52px;
-  min-height: 52px;
-  background-color: #0f172a;
-  padding: 0 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  z-index: 1100;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-}
-
-.navbar-brand {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  user-select: none;
-}
-
-.navbar-logo {
-  height: 32px;
-  width: auto;
-  border-radius: 4px;
-  background-color: #ffffff;
-  padding: 2px 4px;
-  margin-right: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.brand-name {
-  color: #ffffff;
-  font-size: 1.15rem;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-}
-
-.navbar-nav {
-  display: flex;
-  gap: 8px;
-}
-
-.nav-tab-btn {
-  background: transparent;
-  color: #94a3b8;
-  border: none;
-  padding: 7px 16px;
-  border-radius: 6px;
-  font-size: 0.92rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.nav-tab-btn:hover {
-  color: #ffffff;
-  background-color: rgba(255, 255, 255, 0.08);
-}
-
-.nav-tab-btn.active {
-  color: #ffffff;
-  background-color: #2563eb;
-}
-
-.global-content {
-  flex-grow: 1;
-  height: calc(100vh - 52px);
-  overflow: hidden;
-  position: relative;
 }
 
 .page-scroll-container {
@@ -1221,15 +1088,6 @@ body {
   width: 100%;
   overflow-y: auto;
   background-color: #ffffff;
-}
-
-.app-layout {
-  display: flex;
-  flex-direction: row;
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-  background-color: #f5f7fa;
 }
 
 /* --- ESTILOS DE LA BARRA LATERAL (SIDEBAR) --- */
@@ -1330,7 +1188,7 @@ body {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  height: 100%;
+  height: 100vh;
   overflow: hidden; /* Mantener hidden para el layout total */
   position: relative;
 }
@@ -1394,16 +1252,6 @@ body {
 .icon { font-size: 1.2rem; }
 
 @media (max-width: 768px) {
-  .global-navbar {
-    padding: 0 12px;
-  }
-  .brand-name {
-    font-size: 1rem;
-  }
-  .nav-tab-btn {
-    padding: 6px 10px;
-    font-size: 0.85rem;
-  }
   .app-layout {
     flex-direction: column;
   }

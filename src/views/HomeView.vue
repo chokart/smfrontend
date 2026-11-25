@@ -11,11 +11,8 @@
         Plataforma técnica especializada en balance de materia, modelamiento de clasificación y cálculo reológico de pulpas para optimización en plantas concentradoras.
       </p>
       <div class="hero-actions">
-        <button class="btn-primary" @click="$emit('select-section', 'herramientas')">
-          Explorar Herramientas →
-        </button>
-        <button class="btn-secondary" @click="$emit('select-section', 'cursos')">
-          Ver Cursos Disponibles
+        <button class="btn-primary" @click="$emit('open-tool', 'metallurgical')">
+          Comenzar con Balance de Leyes →
         </button>
       </div>
     </section>
@@ -135,7 +132,7 @@
 <script setup>
 import { ref } from 'vue';
 
-defineEmits(['select-section', 'open-tool']);
+defineEmits(['open-tool']);
 
 const projectIdea = ref('');
 const courseTopic = ref('');
