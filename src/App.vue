@@ -1251,30 +1251,54 @@ body {
 }
 .icon { font-size: 1.2rem; }
 
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 215px;
+  }
+}
+
 @media (max-width: 768px) {
   .app-layout {
     flex-direction: column;
+    height: 100dvh;
   }
   .sidebar {
     width: 100%;
     height: auto;
     flex-direction: row;
+    align-items: center;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
     border-right: none;
     border-bottom: 1px solid #34495e;
   }
-  .sidebar-header {
+  .sidebar::-webkit-scrollbar {
+    display: none;
+  }
+  .sidebar-header,
+  .sidebar-footer {
     display: none; /* Ahorrar espacio en móvil */
   }
   .sidebar-nav {
     flex-direction: row;
-    width: 100%;
+    width: max-content;
+    min-width: 100%;
+    padding: 8px 12px;
+    gap: 8px;
   }
   .sidebar-nav button {
-    flex: 1;
+    flex: 0 0 auto;
+    white-space: nowrap;
     justify-content: center;
-    font-size: 0.9rem;
-    padding: 10px;
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    gap: 6px;
+  }
+  .content-wrapper {
+    height: auto;
+    flex: 1 1 0%;
+    min-height: 0;
   }
   .properties-panel {
     position: relative;
