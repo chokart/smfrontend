@@ -1,6 +1,17 @@
 <template>
   <div class="summary-table-container">
-    <h3>Resumen de Balance por Nodo ({{ isWaterBalance ? 'Agua' : 'Leyes' }})</h3>
+    <div class="summary-header-bar">
+      <h3>Resumen de Balance por Nodo ({{ isWaterBalance ? 'Agua' : 'Leyes' }})</h3>
+      <button
+        v-if="allReconciledZero"
+        type="button"
+        class="btn-copy-reconciled"
+        @click="$emit('copy-reconciled-to-initial')"
+        title="Todas las diferencias reconciliadas son cero. Copiar los datos reconciliados a los datos iniciales."
+      >
+        📋 Copiar Reconciliados → Iniciales
+      </button>
+    </div>
     <div class="table-wrapper">
       <table class="summary-table">
         <thead>
@@ -81,7 +92,36 @@ const props = defineProps({
   elementNames: { type: Array, required: true },
 });
 
+defineEmits(['copy-reconciled-to-initial']);
+
 const isWaterBalance = computed(() => props.elementNames.length === 0);
+
+const hasReconciledData = computed(() => {
+  if (!props.flows || props.flows.length === 0) return false;
+  return props.flows.some(f => {
+    const d = f.data || {};
+    if (isWaterBalance.value) return !!d.corrected_data;
+    return d.corrected_tonelaje != null || (d.elementos || []).some(el => !!el.corrected_data);
+  });
+});
+
+const allReconciledZero = computed(() => {
+  if (!hasReconciledData.value || processNodes.value.length === 0) return false;
+  const tol = 0.005;
+  if (isWaterBalance.value) {
+    return processNodes.value.every(n =>
+      Math.abs(calculateWaterBalance(n.id, 'pulpa', 'reconciled')) < tol &&
+      Math.abs(calculateWaterBalance(n.id, 'solidos', 'reconciled')) < tol &&
+      Math.abs(calculateWaterBalance(n.id, 'agua', 'reconciled')) < tol
+    );
+  }
+  return processNodes.value.every(n => {
+    if (Math.abs(calculateTotalMassBalance(n.id, 'reconciled')) >= tol) return false;
+    return props.elementNames.every((_, idx) =>
+      Math.abs(calculateFinesBalance(n.id, idx, 'reconciled')) < tol
+    );
+  });
+});
 
 function getFlowsForNode(nodeId) {
   const inputFlows = props.flows.filter(f => f.target === nodeId);
@@ -189,6 +229,32 @@ function calculateFinesBalance(nodeId, elementIndex, type) {
   background: #f9f9f9;
   padding: 15px;
   box-sizing: border-box;
+}
+.summary-header-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding-right: 110px; /* Espacio para el botón Expandir/Contraer */
+}
+.summary-header-bar h3 {
+  margin: 0;
+}
+.btn-copy-reconciled {
+  background: #16a34a;
+  color: #ffffff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.btn-copy-reconciled:hover {
+  background: #15803d;
 }
 .table-wrapper {
   overflow-x: auto;

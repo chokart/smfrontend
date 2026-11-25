@@ -127,10 +127,20 @@
         
         <!-- TABLAS DE RESUMEN POR NODO -->
         <template v-if="activeModule === 'metallurgical'">
-          <NodesSummaryTable :nodes="currentNodes" :flows="currentEdges" :element-names="elementNames" />
+          <NodesSummaryTable
+            :nodes="currentNodes"
+            :flows="currentEdges"
+            :element-names="elementNames"
+            @copy-reconciled-to-initial="handleCopyReconciledToInitial"
+          />
         </template>
         <template v-else>
-          <NodesSummaryTable :nodes="currentNodes" :flows="currentEdges" :element-names="[]" />
+          <NodesSummaryTable
+            :nodes="currentNodes"
+            :flows="currentEdges"
+            :element-names="[]"
+            @copy-reconciled-to-initial="handleCopyReconciledToInitial"
+          />
         </template>
       </div>
 
@@ -1089,6 +1099,84 @@ function handleApplyExcelData(updates) {
   reconciliationReport.value = null;
   scheduleSave();
   alert(`¡${updatedCount} flujo(s) actualizados correctamente desde Excel!`);
+}
+
+function handleCopyReconciledToInitial() {
+  if (!confirm('Todas las diferencias son cero. ¿Deseas copiar los datos reconciliados a los datos iniciales?')) {
+    return;
+  }
+
+  const edges = getEdges();
+  let updatedCount = 0;
+
+  edges.forEach(edge => {
+    const d = edge.data;
+    if (!d) return;
+
+    if (activeModule.value === 'water' && d.corrected_data) {
+      const cd = d.corrected_data;
+      const newData = { ...d, not_measured: false, corrected_data: null };
+
+      if (d.is_water_only) {
+        if (cd.tonelaje_agua_calculado != null) {
+          newData.tonelaje_agua = Number(Number(cd.tonelaje_agua_calculado).toFixed(4));
+        }
+      } else {
+        const solido = cd.tonelaje_solido_corregido ?? cd.tonelaje_solido_calculado;
+        const cp = cd.porcentaje_solidos_corregido;
+        const pulpa = cd.tonelaje_pulpa_calculado ?? cd.tonelaje_pulpa_corregido;
+        const agua = cd.tonelaje_agua_calculado;
+
+        if (solido != null) newData.tonelaje_solido = Number(Number(solido).toFixed(4));
+        if (cp != null) newData.porcentaje_solidos = Number(Number(cp).toFixed(4));
+        if (pulpa != null) newData.tonelaje_pulpa = Number(Number(pulpa).toFixed(4));
+        if (agua != null) newData.tonelaje_agua = Number(Number(agua).toFixed(4));
+      }
+
+      edge.data = newData;
+      updatedCount++;
+    } else if (activeModule.value === 'metallurgical') {
+      let changed = false;
+      const newData = { ...d };
+
+      if (d.corrected_tonelaje != null) {
+        newData.tonelaje = Number(Number(d.corrected_tonelaje).toFixed(4));
+        newData.not_measured = false;
+        newData.corrected_tonelaje = null;
+        changed = true;
+      }
+
+      if (Array.isArray(d.elementos)) {
+        newData.elementos = d.elementos.map(el => {
+          if (el.corrected_data?.ley_corregida != null) {
+            changed = true;
+            return {
+              ...el,
+              ley: Number(Number(el.corrected_data.ley_corregida).toFixed(4)),
+              not_measured: false,
+              corrected_data: null
+            };
+          }
+          return el;
+        });
+      }
+
+      if (changed) {
+        edge.data = newData;
+        updatedCount++;
+      }
+    }
+
+    if (selectedElement.value && selectedElement.value.id === edge.id) {
+      selectedElement.value = { ...edge, data: { ...edge.data } };
+    }
+  });
+
+  if (updatedCount > 0) {
+    reconciliationReport.value = null;
+    scheduleSave();
+    alert(`¡Se copiaron los datos reconciliados a iniciales en ${updatedCount} flujo(s)!`);
+  }
 }
 
 function toggleSummaryExpansion() {
