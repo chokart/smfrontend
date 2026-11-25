@@ -97,7 +97,7 @@
 
         <!-- RESULTADOS TONELAJE -->
         <div v-if="localData.corrected_tonelaje != null" class="results-section">
-          <div class="result-item highlight">
+          <div class="result-item highlight" :class="localData.tonelaje_fixed ? 'is-fixed-val' : 'is-calc-val'">
             <span>Ton. Ajustado:</span> <strong>{{ localData.corrected_tonelaje.toFixed(2) }} tph</strong>
           </div>
         </div>
@@ -158,7 +158,7 @@
           
           <!-- RESULTADOS LEY -->
           <div v-if="element.corrected_data" class="results-sub-section">
-            <div class="result-item">
+            <div class="result-item" :class="element.ley_fixed ? 'is-fixed-val' : 'is-calc-val'">
               <span>Ley Ajustada:</span> <strong>{{ element.corrected_data.ley_corregida.toFixed(3) }}%</strong>
             </div>
           </div>
@@ -467,5 +467,13 @@ input:disabled {
   color: #94a3b8 !important;
   cursor: not-allowed;
   border-color: #e2e8f0 !important;
+}
+.is-fixed-val,
+.is-fixed-val strong {
+  color: #16a34a !important;
+}
+.is-calc-val,
+.is-calc-val strong {
+  color: #ea580c !important;
 }
 </style>
