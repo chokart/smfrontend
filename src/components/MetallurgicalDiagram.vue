@@ -210,6 +210,8 @@ const getNodeStyle = (node) => {
     <VueFlow 
       :nodes="nodes" 
       :edges="edges"
+      :min-zoom="0.05"
+      :max-zoom="4"
       :delete-key-code="['Delete', 'Backspace']"
       @edge-click="onEdgeClick"
       @node-click="onNodeClick"

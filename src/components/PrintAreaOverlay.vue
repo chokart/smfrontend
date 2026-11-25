@@ -190,7 +190,7 @@ function onPointerMove(e) {
     box.value = { ...startBox, x: Math.round(nx), y: Math.round(ny) }
   } else if (mode === 'resize') {
     const ratio = aspectRatio.value
-    let newW = Math.max(180, startBox.width + dx)
+    let newW = Math.max(80, startBox.width + dx)
     let newH = newW / ratio
 
     if (startBox.x + newW > rw - 6) {
@@ -202,7 +202,7 @@ function onPointerMove(e) {
       newW = newH * ratio
     }
 
-    if (newW >= 180 && newH >= 120) {
+    if (newW >= 80 && newH >= 60) {
       box.value = {
         ...startBox,
         width: Math.round(newW),
