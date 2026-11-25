@@ -254,6 +254,10 @@ const edgeStyle = computed(() => {
   <BaseEdge :id="id" :path="curveData.d" :style="edgeStyle" :marker-end="markerEnd" />
   <path
     :d="curveData.d"
+    fill="none"
+    stroke="transparent"
+    stroke-width="16"
+    style="fill: none; stroke: transparent;"
     class="edge-hit-path nopan"
     @pointerdown.stop="onLinePointerDown"
     @dblclick.stop="resetLineOffset"
