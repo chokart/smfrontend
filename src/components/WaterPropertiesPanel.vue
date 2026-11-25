@@ -108,7 +108,7 @@
           <!-- RESULTADOS CALCULADOS TRAS RECONCILIACIÓN PARA AGUA PURA -->
           <div v-if="localData.corrected_data" class="results-section">
             <div class="section-title">Resultados Reconciliados</div>
-            <div class="result-item highlight" :class="localData.tonelaje_agua_fixed ? 'is-fixed-val' : 'is-calc-val'">
+            <div class="result-item highlight" style="color: #0284c7;">
               <span>Agua Pura Reconciliada:</span> 
               <strong>
                 {{ (localData.corrected_data.tonelaje_agua_calculado ?? 0).toFixed(2) }} tph
@@ -253,33 +253,33 @@
 <!-- RESULTADOS CALCULADOS TRAS RECONCILIACIÓN -->
           <div v-if="localData.corrected_data" class="results-section">
             <div class="section-title">Resultados Ajustados</div>
-            <div class="result-item" :class="localData.tonelaje_solido_fixed ? 'is-fixed-val' : 'is-calc-val'">
+            <div class="result-item">
               <span>Sólido Seco:</span> 
               <strong>
                 {{ (localData.corrected_data.tonelaje_solido_corregido ?? localData.corrected_data.tonelaje_solido_calculado ?? 0).toFixed(2) }} 
                 <small v-if="localData.corrected_data.tonelaje_solido_error != null">± {{ localData.corrected_data.tonelaje_solido_error.toFixed(2) }}</small>
               </strong>
             </div>
-            <div class="result-item" :class="localData.porcentaje_solidos_fixed ? 'is-fixed-val' : 'is-calc-val'">
+            <div class="result-item">
               <span>% Sólidos:</span> 
               <strong>
                 {{ (localData.corrected_data.porcentaje_solidos_corregido ?? 0).toFixed(2) }}% 
                 <small v-if="localData.corrected_data.porcentaje_solidos_error != null">± {{ localData.corrected_data.porcentaje_solidos_error.toFixed(2) }}</small>
               </strong>
             </div>
-            <div class="result-item highlight" :class="localData.tonelaje_pulpa_fixed ? 'is-fixed-val' : 'is-calc-val'">
+            <div class="result-item highlight">
               <span>Pulpa (Calc.):</span> 
               <strong>{{ (localData.corrected_data.tonelaje_pulpa_calculado ?? localData.corrected_data.tonelaje_pulpa_corregido ?? 0).toFixed(2) }} tph</strong>
             </div>
-            <div class="result-item highlight is-calc-val">
+            <div class="result-item highlight" style="color: #0284c7;">
               <span>Caudal Pulpa:</span> 
               <strong>{{ (localData.corrected_data.caudal_pulpa_m3h ?? 0).toFixed(2) }} m³/h</strong>
             </div>
-            <div class="result-item is-calc-val">
+            <div class="result-item">
               <span>Densidad Pulpa:</span> 
               <strong>{{ (localData.corrected_data.densidad_pulpa ?? 0).toFixed(3) }} t/m³</strong>
             </div>
-            <div class="result-item highlight" :class="localData.tonelaje_agua_fixed ? 'is-fixed-val' : 'is-calc-val'">
+            <div class="result-item highlight">
               <span>Agua (Calc.):</span> 
               <strong>{{ (localData.corrected_data.tonelaje_agua_calculado ?? 0).toFixed(2) }} tph</strong>
             </div>
@@ -663,12 +663,4 @@ input:disabled {
 .pulp-live-label { color: #64748b; }
 .pulp-live-val { color: #1e293b; }
 .highlight-val { color: #0284c7; }
-.is-fixed-val,
-.is-fixed-val strong {
-  color: #16a34a !important;
-}
-.is-calc-val,
-.is-calc-val strong {
-  color: #ea580c !important;
-}
 </style>
