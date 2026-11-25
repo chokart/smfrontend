@@ -183,7 +183,12 @@ defineEmits(['open-tool']);
 const projectIdea = ref('');
 const courseTopic = ref('');
 
-const companyUrl = 'https://suitechpe.com';
+const whatsappNumber = '51961795940';
+
+function openWhatsApp(message) {
+  const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
 
 function scrollToTools() {
   const el = document.getElementById('tools-section');
@@ -193,11 +198,19 @@ function scrollToTools() {
 }
 
 function contactForProject() {
-  window.open(companyUrl, '_blank', 'noopener,noreferrer');
+  const idea = projectIdea.value.trim();
+  const message = idea
+    ? `Hola, me gustaría consultar sobre el desarrollo de este proyecto/herramienta en SuiteMinerals:\n\n${idea}`
+    : 'Hola, me gustaría consultar sobre el desarrollo de una herramienta o proyecto a medida en SuiteMinerals.';
+  openWhatsApp(message);
 }
 
 function contactForCourse() {
-  window.open(companyUrl, '_blank', 'noopener,noreferrer');
+  const topic = courseTopic.value.trim();
+  const message = topic
+    ? `Hola, me gustaría solicitar información sobre un curso en el siguiente tema:\n\n${topic}`
+    : 'Hola, me gustaría solicitar información sobre cursos o capacitaciones personalizadas en SuiteMinerals.';
+  openWhatsApp(message);
 }
 </script>
 
