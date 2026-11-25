@@ -23,9 +23,9 @@ const labelStyle = {
   pointerEvents: 'all',
   background: 'white',
   border: '1px solid #ccc',
-  padding: '4px 6px',
+  padding: '4px 7px',
   borderRadius: '4px',
-  fontSize: '9.5px',
+  fontSize: '10.8px',
   boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
   zIndex: 10,
   minWidth: '80px',
@@ -253,8 +253,9 @@ const edgeStyle = computed(() => {
 .bullet-water { background-color: #06b6d4; }
 
 .val-number {
-  font-weight: 600;
-  color: #1e293b;
+  font-weight: 700;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
 }
 
 .val-fixed {
@@ -265,13 +266,14 @@ const edgeStyle = computed(() => {
 .val-rec {
   font-weight: 700;
   margin-left: 2px;
+  font-variant-numeric: tabular-nums;
 }
 .val-rec.water { color: #0284c7; }
 .val-rec.metal { color: #16a34a; }
 
 .val-unit {
-  color: #64748b;
-  font-size: 8.5px;
+  color: #475569;
+  font-size: 9.5px;
   font-weight: 500;
   margin-left: 2px;
 }

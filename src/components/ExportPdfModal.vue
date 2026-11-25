@@ -216,6 +216,7 @@ async function generatePdf(overrideOrientation = null) {
       cropCanvas.width = Math.max(1, Math.round(sw))
       cropCanvas.height = Math.max(1, Math.round(sh))
       const ctx = cropCanvas.getContext('2d')
+      ctx.imageSmoothingEnabled = false
       ctx.fillStyle = '#ffffff'
       ctx.fillRect(0, 0, cropCanvas.width, cropCanvas.height)
       ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cropCanvas.width, cropCanvas.height)
