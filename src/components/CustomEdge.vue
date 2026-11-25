@@ -124,9 +124,7 @@ const edgeStyle = computed(() => {
       <!-- FLUJO DE PULPA MINERAL (BALANCE DE AGUA) -->
       <div v-else-if="'tonelaje_solido' in data || 'tonelaje_pulpa' in data">
         <div class="edge-badges-container">
-          <span v-if="data.tonelaje_solido_fixed || data.tonelaje_pulpa_fixed" class="edge-fixed-badge">🔒 Sólido Fijo</span>
-          <span v-else-if="data.not_measured" class="edge-unmeasured-badge">🚫 No med.</span>
-          <span v-if="data.porcentaje_solidos_fixed" class="edge-solidos-badge">🔒 %S Fijo</span>
+          <span v-if="data.not_measured" class="edge-unmeasured-badge">🚫 No med.</span>
           <span class="edge-ge-badge" :title="'Gravedad Específica: ' + getSpecificGravity(data)">GE {{ getSpecificGravity(data).toFixed(1) }}</span>
         </div>
 
