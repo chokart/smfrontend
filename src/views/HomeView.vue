@@ -5,10 +5,10 @@
       <div class="hero-logo-box">
         <img src="@/assets/logo.png" alt="SuiteMinerals Logo" class="hero-logo" />
       </div>
-      <div class="hero-badge">Ingeniería Metalúrgica &amp; Procesamiento de Minerales</div>
+      <div class="hero-badge">Tecnología para la Industria Metalúrgica</div>
       <h1 class="hero-title">SUITE MINERALS</h1>
       <p class="hero-subtitle">
-        Plataforma técnica minimalista especializada en balance de materia, modelamiento de clasificación y cálculo reológico de pulpas para optimización en plantas concentradoras.
+        Herramientas digitales y soluciones tecnológicas diseñadas para la optimización del procesamiento de minerales y la industria metalúrgica.
       </p>
       <div class="hero-actions">
         <button class="btn-primary" @click="$emit('open-tool', 'metallurgical')">
