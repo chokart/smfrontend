@@ -33,9 +33,9 @@
             type="button"
             class="a4-btn a4-btn-export"
             @click="$emit('export-pdf')"
-            title="Exportar esta zona A4 a PDF"
+            title="Configurar cajetín y exportar esta zona A4 a PDF"
           >
-            📥 PDF
+            📥 Exportar PDF
           </button>
           <button
             type="button"

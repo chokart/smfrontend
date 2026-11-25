@@ -239,7 +239,7 @@ const exportPdfModalRef = ref(null)
 const isLoading = ref(false)
 
 function handleDirectPrintAreaPdf() {
-  exportPdfModalRef.value?.generatePdf(printAreaOrientation.value)
+  isPdfModalVisible.value = true
 }
 const isReportModalVisible = ref(false)
 const reconciliationReport = ref(null)

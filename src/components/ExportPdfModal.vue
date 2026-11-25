@@ -2,52 +2,87 @@
   <div v-if="visible" class="modal-overlay" @click.self="$emit('close')">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>📄 Exportar Diagrama a PDF</h3>
+        <h3>📄 Exportar PDF — Configurar Cajetín</h3>
         <button class="close-btn" @click="$emit('close')" :disabled="isGenerating">✕</button>
       </div>
 
       <div class="modal-body">
-        <p class="modal-desc">
-          Exporta únicamente el diagrama del balance en alta resolución para que todas las letras y números se lean con total claridad.
-        </p>
-
         <div v-if="printAreaActive" class="area-active-banner">
-          📐 <strong>Zona A4 activa:</strong> se exportará únicamente el área dentro del rectángulo seleccionado.
+          📐 <strong>Zona A4 activa ({{ orientation === 'landscape' ? 'Horizontal' : 'Vertical' }}):</strong> se imprimirá el área dentro del recuadro seleccionado.
         </div>
 
-        <!-- Orientación -->
-        <div class="form-group">
-          <label>Orientación de Página</label>
-          <div class="orientation-options">
-            <button
-              type="button"
-              :class="['orient-btn', { active: orientation === 'landscape' }]"
-              @click="orientation = 'landscape'"
-            >
-              <span class="orient-icon">▭</span>
-              <span>Horizontal</span>
-              <small>Recomendado para circuitos anchos</small>
-            </button>
-            <button
-              type="button"
-              :class="['orient-btn', { active: orientation === 'portrait' }]"
-              @click="orientation = 'portrait'"
-            >
-              <span class="orient-icon">▯</span>
-              <span>Vertical</span>
-              <small>Recomendado para circuitos altos</small>
-            </button>
+        <!-- Orientación y Hoja -->
+        <div class="two-cols">
+          <div class="form-group">
+            <label>Orientación</label>
+            <div class="orientation-options">
+              <button
+                type="button"
+                :class="['orient-btn', { active: orientation === 'landscape' }]"
+                @click="orientation = 'landscape'"
+              >
+                ▭ Horizontal
+              </button>
+              <button
+                type="button"
+                :class="['orient-btn', { active: orientation === 'portrait' }]"
+                @click="orientation = 'portrait'"
+              >
+                ▯ Vertical
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="pdf-format">Tamaño de Hoja</label>
+            <select id="pdf-format" v-model="pageFormat" class="form-select">
+              <option value="a4">A4 (210 × 297 mm)</option>
+              <option value="letter">Carta / Letter</option>
+              <option value="a3">A3 (297 × 420 mm)</option>
+            </select>
           </div>
         </div>
 
-        <!-- Tamaño de Hoja -->
-        <div class="form-group">
-          <label for="pdf-format">Tamaño de Hoja</label>
-          <select id="pdf-format" v-model="pageFormat" class="form-select">
-            <option value="a4">A4 (210 × 297 mm)</option>
-            <option value="letter">Carta / Letter (216 × 279 mm)</option>
-            <option value="a3">A3 (297 × 420 mm — Máxima nitidez)</option>
-          </select>
+        <!-- Datos editables del Cajetín -->
+        <div class="cajetin-section">
+          <div class="cajetin-section-title">Datos del Cajetín (Editables)</div>
+
+          <div class="two-cols">
+            <div class="form-group">
+              <label for="caj-title">Título del Plano</label>
+              <input id="caj-title" v-model="cajetin.title" type="text" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label for="caj-company">Proyecto / Empresa</label>
+              <input id="caj-company" v-model="cajetin.company" type="text" class="form-input" />
+            </div>
+          </div>
+
+          <div class="two-cols">
+            <div class="form-group">
+              <label for="caj-author">Elaborado por</label>
+              <input id="caj-author" v-model="cajetin.author" type="text" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label for="caj-code">Código / Lámina</label>
+              <input id="caj-code" v-model="cajetin.code" type="text" class="form-input" />
+            </div>
+          </div>
+
+          <div class="two-cols">
+            <div class="form-group">
+              <label for="caj-notes">Datos / Subtítulo</label>
+              <input id="caj-notes" v-model="cajetin.notes" type="text" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label for="caj-status">Estado</label>
+              <input id="caj-status" v-model="cajetin.status" type="text" class="form-input" />
+            </div>
+          </div>
+
+          <p class="fixed-note">
+            ℹ️ La <strong>Leyenda</strong>, el <strong>Logo</strong>, la <strong>Fecha de Impresión</strong> y el texto <em>"DESARROLLADA EN LA HERRAMIENTA SUITEMINERALS"</em> se incluyen automáticamente.
+          </p>
         </div>
 
         <div v-if="errorMsg" class="error-box">{{ errorMsg }}</div>
@@ -55,7 +90,7 @@
 
       <div class="modal-footer">
         <button class="btn-cancel" @click="$emit('close')" :disabled="isGenerating">Cancelar</button>
-        <button class="btn-export" @click="generatePdf" :disabled="isGenerating">
+        <button class="btn-export" @click="generatePdf()" :disabled="isGenerating">
           {{ isGenerating ? '⏳ Generando PDF...' : '📥 Descargar PDF' }}
         </button>
       </div>
@@ -64,9 +99,10 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, reactive, watch } from 'vue'
 import { jsPDF } from 'jspdf'
 import { toPng } from 'html-to-image'
+import logoImgUrl from '../assets/logo.png'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -87,11 +123,38 @@ const pageFormat = ref('a4')
 const isGenerating = ref(false)
 const errorMsg = ref('')
 
+const cajetin = reactive({
+  title: 'BALANCE METALÚRGICO DE LEYES',
+  company: 'PLANTA CONCENTRADORA',
+  author: 'Ingeniería Metalúrgica',
+  code: 'PFD-01',
+  notes: '',
+  status: 'RECONCILIADO'
+})
+
 watch(() => props.visible, (isVis) => {
-  if (isVis && props.printAreaActive && props.printAreaOrientation) {
+  if (!isVis) return
+  if (props.printAreaActive && props.printAreaOrientation) {
     orientation.value = props.printAreaOrientation
   }
+  const isWater = props.activeModule === 'water'
+  const hasReconciled = props.flows.some(f => f.data?.corrected_data || f.data?.corrected_tonelaje != null)
+  const vistaLabel = props.showOnlyReconciled ? 'Solo Reconciliados' : 'Medido / Reconciliado'
+
+  cajetin.title = isWater ? 'BALANCE HÍDRICO DE CIRCUITO' : 'BALANCE METALÚRGICO DE LEYES'
+  cajetin.notes = `Nodos: ${props.nodes.length}  |  Flujos: ${props.flows.length}  |  Vista: ${vistaLabel}`
+  cajetin.status = hasReconciled ? 'RECONCILIADO' : 'BORRADOR'
 })
+
+function loadImageElement(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error('No se pudo cargar la imagen.'))
+    img.src = src
+  })
+}
 
 async function generatePdf(overrideOrientation = null) {
   errorMsg.value = ''
@@ -143,12 +206,7 @@ async function generatePdf(overrideOrientation = null) {
 
     // Si hay un rectángulo A4 activo, recortar exactamente esa zona en alta resolución
     if (printFrameRect && printFrameRect.width > 10 && printFrameRect.height > 10) {
-      const img = await new Promise((resolve, reject) => {
-        const image = new Image()
-        image.onload = () => resolve(image)
-        image.onerror = () => reject(new Error('Error al procesar la imagen del diagrama.'))
-        image.src = fullPng
-      })
+      const img = await loadImageElement(fullPng)
 
       const sx = Math.max(0, (printFrameRect.left - diagramRect.left) * pixelRatio)
       const sy = Math.max(0, (printFrameRect.top - diagramRect.top) * pixelRatio)
@@ -179,7 +237,7 @@ async function generatePdf(overrideOrientation = null) {
     const pageH = doc.internal.pageSize.getHeight()
     const margin = 6
     const innerW = pageW - margin * 2
-    const cajetinH = 25
+    const cajetinH = 28
     const cajetinY = pageH - margin - cajetinH
 
     // 1. Área de dibujo del diagrama (arriba del cajetín)
@@ -198,17 +256,13 @@ async function generatePdf(overrideOrientation = null) {
     doc.setDrawColor(51, 65, 85)
     doc.setLineWidth(0.35)
     doc.rect(margin, margin, innerW, pageH - margin * 2)
-
-    // Línea divisoria superior del cajetín / leyenda
-    doc.setLineWidth(0.35)
     doc.line(margin, cajetinY, pageW - margin, cajetinY)
 
-    // 3. Bloque Izquierdo: LEYENDA
-    const leyendaW = innerW * 0.48
+    // 3. Bloque Izquierdo: LEYENDA (automática)
+    const leyendaW = targetOrientation === 'landscape' ? innerW * 0.42 : innerW * 0.40
     const cajetinX = margin + leyendaW
     const cajetinW = innerW - leyendaW
 
-    // Divisor vertical entre Leyenda y Cajetín
     doc.line(cajetinX, cajetinY, cajetinX, pageH - margin)
 
     doc.setFont('helvetica', 'bold')
@@ -239,15 +293,14 @@ async function generatePdf(overrideOrientation = null) {
     const cols = legendItems.length > 4 ? 2 : 1
     const colWidth = (leyendaW - 6) / cols
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(6.8)
+    doc.setFontSize(6.6)
 
     legendItems.slice(0, 6).forEach((item, idx) => {
       const col = idx % cols
       const row = Math.floor(idx / cols)
       const ix = margin + 4 + col * colWidth
-      const iy = cajetinY + 9 + row * 5.2
+      const iy = cajetinY + 9.5 + row * 5.6
 
-      // Convertir hex a RGB
       const hex = item.color.replace('#', '')
       const r = parseInt(hex.substring(0, 2), 16)
       const g = parseInt(hex.substring(2, 4), 16)
@@ -256,50 +309,76 @@ async function generatePdf(overrideOrientation = null) {
       doc.circle(ix, iy - 0.9, 1.05, 'F')
 
       doc.setTextColor(30, 41, 59)
-      doc.text(item.label, ix + 2.8, iy, { maxWidth: colWidth - 4 })
+      doc.text(item.label, ix + 2.6, iy, { maxWidth: colWidth - 4 })
     })
 
-    // 4. Bloque Derecho: CAJETÍN TÉCNICO Y DATOS
-    const row1Y = cajetinY + 7.5
-    const row2Y = cajetinY + 17.5
+    // 4. Bloque Derecho: CAJETÍN TÉCNICO (Logo + Editables + Fijos)
+    const logoColW = targetOrientation === 'landscape' ? 28 : 22
+    const infoX = cajetinX + logoColW
+    const infoW = cajetinW - logoColW
 
     doc.setDrawColor(148, 163, 184)
     doc.setLineWidth(0.25)
-    doc.line(cajetinX, row1Y, pageW - margin, row1Y)
-    doc.line(cajetinX, row2Y, pageW - margin, row2Y)
+    doc.line(infoX, cajetinY, infoX, pageH - margin)
 
-    // Fila 1: Marca y desarrollador
+    // Celda del Logo oficial de SuiteMinerals
+    try {
+      const logoImg = await loadImageElement(logoImgUrl)
+      const maxLW = logoColW - 4
+      const maxLH = cajetinH - 6
+      const lRatio = Math.min(maxLW / logoImg.width, maxLH / logoImg.height)
+      const lW = logoImg.width * lRatio
+      const lH = logoImg.height * lRatio
+      const lX = cajetinX + (logoColW - lW) / 2
+      const lY = cajetinY + (cajetinH - lH) / 2
+      doc.addImage(logoImg, 'PNG', lX, lY, lW, lH)
+    } catch (_e) {
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(7.5)
+      doc.setTextColor(180, 83, 9)
+      doc.text('SUITE\nMINERALS', cajetinX + logoColW / 2, cajetinY + 13, { align: 'center' })
+    }
+
+    // Filas de información dentro del cajetín derecho
+    const row1Y = cajetinY + 8.5
+    const row2Y = cajetinY + 17.5
+    const row3Y = cajetinY + 23.5
+    doc.line(infoX, row1Y, pageW - margin, row1Y)
+    doc.line(infoX, row2Y, pageW - margin, row2Y)
+    doc.line(infoX, row3Y, pageW - margin, row3Y)
+
+    // Fila 1: Proyecto/Empresa y Código/Lámina
+    const codeColW = 24
+    doc.line(pageW - margin - codeColW, cajetinY, pageW - margin - codeColW, row1Y)
+
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9.5)
-    doc.setTextColor(180, 83, 9) // Cobre institucional
-    doc.text('SUITE MINERALS', cajetinX + 3, cajetinY + 5.2)
-
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(6.8)
+    doc.setFontSize(5.5)
     doc.setTextColor(100, 116, 139)
-    doc.text('SUITECH PERU  •  suitechpe.com', pageW - margin - 3, cajetinY + 5.2, { align: 'right' })
+    doc.text('PROYECTO / EMPRESA', infoX + 2.2, cajetinY + 2.8)
+    doc.text('LÁMINA', pageW - margin - codeColW + 2, cajetinY + 2.8)
 
-    // Fila 2: Título del plano y datos del circuito
-    const planTitle = isWater ? 'BALANCE HÍDRICO DE CIRCUITO' : 'BALANCE METALÚRGICO DE LEYES'
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7.5)
+    doc.setTextColor(15, 23, 42)
+    doc.text((cajetin.company || 'PLANTA CONCENTRADORA').toUpperCase(), infoX + 2.2, cajetinY + 6.7, { maxWidth: infoW - codeColW - 4 })
+    doc.text((cajetin.code || 'PFD-01').toUpperCase(), pageW - margin - codeColW + 2, cajetinY + 6.7, { maxWidth: codeColW - 3 })
+
+    // Fila 2: Título del Plano y Datos / Notas
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(8.2)
     doc.setTextColor(15, 23, 42)
-    doc.text(planTitle, cajetinX + 3, row1Y + 4.3)
+    doc.text((cajetin.title || 'BALANCE').toUpperCase(), infoX + 2.2, row1Y + 4.1, { maxWidth: infoW - 4 })
 
-    const nodesCount = props.nodes.length
-    const flowsCount = props.flows.length
-    const vistaLabel = props.showOnlyReconciled ? 'Solo Reconciliados' : 'Medido / Reconciliado'
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(6.8)
+    doc.setFontSize(6.5)
     doc.setTextColor(51, 65, 85)
-    doc.text(`Nodos: ${nodesCount}   |   Flujos: ${flowsCount}   |   Vista: ${vistaLabel}`, cajetinX + 3, row1Y + 8.3)
+    doc.text(cajetin.notes || '', infoX + 2.2, row1Y + 7.6, { maxWidth: infoW - 4 })
 
-    // Fila 3: 3 celdas de metadatos (Estado, Fecha, Formato)
-    const c3W = cajetinW / 3
-    doc.line(cajetinX + c3W, row2Y, cajetinX + c3W, pageH - margin)
-    doc.line(cajetinX + c3W * 2, row2Y, cajetinX + c3W * 2, pageH - margin)
+    // Fila 3: Elaborado por | Estado | Fecha de Impresión
+    const c3W = infoW / 3
+    doc.line(infoX + c3W, row2Y, infoX + c3W, row3Y)
+    doc.line(infoX + c3W * 2, row2Y, infoX + c3W * 2, row3Y)
 
-    const hasReconciled = props.flows.some(f => f.data?.corrected_data || f.data?.corrected_tonelaje != null)
     const dateStr = new Date().toLocaleString('es-PE', {
       year: 'numeric',
       month: '2-digit',
@@ -307,21 +386,26 @@ async function generatePdf(overrideOrientation = null) {
       hour: '2-digit',
       minute: '2-digit'
     })
-    const formatLabel = `${pageFormat.value.toUpperCase()} ${targetOrientation === 'landscape' ? 'HORIZ.' : 'VERT.'}`
 
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(5.3)
+    doc.setTextColor(100, 116, 139)
+    doc.text('ELABORADO POR', infoX + 2, row2Y + 2.2)
+    doc.text('ESTADO', infoX + c3W + 2, row2Y + 2.2)
+    doc.text('FECHA DE IMPRESIÓN', infoX + c3W * 2 + 2, row2Y + 2.2)
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(6.3)
+    doc.setTextColor(15, 23, 42)
+    doc.text(cajetin.author || '-', infoX + 2, row2Y + 5, { maxWidth: c3W - 3 })
+    doc.text((cajetin.status || 'BORRADOR').toUpperCase(), infoX + c3W + 2, row2Y + 5, { maxWidth: c3W - 3 })
+    doc.text(dateStr, infoX + c3W * 2 + 2, row2Y + 5, { maxWidth: c3W - 3 })
+
+    // Fila 4 (Fija): Texto institucional requerido
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(6)
-    doc.setTextColor(100, 116, 139)
-    doc.text('ESTADO', cajetinX + 2.5, row2Y + 3)
-    doc.text('FECHA', cajetinX + c3W + 2.5, row2Y + 3)
-    doc.text('FORMATO', cajetinX + c3W * 2 + 2.5, row2Y + 3)
-
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(6.8)
-    doc.setTextColor(15, 23, 42)
-    doc.text(hasReconciled ? 'RECONCILIADO' : 'BORRADOR', cajetinX + 2.5, row2Y + 6.2)
-    doc.text(dateStr, cajetinX + c3W + 2.5, row2Y + 6.2)
-    doc.text(formatLabel, cajetinX + c3W * 2 + 2.5, row2Y + 6.2)
+    doc.setTextColor(180, 83, 9)
+    doc.text('DESARROLLADA EN LA HERRAMIENTA SUITEMINERALS', infoX + infoW / 2, row3Y + 3.2, { align: 'center' })
 
     const fileSuffix = isWater ? 'Balance_Agua' : 'Balance_Leyes'
     const timestamp = new Date().toISOString().slice(0, 10)
@@ -364,7 +448,10 @@ defineExpose({ generatePdf })
   background: #ffffff;
   border-radius: 12px;
   width: 100%;
-  max-width: 440px;
+  max-width: 540px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.25);
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -374,14 +461,14 @@ defineExpose({ generatePdf })
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 14px 20px;
   border-bottom: 1px solid #e2e8f0;
   background: #f8fafc;
 }
 
 .modal-header h3 {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1.02rem;
   color: #0f172a;
 }
 
@@ -401,56 +488,55 @@ defineExpose({ generatePdf })
 }
 
 .modal-body {
-  padding: 20px;
-}
-
-.modal-desc {
-  margin: 0 0 18px 0;
-  font-size: 0.88rem;
-  color: #475569;
-  line-height: 1.5;
+  padding: 18px 20px;
+  overflow-y: auto;
 }
 
 .area-active-banner {
-  margin: 0 0 16px 0;
-  padding: 10px 12px;
+  margin: 0 0 14px 0;
+  padding: 9px 12px;
   background: #fef3c7;
   border: 1px solid #fcd34d;
   color: #92400e;
   border-radius: 8px;
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   line-height: 1.4;
 }
 
+.two-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .form-group label {
   display: block;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 8px;
+  color: #334155;
+  margin-bottom: 5px;
 }
 
 .orientation-options {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 6px;
 }
 
 .orient-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 12px 10px;
+  padding: 8px 6px;
   border: 1.5px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 7px;
   background: #ffffff;
   cursor: pointer;
-  transition: all 0.15s;
+  font-weight: 600;
+  font-size: 0.82rem;
   color: #334155;
+  transition: all 0.15s;
 }
 
 .orient-btn:hover {
@@ -464,31 +550,46 @@ defineExpose({ generatePdf })
   color: #1d4ed8;
 }
 
-.orient-icon {
-  font-size: 1.4rem;
-  margin-bottom: 4px;
-}
-
-.orient-btn span {
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.orient-btn small {
-  font-size: 0.72rem;
-  color: #64748b;
-  margin-top: 2px;
-  text-align: center;
-}
-
-.form-select {
+.form-select,
+.form-input {
   width: 100%;
-  padding: 9px 12px;
+  box-sizing: border-box;
+  padding: 8px 10px;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  border-radius: 7px;
+  font-size: 0.85rem;
   color: #1e293b;
   background: #ffffff;
+}
+
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: #b45309;
+}
+
+.cajetin-section {
+  margin-top: 4px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.cajetin-section-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.fixed-note {
+  margin: 4px 0 0 0;
+  font-size: 0.76rem;
+  color: #64748b;
+  line-height: 1.4;
 }
 
 .error-box {
@@ -540,5 +641,12 @@ defineExpose({ generatePdf })
 .btn-cancel:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+@media (max-width: 520px) {
+  .two-cols {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
 }
 </style>
