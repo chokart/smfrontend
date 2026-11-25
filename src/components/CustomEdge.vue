@@ -185,7 +185,7 @@ const edgeStyle = computed(() => {
         <div class="edge-val-row" title="Tonelaje Seco (t/h)">
           <div class="val-left">
             <span class="val-bullet bullet-ton"></span>
-            <span class="val-number">{{ Number(data.tonelaje).toFixed(2) }}</span>
+            <span class="val-number" :class="{ 'val-fixed': data.tonelaje_fixed }">{{ Number(data.tonelaje).toFixed(2) }}</span>
             <span v-if="data.corrected_tonelaje != null" class="val-rec metal">➔ {{ Number(data.corrected_tonelaje).toFixed(2) }}</span>
           </div>
           <span class="val-unit">t/h</span>
@@ -200,7 +200,7 @@ const edgeStyle = computed(() => {
         >
           <div class="val-left">
             <span class="val-bullet" :style="{ backgroundColor: getElementColor(idx) }"></span>
-            <span class="val-number">{{ Number(el.ley).toFixed(2) }}</span>
+            <span class="val-number" :class="{ 'val-fixed': el.ley_fixed }">{{ Number(el.ley).toFixed(2) }}</span>
             <span v-if="el.corrected_data" class="val-rec metal">➔ {{ Number(el.corrected_data.ley_corregida).toFixed(2) }}</span>
           </div>
           <span class="val-unit">%</span>
