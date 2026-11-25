@@ -19,7 +19,7 @@
       :class="['a4-toggle-btn', { active: printAreaActive }]" 
       title="Seleccionar zona A4 (Horizontal / Vertical) e imprimir en PDF"
     >
-      {{ printAreaActive ? '✓ Área A4' : '📐 Área A4' }}
+      {{ printAreaActive ? '✓ Exportar PDF' : '📄 Exportar PDF' }}
     </button>
     <button @click="$emit('reset-circuit')" class="reset-button" title="Reiniciar circuito actual a valores por defecto">↺ Reiniciar</button>
   </div>
