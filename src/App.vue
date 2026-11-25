@@ -40,8 +40,8 @@
       </nav>
       <div class="sidebar-footer">
         <p>Desarrollado por:</p>
-        <a href="https://www.linkedin.com/in/lchoquehuancaa/" target="_blank" rel="noopener noreferrer">
-          Luis Choquehuanca
+        <a href="https://suitechpe.com" target="_blank" rel="noopener noreferrer">
+          SUITECH PERU
         </a>
       </div>
     </aside>

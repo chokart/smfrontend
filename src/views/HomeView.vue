@@ -120,8 +120,8 @@
         </div>
         <p class="developer">
           Desarrollado por 
-          <a href="https://www.linkedin.com/in/lchoquehuancaa/" target="_blank" rel="noopener noreferrer">
-            Luis Choquehuanca
+          <a href="https://suitechpe.com" target="_blank" rel="noopener noreferrer">
+            SUITECH PERU
           </a>
         </p>
       </div>
@@ -137,25 +137,14 @@ defineEmits(['open-tool']);
 const projectIdea = ref('');
 const courseTopic = ref('');
 
-const contactEmail = 'contacto@suiteminerals.com'; // O LinkedIn
-const linkedinUrl = 'https://www.linkedin.com/in/lchoquehuancaa/';
+const companyUrl = 'https://suitechpe.com';
 
 function contactForProject() {
-  const text = projectIdea.value.trim() 
-    ? `Hola Luis, me interesa desarrollar la siguiente herramienta en SuiteMinerals: ${projectIdea.value.trim()}`
-    : 'Hola Luis, me gustaría consultar sobre el desarrollo de una herramienta o proyecto para SuiteMinerals.';
-  
-  // Abrir enlace a LinkedIn o mailto
-  const mailUrl = `mailto:${contactEmail}?subject=Desarrollo de Herramienta o Proyecto&body=${encodeURIComponent(text)}`;
-  window.open(linkedinUrl, '_blank');
+  window.open(companyUrl, '_blank');
 }
 
 function contactForCourse() {
-  const text = courseTopic.value.trim()
-    ? `Hola Luis, me gustaría solicitar capacitación/curso sobre el tema: ${courseTopic.value.trim()}`
-    : 'Hola Luis, me gustaría consultar por los cursos de especialización en procesamiento de minerales.';
-  
-  window.open(linkedinUrl, '_blank');
+  window.open(companyUrl, '_blank');
 }
 </script>
 
