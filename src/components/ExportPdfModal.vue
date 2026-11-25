@@ -2,13 +2,13 @@
   <div v-if="visible" class="modal-overlay" @click.self="$emit('close')">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>📄 Exportar Balance a PDF</h3>
+        <h3>📄 Exportar Diagrama a PDF</h3>
         <button class="close-btn" @click="$emit('close')" :disabled="isGenerating">✕</button>
       </div>
 
       <div class="modal-body">
         <p class="modal-desc">
-          Genera un reporte PDF de alta resolución (4× DPI) con el diagrama de flujo y sus tarjetas de datos.
+          Exporta únicamente el diagrama del balance en alta resolución para que todas las letras y números se lean con total claridad.
         </p>
 
         <!-- Orientación -->
@@ -22,7 +22,7 @@
             >
               <span class="orient-icon">▭</span>
               <span>Horizontal</span>
-              <small>Recomendado para diagramas</small>
+              <small>Recomendado para circuitos anchos</small>
             </button>
             <button
               type="button"
@@ -31,7 +31,7 @@
             >
               <span class="orient-icon">▯</span>
               <span>Vertical</span>
-              <small>Formato reporte clásico</small>
+              <small>Recomendado para circuitos altos</small>
             </button>
           </div>
         </div>
@@ -42,20 +42,8 @@
           <select id="pdf-format" v-model="pageFormat" class="form-select">
             <option value="a4">A4 (210 × 297 mm)</option>
             <option value="letter">Carta / Letter (216 × 279 mm)</option>
-            <option value="a3">A3 (297 × 420 mm — Ideal circuitos grandes)</option>
+            <option value="a3">A3 (297 × 420 mm — Máxima nitidez)</option>
           </select>
-        </div>
-
-        <!-- Opciones adicionales -->
-        <div class="options-group">
-          <label class="checkbox-row">
-            <input type="checkbox" v-model="autoFit" />
-            <span>Encuadrar circuito automáticamente antes de exportar</span>
-          </label>
-          <label class="checkbox-row">
-            <input type="checkbox" v-model="includeTables" />
-            <span>Incluir tabla de flujos y balance por nodo (texto vectorial nítido)</span>
-          </label>
         </div>
 
         <div v-if="errorMsg" class="error-box">{{ errorMsg }}</div>
@@ -90,115 +78,81 @@ const emit = defineEmits(['close'])
 
 const orientation = ref('landscape')
 const pageFormat = ref('a4')
-const autoFit = ref(true)
-const includeTables = ref(true)
 const isGenerating = ref(false)
 const errorMsg = ref('')
-
-function getNodeLabel(nodeId) {
-  const found = props.nodes.find(n => n.id === nodeId)
-  return found?.data?.label || `Nodo ${nodeId}`
-}
-
-function getSolidVal(d) {
-  if (d.is_water_only) return 0
-  if (d.tonelaje_solido != null) return Number(d.tonelaje_solido)
-  if (d.tonelaje_pulpa != null && d.porcentaje_solidos != null) {
-    return Number(d.tonelaje_pulpa) * (Number(d.porcentaje_solidos) / 100)
-  }
-  return 0
-}
-
-function getWaterVal(d) {
-  if (d.is_water_only) return Number(d.tonelaje_agua || 0)
-  const s = getSolidVal(d)
-  const cp = Number(d.porcentaje_solidos || 0)
-  if (cp > 0 && cp < 100) return s * (100 - cp) / cp
-  return 0
-}
-
-function getPulpVal(d) {
-  return d.is_water_only ? getWaterVal(d) : getSolidVal(d) + getWaterVal(d)
-}
-
-function getPulpFlowM3h(d) {
-  if (d.is_water_only) return getWaterVal(d)
-  const s = getSolidVal(d)
-  const w = getWaterVal(d)
-  const ge = Number(d.gravedad_especifica) > 0 ? Number(d.gravedad_especifica) : 2.7
-  return (s / ge) + w
-}
-
-function drawTable(doc, startY, headers, rows, margin, pageW, pageH) {
-  let y = startY
-  const usableW = pageW - margin * 2
-  const colW = usableW / headers.length
-  const rowH = 7
-
-  const drawHeaders = () => {
-    doc.setFillColor(15, 23, 42)
-    doc.rect(margin, y, usableW, rowH + 1, 'F')
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8)
-    doc.setTextColor(255, 255, 255)
-    headers.forEach((h, i) => {
-      doc.text(String(h), margin + i * colW + 2, y + 5.2, { maxWidth: colW - 4 })
-    })
-    y += rowH + 1
-  }
-
-  drawHeaders()
-
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(7.8)
-  rows.forEach((row, rIdx) => {
-    if (y + rowH > pageH - 16) {
-      doc.addPage()
-      y = 18
-      drawHeaders()
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(7.8)
-    }
-
-    if (rIdx % 2 === 0) {
-      doc.setFillColor(248, 250, 252)
-      doc.rect(margin, y, usableW, rowH, 'F')
-    }
-
-    doc.setDrawColor(226, 232, 240)
-    doc.line(margin, y + rowH, margin + usableW, y + rowH)
-
-    doc.setTextColor(30, 41, 59)
-    row.forEach((cell, i) => {
-      doc.text(String(cell), margin + i * colW + 2, y + 4.8, { maxWidth: colW - 4 })
-    })
-    y += rowH
-  })
-
-  return y
-}
 
 async function generatePdf() {
   errorMsg.value = ''
   isGenerating.value = true
 
+  const savedPathStyles = []
   try {
     const diagramEl = props.diagramRef?.getContainerEl?.()
     if (!diagramEl) {
       throw new Error('No se encontró el contenedor del diagrama para exportar.')
     }
 
-    if (autoFit.value && props.diagramRef?.fitView) {
-      props.diagramRef.fitView({ padding: 0.08 })
-      await new Promise(resolve => setTimeout(resolve, 220))
+    const viewportEl = diagramEl.querySelector('.vue-flow__viewport')
+    if (!viewportEl) {
+      throw new Error('No se encontró el lienzo interno del diagrama.')
     }
 
-    // Captura de ultra alta resolución (4x pixelRatio) excluyendo controles de zoom
-    const imgData = await toPng(diagramEl, {
-      pixelRatio: 4,
+    // Calcular caja delimitadora exacta en coordenadas reales (1:1) del circuito
+    const zoom = props.diagramRef?.getViewport?.()?.zoom || 1
+    const vpRect = viewportEl.getBoundingClientRect()
+    const items = viewportEl.querySelectorAll('.vue-flow__node, .custom-edge-label')
+
+    if (items.length === 0) {
+      throw new Error('El diagrama no contiene nodos ni flujos para exportar.')
+    }
+
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+
+    items.forEach(el => {
+      const r = el.getBoundingClientRect()
+      const x1 = (r.left - vpRect.left) / zoom
+      const y1 = (r.top - vpRect.top) / zoom
+      const x2 = (r.right - vpRect.left) / zoom
+      const y2 = (r.bottom - vpRect.top) / zoom
+      if (x1 < minX) minX = x1
+      if (y1 < minY) minY = y1
+      if (x2 > maxX) maxX = x2
+      if (y2 > maxY) maxY = y2
+    })
+
+    const pad = 32
+    minX = Math.floor(minX - pad)
+    minY = Math.floor(minY - pad)
+    const boxW = Math.ceil(maxX + pad - minX)
+    const boxH = Math.ceil(maxY + pad - minY)
+
+    // Forzar fill="none" explícito en todas las rutas SVG para evitar rellenos negros al serializar
+    const edgePaths = viewportEl.querySelectorAll('.vue-flow__edge-path')
+    edgePaths.forEach(p => {
+      savedPathStyles.push({ el: p, fill: p.style.fill, attrFill: p.getAttribute('fill') })
+      p.style.fill = 'none'
+      p.setAttribute('fill', 'none')
+    })
+
+    // Escala adaptativa de alta resolución sin exceder límites del canvas del navegador
+    const maxDim = Math.max(boxW, boxH)
+    const pixelRatio = Math.max(1.8, Math.min(3.5, Math.floor((6800 / maxDim) * 10) / 10))
+
+    const imgData = await toPng(viewportEl, {
+      width: boxW,
+      height: boxH,
+      pixelRatio,
       backgroundColor: '#ffffff',
       cacheBust: true,
-      filter: (node) => !(node?.classList && node.classList.contains('zoom-controls'))
+      style: {
+        transform: `translate(${-minX}px, ${-minY}px) scale(1)`,
+        transformOrigin: '0 0',
+        width: `${boxW}px`,
+        height: `${boxH}px`
+      }
     })
 
     const doc = new jsPDF({
@@ -210,118 +164,19 @@ async function generatePdf() {
 
     const pageW = doc.internal.pageSize.getWidth()
     const pageH = doc.internal.pageSize.getHeight()
-    const margin = 12
+    const margin = 6
 
-    // Cabecera vectorial nítida
-    const isWater = props.activeModule === 'water'
-    const title = isWater ? 'Balance de Agua — Circuito de Planta' : 'Balance Metalúrgico de Leyes'
-    const dateStr = new Date().toLocaleString('es-PE', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(14)
-    doc.setTextColor(15, 23, 42)
-    doc.text('SUITE MINERALS', margin, 13)
-
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(10.5)
-    doc.setTextColor(71, 85, 105)
-    doc.text(title, margin, 19)
-
-    doc.setFontSize(8.5)
-    doc.setTextColor(100, 116, 139)
-    const rightMeta = props.showOnlyReconciled
-      ? `${dateStr}  |  Vista: Solo Reconciliados`
-      : `${dateStr}  |  Vista: Medido / Reconciliado`
-    doc.text(rightMeta, pageW - margin, 13, { align: 'right' })
-
-    doc.setDrawColor(180, 83, 9) // Cobre institucional
-    doc.setLineWidth(0.5)
-    doc.line(margin, 22, pageW - margin, 22)
-
-    // Insertar imagen del diagrama preservando relación de aspecto
-    const imgProps = doc.getImageProperties(imgData)
     const availW = pageW - margin * 2
-    const availH = pageH - 34 // Espacio entre header (24) y footer (10)
-    const ratio = Math.min(availW / imgProps.width, availH / imgProps.height)
-    const drawW = imgProps.width * ratio
-    const drawH = imgProps.height * ratio
+    const availH = pageH - margin * 2
+    const ratio = Math.min(availW / boxW, availH / boxH)
+    const drawW = boxW * ratio
+    const drawH = boxH * ratio
     const offsetX = margin + (availW - drawW) / 2
-    const offsetY = 24 + (availH - drawH) / 2
+    const offsetY = margin + (availH - drawH) / 2
 
     doc.addImage(imgData, 'PNG', offsetX, offsetY, drawW, drawH, undefined, 'FAST')
 
-    // Pie de página
-    doc.setFontSize(7.5)
-    doc.setTextColor(148, 163, 184)
-    doc.text('Generado con SUITE MINERALS • Desarrollado por SUITECH PERU (suitechpe.com)', margin, pageH - 5)
-    doc.text('Página 1', pageW - margin, pageH - 5, { align: 'right' })
-
-    // Página 2: Tablas vectoriales con letras y números perfectamente nítidos
-    if (includeTables.value && props.flows.length > 0) {
-      doc.addPage()
-      let y = 16
-
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(12)
-      doc.setTextColor(15, 23, 42)
-      doc.text('Detalle Numérico de Flujos del Circuito', margin, y)
-      y += 6
-
-      if (isWater) {
-        const headers = ['Flujo', 'Sólido (t/h)', '% Sólidos', 'Agua (t/h)', 'Pulpa (t/h)', 'Caudal (m³/h)']
-        const rows = props.flows.map(f => {
-          const d = f.data || {}
-          const cd = d.corrected_data
-          const label = `${getNodeLabel(f.source)} -> ${getNodeLabel(f.target)}`
-          if (d.is_water_only) {
-            const w = cd ? Number(cd.tonelaje_agua_calculado ?? 0) : Number(d.tonelaje_agua ?? 0)
-            return [label + (d.tonelaje_agua_fixed ? ' [F]' : ''), '0.00', '0.0%', w.toFixed(2), w.toFixed(2), w.toFixed(2)]
-          }
-          const s = cd ? Number(cd.tonelaje_solido_corregido ?? cd.tonelaje_solido_calculado ?? 0) : getSolidVal(d)
-          const cp = cd ? Number(cd.porcentaje_solidos_corregido ?? 0) : Number(d.porcentaje_solidos ?? 0)
-          const w = cd ? Number(cd.tonelaje_agua_calculado ?? 0) : getWaterVal(d)
-          const p = cd ? Number(cd.tonelaje_pulpa_calculado ?? cd.tonelaje_pulpa_corregido ?? 0) : getPulpVal(d)
-          const q = cd ? Number(cd.caudal_pulpa_m3h ?? getPulpFlowM3h({ ...d, tonelaje_solido: s, porcentaje_solidos: cp })) : getPulpFlowM3h(d)
-          return [
-            label,
-            s.toFixed(2) + (d.tonelaje_solido_fixed ? ' [F]' : ''),
-            cp.toFixed(1) + '%' + (d.porcentaje_solidos_fixed ? ' [F]' : ''),
-            w.toFixed(2),
-            p.toFixed(2),
-            q.toFixed(2)
-          ]
-        })
-        y = drawTable(doc, y, headers, rows, margin, pageW, pageH)
-      } else {
-        const headers = ['Flujo', 'Ton. Med (t/h)', 'Ton. Rec (t/h)', ...props.elementNames.map(e => `${e} (%)`)]
-        const rows = props.flows.map(f => {
-          const d = f.data || {}
-          const label = `${getNodeLabel(f.source)} -> ${getNodeLabel(f.target)}`
-          const tMed = Number(d.tonelaje ?? 0).toFixed(2) + (d.tonelaje_fixed ? ' [F]' : '')
-          const tRec = d.corrected_tonelaje != null ? Number(d.corrected_tonelaje).toFixed(2) : '--'
-          const grades = props.elementNames.map(name => {
-            const el = (d.elementos || []).find(e => e.name === name)
-            if (!el) return '--'
-            const val = el.corrected_data ? Number(el.corrected_data.ley_corregida) : Number(el.ley ?? 0)
-            return val.toFixed(3) + (el.ley_fixed ? ' [F]' : '')
-          })
-          return [label, tMed, tRec, ...grades]
-        })
-        y = drawTable(doc, y, headers, rows, margin, pageW, pageH)
-      }
-
-      doc.setFontSize(7.5)
-      doc.setTextColor(148, 163, 184)
-      doc.text('[F] = Valor Fijo  |  Generado con SUITE MINERALS', margin, pageH - 5)
-      doc.text('Página 2', pageW - margin, pageH - 5, { align: 'right' })
-    }
-
+    const isWater = props.activeModule === 'water'
     const fileSuffix = isWater ? 'Balance_Agua' : 'Balance_Leyes'
     const timestamp = new Date().toISOString().slice(0, 10)
     doc.save(`SuiteMinerals_${fileSuffix}_${orientation.value}_${timestamp}.pdf`)
@@ -331,6 +186,15 @@ async function generatePdf() {
     console.error('Error generando PDF:', err)
     errorMsg.value = err.message || 'Ocurrió un error al generar el PDF.'
   } finally {
+    // Restaurar estilos originales de las rutas SVG
+    savedPathStyles.forEach(({ el, fill, attrFill }) => {
+      el.style.fill = fill
+      if (attrFill === null) {
+        el.removeAttribute('fill')
+      } else {
+        el.setAttribute('fill', attrFill)
+      }
+    })
     isGenerating.value = false
   }
 }
@@ -455,6 +319,7 @@ async function generatePdf() {
   font-size: 0.72rem;
   color: #64748b;
   margin-top: 2px;
+  text-align: center;
 }
 
 .form-select {
@@ -465,26 +330,6 @@ async function generatePdf() {
   font-size: 0.9rem;
   color: #1e293b;
   background: #ffffff;
-}
-
-.options-group {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 12px;
-  padding: 12px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-}
-
-.checkbox-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.85rem;
-  color: #334155;
-  cursor: pointer;
 }
 
 .error-box {

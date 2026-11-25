@@ -87,7 +87,8 @@ defineExpose({
   fitView: (opts) => fitView(opts),
   zoomIn: () => zoomIn(),
   zoomOut: () => zoomOut(),
-  getContainerEl: () => diagramContainerRef.value
+  getContainerEl: () => diagramContainerRef.value,
+  getViewport: () => vueFlowInstance.value?.getViewport?.() ?? { x: 0, y: 0, zoom: 1 }
 })
 
 const getPosition = (posStr) => {

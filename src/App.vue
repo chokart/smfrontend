@@ -1267,6 +1267,7 @@ body {
   border-width: 2px !important;
 }
 .vue-flow__edge .vue-flow__edge-path {
+  fill: none !important;
   stroke-width: 2.5px !important;
 }
 .icon { font-size: 1.2rem; }

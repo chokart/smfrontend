@@ -75,12 +75,18 @@ function getElementColor(index) {
 const edgeStyle = computed(() => {
   if (props.data?.is_water_only) {
     return {
+      fill: 'none',
       stroke: '#0284c7',
       strokeWidth: 2.5,
       ...props.style
     }
   }
-  return props.style
+  return {
+    fill: 'none',
+    stroke: '#64748b',
+    strokeWidth: 2.5,
+    ...props.style
+  }
 })
 </script>
 
