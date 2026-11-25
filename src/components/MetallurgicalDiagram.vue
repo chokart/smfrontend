@@ -290,6 +290,7 @@ const getNodeStyle = (node) => {
           v-bind="edgeProps"
           :show-only-reconciled="showOnlyReconciled"
           @click="onEdgeClick({ edge: edgeProps })"
+          @edge-moved="emit('change')"
         />
       </template>
     </VueFlow>

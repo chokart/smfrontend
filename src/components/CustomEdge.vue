@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from 'vue'
-import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@vue-flow/core'
+import { computed, ref, onBeforeUnmount } from 'vue'
+import { BaseEdge, EdgeLabelRenderer, getBezierPath, useVueFlow } from '@vue-flow/core'
 
 const props = defineProps({
   id: { type: String, required: true },
@@ -16,7 +16,167 @@ const props = defineProps({
   showOnlyReconciled: { type: Boolean, default: false },
 })
 
-const path = computed(() => getBezierPath(props))
+const emit = defineEmits(['click', 'edge-moved'])
+const { getViewport } = useVueFlow()
+
+function evalCubicBezier(sx, sy, c1x, c1y, c2x, c2y, tx, ty, t) {
+  const mt = 1 - t
+  const mt2 = mt * mt
+  const t2 = t * t
+  const a = mt2 * mt
+  const b = 3 * mt2 * t
+  const c = 3 * mt * t2
+  const d = t2 * t
+  return {
+    x: a * sx + b * c1x + c * c2x + d * tx,
+    y: a * sy + b * c1y + c * c2y + d * ty
+  }
+}
+
+const curveData = computed(() => {
+  const [rawPath, defX, defY] = getBezierPath(props)
+  const nums = rawPath.match(/[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?/g)
+  if (!nums || nums.length < 8) {
+    return { d: rawPath, lx: defX, ly: defY, pts: null }
+  }
+  const [sx, sy, c1x, c1y, c2x, c2y, tx, ty] = nums.map(Number)
+  const ox = Number(props.data?.pathOffset?.x || 0)
+  const oy = Number(props.data?.pathOffset?.y || 0)
+  const factor = 1.3333
+  const nc1x = c1x + ox * factor
+  const nc1y = c1y + oy * factor
+  const nc2x = c2x + ox * factor
+  const nc2y = c2y + oy * factor
+
+  const d = (ox === 0 && oy === 0)
+    ? rawPath
+    : `M ${sx},${sy} C ${nc1x},${nc1y} ${nc2x},${nc2y} ${tx},${ty}`
+
+  const t = props.data?.labelT != null ? Number(props.data.labelT) : 0.5
+  const clampedT = Math.max(0.06, Math.min(0.94, t))
+  const pt = evalCubicBezier(sx, sy, nc1x, nc1y, nc2x, nc2y, tx, ty, clampedT)
+
+  return {
+    d,
+    lx: pt.x,
+    ly: pt.y,
+    pts: { sx, sy, c1x: nc1x, c1y: nc1y, c2x: nc2x, c2y: nc2y, tx, ty }
+  }
+})
+
+// --- ARRASTRE DE TARJETA A LO LARGO DE LA LÍNEA ---
+const isDraggingCard = ref(false)
+let cardStartClient = { x: 0, y: 0 }
+let cardStartWorld = { x: 0, y: 0 }
+let suppressNextClick = false
+
+function onCardPointerDown(e) {
+  if (e.button !== 0 || !props.data || !curveData.value.pts) return
+  isDraggingCard.value = false
+  cardStartClient = { x: e.clientX, y: e.clientY }
+  cardStartWorld = { x: curveData.value.lx, y: curveData.value.ly }
+
+  window.addEventListener('pointermove', onCardPointerMove)
+  window.addEventListener('pointerup', onCardPointerUp)
+}
+
+function onCardPointerMove(e) {
+  const dxClient = e.clientX - cardStartClient.x
+  const dyClient = e.clientY - cardStartClient.y
+  if (!isDraggingCard.value && Math.hypot(dxClient, dyClient) < 4) return
+
+  isDraggingCard.value = true
+  const zoom = getViewport().zoom || 1
+  const targetWx = cardStartWorld.x + dxClient / zoom
+  const targetWy = cardStartWorld.y + dyClient / zoom
+
+  const pts = curveData.value.pts
+  if (!pts) return
+
+  // Buscar el parámetro t ∈ [0.06, 0.94] más cercano al puntero sobre la curva
+  let bestT = 0.5
+  let bestDist = Infinity
+  for (let i = 0; i <= 60; i++) {
+    const t = 0.06 + (0.88 * i) / 60
+    const p = evalCubicBezier(pts.sx, pts.sy, pts.c1x, pts.c1y, pts.c2x, pts.c2y, pts.tx, pts.ty, t)
+    const dist = (p.x - targetWx) ** 2 + (p.y - targetWy) ** 2
+    if (dist < bestDist) {
+      bestDist = dist
+      bestT = t
+    }
+  }
+
+  props.data.labelT = Number(bestT.toFixed(4))
+}
+
+function onCardPointerUp() {
+  window.removeEventListener('pointermove', onCardPointerMove)
+  window.removeEventListener('pointerup', onCardPointerUp)
+  if (isDraggingCard.value) {
+    suppressNextClick = true
+    setTimeout(() => { suppressNextClick = false }, 50)
+    emit('edge-moved')
+  }
+  isDraggingCard.value = false
+}
+
+function onCardClick(e) {
+  if (suppressNextClick) {
+    e.stopPropagation()
+    return
+  }
+  emit('click', e)
+}
+
+// --- ARRASTRE PARA MOVER LA LÍNEA DE CONEXIÓN ---
+const isDraggingLine = ref(false)
+let lineStartClient = { x: 0, y: 0 }
+let lineStartOffset = { x: 0, y: 0 }
+
+function onLinePointerDown(e) {
+  if (e.button !== 0 || !props.data) return
+  isDraggingLine.value = true
+  lineStartClient = { x: e.clientX, y: e.clientY }
+  lineStartOffset = {
+    x: Number(props.data.pathOffset?.x || 0),
+    y: Number(props.data.pathOffset?.y || 0)
+  }
+  window.addEventListener('pointermove', onLinePointerMove)
+  window.addEventListener('pointerup', onLinePointerUp)
+}
+
+function onLinePointerMove(e) {
+  if (!isDraggingLine.value || !props.data) return
+  const zoom = getViewport().zoom || 1
+  const dx = (e.clientX - lineStartClient.x) / zoom
+  const dy = (e.clientY - lineStartClient.y) / zoom
+  props.data.pathOffset = {
+    x: Math.round(lineStartOffset.x + dx),
+    y: Math.round(lineStartOffset.y + dy)
+  }
+}
+
+function onLinePointerUp() {
+  window.removeEventListener('pointermove', onLinePointerMove)
+  window.removeEventListener('pointerup', onLinePointerUp)
+  if (isDraggingLine.value) {
+    emit('edge-moved')
+  }
+  isDraggingLine.value = false
+}
+
+function resetLineOffset() {
+  if (!props.data) return
+  props.data.pathOffset = { x: 0, y: 0 }
+  emit('edge-moved')
+}
+
+onBeforeUnmount(() => {
+  window.removeEventListener('pointermove', onCardPointerMove)
+  window.removeEventListener('pointerup', onCardPointerUp)
+  window.removeEventListener('pointermove', onLinePointerMove)
+  window.removeEventListener('pointerup', onLinePointerUp)
+})
 
 const labelStyle = {
   position: 'absolute',
@@ -91,15 +251,26 @@ const edgeStyle = computed(() => {
 </script>
 
 <template>
-  <BaseEdge :id="id" :path="path[0]" :style="edgeStyle" :marker-end="markerEnd" />
+  <BaseEdge :id="id" :path="curveData.d" :style="edgeStyle" :marker-end="markerEnd" />
+  <path
+    :d="curveData.d"
+    class="edge-hit-path nopan"
+    @pointerdown.stop="onLinePointerDown"
+    @dblclick.stop="resetLineOffset"
+  >
+    <title>Arrastra para mover la línea (doble clic para restaurar)</title>
+  </path>
   <EdgeLabelRenderer>
     <div
       v-if="data"
       :style="{
         ...labelStyle,
-        transform: `translate(-50%, -50%) translate(${path[1]}px,${path[2]}px)`,
+        transform: `translate(-50%, -50%) translate(${curveData.lx}px,${curveData.ly}px)`,
       }"
-      class="nodrag nopan custom-edge-label"
+      :class="['nodrag', 'nopan', 'custom-edge-label', { 'is-dragging-card': isDraggingCard }]"
+      @pointerdown.stop="onCardPointerDown"
+      @click="onCardClick"
+      title="Clic para editar propiedades • Arrastra para deslizar sobre la línea"
     >
       <!-- FLUJO DE AGUA PURA (DILUCIÓN / ADICIÓN) -->
       <div v-if="data.is_water_only">
@@ -216,10 +387,28 @@ const edgeStyle = computed(() => {
 </template>
 
 <style scoped>
+.edge-hit-path {
+  fill: none !important;
+  stroke: transparent;
+  stroke-width: 16px;
+  cursor: grab;
+  pointer-events: stroke;
+}
+.edge-hit-path:active {
+  cursor: grabbing;
+}
+.custom-edge-label {
+  user-select: none;
+  cursor: grab;
+}
+.custom-edge-label.is-dragging-card {
+  cursor: grabbing;
+  border-color: #b45309 !important;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.18) !important;
+}
 .custom-edge-label:hover {
   background-color: #f8f9fa;
   border-color: #007bff;
-  cursor: pointer;
 }
 
 .edge-val-row {
