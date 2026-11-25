@@ -14,6 +14,7 @@
     </button>
     <button @click="$emit('verify-equations')" class="verify-button">Verificar Ecuaciones</button>
     <button @click="$emit('open-excel')" class="excel-button" title="Copiar y pegar propiedades de flujos desde Excel">📊 Copiar / Pegar Excel</button>
+    <button @click="$emit('open-pdf-export')" class="pdf-button" title="Exportar diagrama y balance en PDF de alta resolución">📄 Exportar PDF</button>
     <button @click="$emit('reset-circuit')" class="reset-button" title="Reiniciar circuito actual a valores por defecto">↺ Reiniciar</button>
   </div>
 </template>
@@ -31,7 +32,8 @@ const emit = defineEmits([
   'verify-equations',
   'open-excel',
   'reset-circuit',
-  'toggle-reconciled-only'
+  'toggle-reconciled-only',
+  'open-pdf-export'
 ]);
 
 const props = defineProps({
@@ -46,7 +48,8 @@ const props = defineProps({
 <style scoped>
 .toolbar {
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: center;
 }
 
@@ -143,5 +146,16 @@ const props = defineProps({
   color: #15803d !important;
   border-color: #4ade80 !important;
   font-weight: 700 !important;
+}
+
+.pdf-button {
+  background-color: #fff7ed !important;
+  color: #b45309 !important;
+  border-color: #fdba74 !important;
+  font-weight: 600 !important;
+}
+.pdf-button:hover {
+  background-color: #ffedd5 !important;
+  border-color: #fb923c !important;
 }
 </style>

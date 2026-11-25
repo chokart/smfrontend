@@ -63,6 +63,7 @@
           @view-report="isReportModalVisible = true"
           @verify-equations="handleVerifyEquations"
           @open-excel="isExcelModalVisible = true"
+          @open-pdf-export="isPdfModalVisible = true"
           @reset-circuit="handleResetDiagram"
           @toggle-reconciled-only="showOnlyReconciled = !showOnlyReconciled"
           :reportAvailable="!!reconciliationReport"
@@ -159,6 +160,18 @@
         @apply="handleApplyExcelData"
       />
 
+      <!-- EXPORT PDF MODAL -->
+      <ExportPdfModal
+        :visible="isPdfModalVisible"
+        :active-module="activeModule"
+        :nodes="currentNodes"
+        :flows="currentEdges"
+        :element-names="elementNames"
+        :show-only-reconciled="showOnlyReconciled"
+        :diagram-ref="diagramRef"
+        @close="isPdfModalVisible = false"
+      />
+
       <!-- ELEMENT CONFIG PANEL -->
       <ElementConfigPanel 
         v-if="isConfigPanelVisible && activeModule === 'metallurgical'" 
@@ -187,6 +200,7 @@ import ReporteModal from './components/ReporteModal.vue'
 import EquationsModal from './components/EquationsModal.vue'
 import DiagramsModal from './components/DiagramsModal.vue'
 import ExcelFlowsModal from './components/ExcelFlowsModal.vue'
+import ExportPdfModal from './components/ExportPdfModal.vue'
 import api from './services/api'
 
 // Claves para persistencia de sesión en localStorage
@@ -208,6 +222,7 @@ const elementNames = ref(['Cu'])
 const isConfigPanelVisible = ref(false)
 const isDiagramsModalVisible = ref(false)
 const isExcelModalVisible = ref(false)
+const isPdfModalVisible = ref(false)
 const isLoading = ref(false)
 const isReportModalVisible = ref(false)
 const reconciliationReport = ref(null)

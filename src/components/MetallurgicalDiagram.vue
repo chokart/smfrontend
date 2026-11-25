@@ -33,6 +33,7 @@ const {
   zoomOut 
 } = useVueFlow()
 const vueFlowInstance = ref(null)
+const diagramContainerRef = ref(null)
 
 onPaneReady((instance) => {
   vueFlowInstance.value = instance
@@ -83,9 +84,10 @@ defineExpose({
   getEdges: () => flowEdges.value,
   nodes: flowNodes,
   edges: flowEdges,
-  fitView: () => fitView(),
+  fitView: (opts) => fitView(opts),
   zoomIn: () => zoomIn(),
-  zoomOut: () => zoomOut()
+  zoomOut: () => zoomOut(),
+  getContainerEl: () => diagramContainerRef.value
 })
 
 const getPosition = (posStr) => {
@@ -198,7 +200,7 @@ const getNodeStyle = (node) => {
 </script>
 
 <template>
-  <div style="height: 100%; width: 100%; position: relative;">
+  <div ref="diagramContainerRef" style="height: 100%; width: 100%; position: relative;">
     <VueFlow 
       :nodes="nodes" 
       :edges="edges"
