@@ -17,7 +17,7 @@
           :class="{ active: activeModule === 'metallurgical' }" 
           @click="switchModule('metallurgical')"
         >
-          <span class="icon">⚖️</span> Balance de Leyes
+          <span class="icon icon-percent">%</span> Balance de Leyes
         </button>
         <button 
           :class="{ active: activeModule === 'water' }" 
@@ -1250,6 +1250,13 @@ body {
   stroke-width: 2.5px !important;
 }
 .icon { font-size: 1.2rem; }
+.icon-percent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  font-weight: 800;
+}
 
 @media (max-width: 1024px) {
   .sidebar {

@@ -58,7 +58,7 @@
                 <div class="diagram-title-row">
                   <h4 class="diagram-name">{{ diag.name }}</h4>
                   <span :class="['badge', `badge-${diag.module}`]">
-                    {{ diag.module === 'water' ? '💧 Agua' : '⚖️ Leyes' }}
+                    {{ diag.module === 'water' ? '💧 Agua' : '% Leyes' }}
                   </span>
                 </div>
                 <p v-if="diag.description" class="diagram-desc">{{ diag.description }}</p>
@@ -111,7 +111,7 @@
             </div>
 
             <div class="summary-box">
-              <p><strong>Módulo actual:</strong> {{ currentModule === 'water' ? '💧 Balance de Agua' : '⚖️ Balance de Leyes' }}</p>
+              <p><strong>Módulo actual:</strong> {{ currentModule === 'water' ? '💧 Balance de Agua' : '% Balance de Leyes' }}</p>
               <p><strong>Elementos en circuito:</strong> {{ currentNodesCount }} celdas/nodos, {{ currentEdgesCount }} flujos.</p>
             </div>
 
