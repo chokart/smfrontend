@@ -64,6 +64,7 @@
           @verify-equations="handleVerifyEquations"
           @open-excel="isExcelModalVisible = true"
           @open-pdf-export="isPdfModalVisible = true"
+          @toggle-print-area="printAreaActive = !printAreaActive"
           @reset-circuit="handleResetDiagram"
           @toggle-reconciled-only="showOnlyReconciled = !showOnlyReconciled"
           :reportAvailable="!!reconciliationReport"
@@ -71,6 +72,7 @@
           :showAddWater="activeModule === 'water'"
           :addNodeLabel="activeModule === 'water' ? 'Añadir Cajón' : 'Añadir Celda'"
           :show-only-reconciled="showOnlyReconciled"
+          :print-area-active="printAreaActive"
         />
       </div>
       
@@ -106,6 +108,11 @@
             :active-module="activeModule"
             :element-names="elementNames"
             :show-only-reconciled="showOnlyReconciled"
+            :print-area-active="printAreaActive"
+            :print-area-orientation="printAreaOrientation"
+            @update:print-area-orientation="printAreaOrientation = $event"
+            @close-print-area="printAreaActive = false"
+            @export-print-area-pdf="handleDirectPrintAreaPdf"
             @connect="onConnect"
             @element-click="handleSelection"
             @change="scheduleSave"
@@ -162,6 +169,7 @@
 
       <!-- EXPORT PDF MODAL -->
       <ExportPdfModal
+        ref="exportPdfModalRef"
         :visible="isPdfModalVisible"
         :active-module="activeModule"
         :nodes="currentNodes"
@@ -169,6 +177,8 @@
         :element-names="elementNames"
         :show-only-reconciled="showOnlyReconciled"
         :diagram-ref="diagramRef"
+        :print-area-active="printAreaActive"
+        :print-area-orientation="printAreaOrientation"
         @close="isPdfModalVisible = false"
       />
 
@@ -223,7 +233,14 @@ const isConfigPanelVisible = ref(false)
 const isDiagramsModalVisible = ref(false)
 const isExcelModalVisible = ref(false)
 const isPdfModalVisible = ref(false)
+const printAreaActive = ref(false)
+const printAreaOrientation = ref('landscape')
+const exportPdfModalRef = ref(null)
 const isLoading = ref(false)
+
+function handleDirectPrintAreaPdf() {
+  exportPdfModalRef.value?.generatePdf(printAreaOrientation.value)
+}
 const isReportModalVisible = ref(false)
 const reconciliationReport = ref(null)
 const isEquationsModalVisible = ref(false);

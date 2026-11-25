@@ -14,7 +14,14 @@
     </button>
     <button @click="$emit('verify-equations')" class="verify-button">Verificar Ecuaciones</button>
     <button @click="$emit('open-excel')" class="excel-button" title="Copiar y pegar propiedades de flujos desde Excel">📊 Copiar / Pegar Excel</button>
-    <button @click="$emit('open-pdf-export')" class="pdf-button" title="Exportar diagrama y balance en PDF de alta resolución">📄 Exportar PDF</button>
+    <button 
+      @click="$emit('toggle-print-area')" 
+      :class="['a4-toggle-btn', { active: printAreaActive }]" 
+      title="Mostrar rectángulo A4 (Horizontal / Vertical) para seleccionar zona a imprimir"
+    >
+      {{ printAreaActive ? '✓ Área A4' : '📐 Área A4' }}
+    </button>
+    <button @click="$emit('open-pdf-export')" class="pdf-button" title="Exportar diagrama en PDF de alta resolución">📄 Exportar PDF</button>
     <button @click="$emit('reset-circuit')" class="reset-button" title="Reiniciar circuito actual a valores por defecto">↺ Reiniciar</button>
   </div>
 </template>
@@ -33,7 +40,8 @@ const emit = defineEmits([
   'open-excel',
   'reset-circuit',
   'toggle-reconciled-only',
-  'open-pdf-export'
+  'open-pdf-export',
+  'toggle-print-area'
 ]);
 
 const props = defineProps({
@@ -41,7 +49,8 @@ const props = defineProps({
   showConfig: { type: Boolean, default: true },
   showAddWater: { type: Boolean, default: false },
   addNodeLabel: { type: String, default: 'Añadir Celda' },
-  showOnlyReconciled: { type: Boolean, default: false }
+  showOnlyReconciled: { type: Boolean, default: false },
+  printAreaActive: { type: Boolean, default: false }
 });
 </script>
 
@@ -157,5 +166,20 @@ const props = defineProps({
 .pdf-button:hover {
   background-color: #ffedd5 !important;
   border-color: #fb923c !important;
+}
+
+.a4-toggle-btn {
+  background-color: #f8fafc !important;
+  color: #334155 !important;
+  border-color: #cbd5e1 !important;
+}
+.a4-toggle-btn:hover {
+  background-color: #f1f5f9 !important;
+}
+.a4-toggle-btn.active {
+  background-color: #fef3c7 !important;
+  color: #b45309 !important;
+  border-color: #f59e0b !important;
+  font-weight: 700 !important;
 }
 </style>

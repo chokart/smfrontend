@@ -3,6 +3,7 @@ import { Handle, Position, VueFlow, useVueFlow } from '@vue-flow/core'
 import { ref, watch, nextTick } from 'vue'
 import CustomEdge from './CustomEdge.vue'
 import DiagramLegend from './DiagramLegend.vue'
+import PrintAreaOverlay from './PrintAreaOverlay.vue'
 
 const props = defineProps({
   nodes: { type: Array, default: () => [] },
@@ -10,9 +11,11 @@ const props = defineProps({
   activeModule: { type: String, default: 'metallurgical' },
   elementNames: { type: Array, default: () => ['Cu'] },
   showOnlyReconciled: { type: Boolean, default: false },
+  printAreaActive: { type: Boolean, default: false },
+  printAreaOrientation: { type: String, default: 'landscape' },
 })
 
-const emit = defineEmits(['element-click', 'connect', 'change'])
+const emit = defineEmits(['element-click', 'connect', 'change', 'update:printAreaOrientation', 'close-print-area', 'export-print-area-pdf'])
 
 const { 
   nodes: flowNodes, 
@@ -34,6 +37,7 @@ const {
 } = useVueFlow()
 const vueFlowInstance = ref(null)
 const diagramContainerRef = ref(null)
+const printAreaRef = ref(null)
 
 onPaneReady((instance) => {
   vueFlowInstance.value = instance
@@ -88,7 +92,8 @@ defineExpose({
   zoomIn: () => zoomIn(),
   zoomOut: () => zoomOut(),
   getContainerEl: () => diagramContainerRef.value,
-  getViewport: () => vueFlowInstance.value?.getViewport?.() ?? { x: 0, y: 0, zoom: 1 }
+  getViewport: () => vueFlowInstance.value?.getViewport?.() ?? { x: 0, y: 0, zoom: 1 },
+  getPrintAreaRect: () => printAreaRef.value?.getFrameRect?.() || null
 })
 
 const getPosition = (posStr) => {
@@ -278,6 +283,16 @@ const getNodeStyle = (node) => {
     <DiagramLegend 
       :module="activeModule" 
       :element-names="elementNames" 
+    />
+
+    <!-- SELECTOR DE ÁREA DE IMPRESIÓN A4 -->
+    <PrintAreaOverlay
+      ref="printAreaRef"
+      :visible="printAreaActive"
+      :orientation="printAreaOrientation"
+      @update:orientation="$emit('update:printAreaOrientation', $event)"
+      @close="$emit('close-print-area')"
+      @export-pdf="$emit('export-print-area-pdf')"
     />
 
     <!-- BOTONES DE ZOOM -->

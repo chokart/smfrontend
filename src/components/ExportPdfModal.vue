@@ -11,6 +11,10 @@
           Exporta únicamente el diagrama del balance en alta resolución para que todas las letras y números se lean con total claridad.
         </p>
 
+        <div v-if="printAreaActive" class="area-active-banner">
+          📐 <strong>Zona A4 activa:</strong> se exportará únicamente el área dentro del rectángulo seleccionado.
+        </div>
+
         <!-- Orientación -->
         <div class="form-group">
           <label>Orientación de Página</label>
@@ -60,7 +64,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { jsPDF } from 'jspdf'
 import { toPng } from 'html-to-image'
 
@@ -71,7 +75,9 @@ const props = defineProps({
   flows: { type: Array, default: () => [] },
   elementNames: { type: Array, default: () => ['Cu'] },
   showOnlyReconciled: { type: Boolean, default: false },
-  diagramRef: { type: Object, default: null }
+  diagramRef: { type: Object, default: null },
+  printAreaActive: { type: Boolean, default: false },
+  printAreaOrientation: { type: String, default: 'landscape' }
 })
 
 const emit = defineEmits(['close'])
@@ -81,9 +87,19 @@ const pageFormat = ref('a4')
 const isGenerating = ref(false)
 const errorMsg = ref('')
 
-async function generatePdf() {
+watch(() => props.visible, (isVis) => {
+  if (isVis && props.printAreaActive && props.printAreaOrientation) {
+    orientation.value = props.printAreaOrientation
+  }
+})
+
+async function generatePdf(overrideOrientation = null) {
   errorMsg.value = ''
   isGenerating.value = true
+
+  const targetOrientation = typeof overrideOrientation === 'string'
+    ? overrideOrientation
+    : orientation.value
 
   const savedPathStyles = []
   try {
@@ -97,37 +113,53 @@ async function generatePdf() {
       throw new Error('No se encontró el lienzo interno del diagrama.')
     }
 
-    // Calcular caja delimitadora exacta en coordenadas reales (1:1) del circuito
     const zoom = props.diagramRef?.getViewport?.()?.zoom || 1
     const vpRect = viewportEl.getBoundingClientRect()
-    const items = viewportEl.querySelectorAll('.vue-flow__node, .custom-edge-label')
 
-    if (items.length === 0) {
-      throw new Error('El diagrama no contiene nodos ni flujos para exportar.')
+    let minX = 0
+    let minY = 0
+    let boxW = 0
+    let boxH = 0
+
+    const printFrameRect = props.printAreaActive ? props.diagramRef?.getPrintAreaRect?.() : null
+
+    if (printFrameRect && printFrameRect.width > 10 && printFrameRect.height > 10) {
+      // Capturar exactamente el rectángulo A4 seleccionado por el usuario
+      minX = Math.floor((printFrameRect.left - vpRect.left) / zoom)
+      minY = Math.floor((printFrameRect.top - vpRect.top) / zoom)
+      boxW = Math.ceil(printFrameRect.width / zoom)
+      boxH = Math.ceil(printFrameRect.height / zoom)
+    } else {
+      // Calcular caja delimitadora exacta en coordenadas reales (1:1) del circuito completo
+      const items = viewportEl.querySelectorAll('.vue-flow__node, .custom-edge-label')
+
+      if (items.length === 0) {
+        throw new Error('El diagrama no contiene nodos ni flujos para exportar.')
+      }
+
+      minX = Infinity
+      minY = Infinity
+      let maxX = -Infinity
+      let maxY = -Infinity
+
+      items.forEach(el => {
+        const r = el.getBoundingClientRect()
+        const x1 = (r.left - vpRect.left) / zoom
+        const y1 = (r.top - vpRect.top) / zoom
+        const x2 = (r.right - vpRect.left) / zoom
+        const y2 = (r.bottom - vpRect.top) / zoom
+        if (x1 < minX) minX = x1
+        if (y1 < minY) minY = y1
+        if (x2 > maxX) maxX = x2
+        if (y2 > maxY) maxY = y2
+      })
+
+      const pad = 32
+      minX = Math.floor(minX - pad)
+      minY = Math.floor(minY - pad)
+      boxW = Math.ceil(maxX + pad - minX)
+      boxH = Math.ceil(maxY + pad - minY)
     }
-
-    let minX = Infinity
-    let minY = Infinity
-    let maxX = -Infinity
-    let maxY = -Infinity
-
-    items.forEach(el => {
-      const r = el.getBoundingClientRect()
-      const x1 = (r.left - vpRect.left) / zoom
-      const y1 = (r.top - vpRect.top) / zoom
-      const x2 = (r.right - vpRect.left) / zoom
-      const y2 = (r.bottom - vpRect.top) / zoom
-      if (x1 < minX) minX = x1
-      if (y1 < minY) minY = y1
-      if (x2 > maxX) maxX = x2
-      if (y2 > maxY) maxY = y2
-    })
-
-    const pad = 32
-    minX = Math.floor(minX - pad)
-    minY = Math.floor(minY - pad)
-    const boxW = Math.ceil(maxX + pad - minX)
-    const boxH = Math.ceil(maxY + pad - minY)
 
     // Forzar fill="none" explícito en todas las rutas SVG para evitar rellenos negros al serializar
     const edgePaths = viewportEl.querySelectorAll('.vue-flow__edge-path')
@@ -156,7 +188,7 @@ async function generatePdf() {
     })
 
     const doc = new jsPDF({
-      orientation: orientation.value,
+      orientation: targetOrientation,
       unit: 'mm',
       format: pageFormat.value,
       compress: true
@@ -179,7 +211,7 @@ async function generatePdf() {
     const isWater = props.activeModule === 'water'
     const fileSuffix = isWater ? 'Balance_Agua' : 'Balance_Leyes'
     const timestamp = new Date().toISOString().slice(0, 10)
-    doc.save(`SuiteMinerals_${fileSuffix}_${orientation.value}_${timestamp}.pdf`)
+    doc.save(`SuiteMinerals_${fileSuffix}_${targetOrientation}_${timestamp}.pdf`)
 
     emit('close')
   } catch (err) {
@@ -198,6 +230,8 @@ async function generatePdf() {
     isGenerating.value = false
   }
 }
+
+defineExpose({ generatePdf })
 </script>
 
 <style scoped>
@@ -261,6 +295,17 @@ async function generatePdf() {
   font-size: 0.88rem;
   color: #475569;
   line-height: 1.5;
+}
+
+.area-active-banner {
+  margin: 0 0 16px 0;
+  padding: 10px 12px;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  line-height: 1.4;
 }
 
 .form-group {
