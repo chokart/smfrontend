@@ -182,7 +182,8 @@ async function generatePdf(overrideOrientation = null) {
       p.setAttribute('fill', 'none')
     })
 
-    const pixelRatio = 4
+    const maxContainerDim = Math.max(diagramRect.width, diagramRect.height, 1)
+    const pixelRatio = Math.min(8, Math.max(4, Math.floor((8500 / maxContainerDim) * 10) / 10))
 
     // Capturar el contenedor completo (excluyendo controles de zoom, leyenda flotante y marco A4)
     const fullPng = await toPng(diagramEl, {
@@ -250,7 +251,7 @@ async function generatePdf(overrideOrientation = null) {
     const offsetX = margin + diagPad + (diagAvailW - drawW) / 2
     const offsetY = margin + diagPad + (diagAvailH - drawH) / 2
 
-    doc.addImage(imgData, 'PNG', offsetX, offsetY, drawW, drawH, undefined, 'FAST')
+    doc.addImage(imgData, 'PNG', offsetX, offsetY, drawW, drawH, undefined, 'NONE')
 
     // 2. Marco exterior de lámina técnica
     doc.setDrawColor(51, 65, 85)
