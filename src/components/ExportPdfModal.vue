@@ -108,84 +108,65 @@ async function generatePdf(overrideOrientation = null) {
       throw new Error('No se encontró el contenedor del diagrama para exportar.')
     }
 
-    const viewportEl = diagramEl.querySelector('.vue-flow__viewport')
-    if (!viewportEl) {
-      throw new Error('No se encontró el lienzo interno del diagrama.')
-    }
-
-    const zoom = props.diagramRef?.getViewport?.()?.zoom || 1
-    const vpRect = viewportEl.getBoundingClientRect()
-
-    let minX = 0
-    let minY = 0
-    let boxW = 0
-    let boxH = 0
-
+    const diagramRect = diagramEl.getBoundingClientRect()
     const printFrameRect = props.printAreaActive ? props.diagramRef?.getPrintAreaRect?.() : null
 
-    if (printFrameRect && printFrameRect.width > 10 && printFrameRect.height > 10) {
-      // Capturar exactamente el rectángulo A4 seleccionado por el usuario
-      minX = Math.floor((printFrameRect.left - vpRect.left) / zoom)
-      minY = Math.floor((printFrameRect.top - vpRect.top) / zoom)
-      boxW = Math.ceil(printFrameRect.width / zoom)
-      boxH = Math.ceil(printFrameRect.height / zoom)
-    } else {
-      // Calcular caja delimitadora exacta en coordenadas reales (1:1) del circuito completo
-      const items = viewportEl.querySelectorAll('.vue-flow__node, .custom-edge-label')
-
-      if (items.length === 0) {
-        throw new Error('El diagrama no contiene nodos ni flujos para exportar.')
-      }
-
-      minX = Infinity
-      minY = Infinity
-      let maxX = -Infinity
-      let maxY = -Infinity
-
-      items.forEach(el => {
-        const r = el.getBoundingClientRect()
-        const x1 = (r.left - vpRect.left) / zoom
-        const y1 = (r.top - vpRect.top) / zoom
-        const x2 = (r.right - vpRect.left) / zoom
-        const y2 = (r.bottom - vpRect.top) / zoom
-        if (x1 < minX) minX = x1
-        if (y1 < minY) minY = y1
-        if (x2 > maxX) maxX = x2
-        if (y2 > maxY) maxY = y2
-      })
-
-      const pad = 32
-      minX = Math.floor(minX - pad)
-      minY = Math.floor(minY - pad)
-      boxW = Math.ceil(maxX + pad - minX)
-      boxH = Math.ceil(maxY + pad - minY)
-    }
-
     // Forzar fill="none" explícito en todas las rutas SVG para evitar rellenos negros al serializar
-    const edgePaths = viewportEl.querySelectorAll('.vue-flow__edge-path')
+    const edgePaths = diagramEl.querySelectorAll('.vue-flow__edge-path')
     edgePaths.forEach(p => {
       savedPathStyles.push({ el: p, fill: p.style.fill, attrFill: p.getAttribute('fill') })
       p.style.fill = 'none'
       p.setAttribute('fill', 'none')
     })
 
-    // Escala adaptativa de alta resolución sin exceder límites del canvas del navegador
-    const maxDim = Math.max(boxW, boxH)
-    const pixelRatio = Math.max(1.8, Math.min(3.5, Math.floor((6800 / maxDim) * 10) / 10))
+    const pixelRatio = 4
 
-    const imgData = await toPng(viewportEl, {
-      width: boxW,
-      height: boxH,
+    // Capturar el contenedor completo (excluyendo controles de zoom, leyenda flotante y marco A4)
+    const fullPng = await toPng(diagramEl, {
       pixelRatio,
       backgroundColor: '#ffffff',
       cacheBust: true,
-      style: {
-        transform: `translate(${-minX}px, ${-minY}px) scale(1)`,
-        transformOrigin: '0 0',
-        width: `${boxW}px`,
-        height: `${boxH}px`
+      filter: (node) => {
+        const cls = node?.classList
+        if (!cls) return true
+        return (
+          !cls.contains('zoom-controls') &&
+          !cls.contains('diagram-legend') &&
+          !cls.contains('print-area-root')
+        )
       }
     })
+
+    let imgData = fullPng
+    let boxW = diagramRect.width
+    let boxH = diagramRect.height
+
+    // Si hay un rectángulo A4 activo, recortar exactamente esa zona en alta resolución
+    if (printFrameRect && printFrameRect.width > 10 && printFrameRect.height > 10) {
+      const img = await new Promise((resolve, reject) => {
+        const image = new Image()
+        image.onload = () => resolve(image)
+        image.onerror = () => reject(new Error('Error al procesar la imagen del diagrama.'))
+        image.src = fullPng
+      })
+
+      const sx = Math.max(0, (printFrameRect.left - diagramRect.left) * pixelRatio)
+      const sy = Math.max(0, (printFrameRect.top - diagramRect.top) * pixelRatio)
+      const sw = Math.min(img.width - sx, printFrameRect.width * pixelRatio)
+      const sh = Math.min(img.height - sy, printFrameRect.height * pixelRatio)
+
+      const cropCanvas = document.createElement('canvas')
+      cropCanvas.width = Math.max(1, Math.round(sw))
+      cropCanvas.height = Math.max(1, Math.round(sh))
+      const ctx = cropCanvas.getContext('2d')
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, cropCanvas.width, cropCanvas.height)
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cropCanvas.width, cropCanvas.height)
+
+      imgData = cropCanvas.toDataURL('image/png')
+      boxW = printFrameRect.width
+      boxH = printFrameRect.height
+    }
 
     const doc = new jsPDF({
       orientation: targetOrientation,
