@@ -21,6 +21,7 @@
             <option value="water_source">💧 Fuente de Agua (Tanque / Suministro)</option>
           </select>
         </div>
+        <NodeColorPicker v-model="localData.customColor" @update:modelValue="update" />
         <div class="section-title">Puntos de Conexión del Nodo</div>
         <div class="form-group" v-if="localData.node_type !== 'initial' && localData.node_type !== 'water_source'">
           <label>Punto de Ingreso (i):</label>
@@ -302,6 +303,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import NodeColorPicker from './NodeColorPicker.vue'
 
 const props = defineProps({
   modelValue: Object

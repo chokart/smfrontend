@@ -188,6 +188,16 @@ const getNodeStyle = (node) => {
     position: 'relative'
   };
 
+  if (node.data?.customColor) {
+    const cc = node.data.customColor;
+    return {
+      ...baseStyle,
+      background: cc.bg || cc,
+      borderColor: cc.border || '#475569',
+      color: cc.text || '#0f172a'
+    };
+  }
+
   const type = node.data ? node.data.node_type : 'process';
 
   switch (type) {
