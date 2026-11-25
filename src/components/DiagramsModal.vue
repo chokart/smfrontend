@@ -58,7 +58,8 @@
                 <div class="diagram-title-row">
                   <h4 class="diagram-name">{{ diag.name }}</h4>
                   <span :class="['badge', `badge-${diag.module}`]">
-                    {{ diag.module === 'water' ? '💧 Agua' : '% Leyes' }}
+                    <template v-if="diag.module === 'water'">💧 Agua</template>
+                    <template v-else><FlotationCellIcon /> Leyes</template>
                   </span>
                 </div>
                 <p v-if="diag.description" class="diagram-desc">{{ diag.description }}</p>
@@ -111,7 +112,11 @@
             </div>
 
             <div class="summary-box">
-              <p><strong>Módulo actual:</strong> {{ currentModule === 'water' ? '💧 Balance de Agua' : '% Balance de Leyes' }}</p>
+              <p>
+                <strong>Módulo actual:</strong>
+                <template v-if="currentModule === 'water'"> 💧 Balance de Agua</template>
+                <template v-else> <FlotationCellIcon /> Balance de Leyes</template>
+              </p>
               <p><strong>Elementos en circuito:</strong> {{ currentNodesCount }} celdas/nodos, {{ currentEdgesCount }} flujos.</p>
             </div>
 
@@ -161,6 +166,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../services/api'
+import FlotationCellIcon from './FlotationCellIcon.vue'
 
 const props = defineProps({
   currentModule: {

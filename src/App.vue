@@ -17,7 +17,7 @@
           :class="{ active: activeModule === 'metallurgical' }" 
           @click="switchModule('metallurgical')"
         >
-          <span class="icon icon-percent">%</span> Balance de Leyes
+          <span class="icon icon-percent"><FlotationCellIcon /></span> Balance de Leyes
         </button>
         <button 
           :class="{ active: activeModule === 'water' }" 
@@ -170,6 +170,7 @@
 <script setup>
 import { ref, nextTick, computed, onMounted, onBeforeUnmount } from 'vue'
 import HomeView from './views/HomeView.vue'
+import FlotationCellIcon from './components/FlotationCellIcon.vue'
 import PulpCalculator from './components/PulpCalculator.vue'
 import HydrocycloneModule from './components/HydrocycloneModule.vue'
 import MetallurgicalDiagram from './components/MetallurgicalDiagram.vue'

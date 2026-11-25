@@ -41,7 +41,9 @@
         >
           <div class="tool-card-top">
             <div class="tool-header-row">
-              <div class="tool-icon-badge tool-icon-percent">%</div>
+              <div class="tool-icon-badge tool-icon-copper">
+                <FlotationCellIcon />
+              </div>
               <span class="tool-pill">Reconciliación</span>
             </div>
             <h3>Balance de Leyes</h3>
@@ -177,6 +179,7 @@
 
 <script setup>
 import { ref } from 'vue';
+import FlotationCellIcon from '../components/FlotationCellIcon.vue';
 
 defineEmits(['open-tool']);
 
@@ -453,10 +456,9 @@ function contactForCourse() {
   flex-shrink: 0;
 }
 
-.tool-icon-percent {
+.tool-icon-copper {
   color: var(--copper);
-  font-weight: 800;
-  font-size: 1.4rem;
+  font-size: 1.55rem;
 }
 
 .tool-pill {
