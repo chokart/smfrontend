@@ -62,25 +62,25 @@ function getElementColor(index) {
           <span class="legend-row-unit">(t/h)</span>
         </div>
 
-        <!-- 2. Flujo Agua -->
+        <!-- 2. % Sólidos -->
+        <div class="legend-row">
+          <span class="legend-dot dot-cp"></span>
+          <span class="legend-row-label">% Sólidos</span>
+          <span class="legend-row-unit">(%)</span>
+        </div>
+
+        <!-- 3. Flujo Agua -->
         <div class="legend-row">
           <span class="legend-dot dot-water"></span>
           <span class="legend-row-label">Flujo Agua</span>
           <span class="legend-row-unit">(t/h)</span>
         </div>
 
-        <!-- 3. Flujo Pulpa -->
+        <!-- 4. Flujo Pulpa -->
         <div class="legend-row">
           <span class="legend-dot dot-pulp"></span>
           <span class="legend-row-label">Flujo Pulpa</span>
           <span class="legend-row-unit">(t/h)</span>
-        </div>
-
-        <!-- 4. % Sólidos -->
-        <div class="legend-row">
-          <span class="legend-dot dot-cp"></span>
-          <span class="legend-row-label">% Sólidos</span>
-          <span class="legend-row-unit">(%)</span>
         </div>
 
         <!-- 5. Caudal Pulpa -->

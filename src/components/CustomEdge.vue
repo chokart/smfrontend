@@ -127,13 +127,23 @@ const edgeStyle = computed(() => {
         <div class="edge-val-row" title="Sólido Seco (t/h)">
           <div class="val-left">
             <span class="val-bullet bullet-solid"></span>
-            <span class="val-number">{{ getSolidValue(data).toFixed(2) }}</span>
-            <span v-if="data.corrected_data" class="val-rec water">➔ {{ Number(data.corrected_data.tonelaje_solido_corregido ?? data.corrected_data.tonelaje_solido_calculado ?? 0).toFixed(2) }}</span>
+            <span class="val-number" :class="{ 'val-fixed': data.tonelaje_solido_fixed || data.tonelaje_pulpa_fixed }">{{ getSolidValue(data).toFixed(2) }}</span>
+            <span v-if="data.corrected_data" class="val-rec" :class="(data.tonelaje_solido_fixed || data.tonelaje_pulpa_fixed) ? 'val-fixed' : 'water'">➔ {{ Number(data.corrected_data.tonelaje_solido_corregido ?? data.corrected_data.tonelaje_solido_calculado ?? 0).toFixed(2) }}</span>
           </div>
           <span class="val-unit">t/h</span>
         </div>
 
-        <!-- 2. Flujo Agua -->
+        <!-- 2. % Sólidos -->
+        <div class="edge-val-row" title="% Sólidos (%)">
+          <div class="val-left">
+            <span class="val-bullet bullet-cp"></span>
+            <span class="val-number" :class="{ 'val-fixed': data.porcentaje_solidos_fixed }">{{ Number(data.porcentaje_solidos).toFixed(1) }}</span>
+            <span v-if="data.corrected_data" class="val-rec" :class="data.porcentaje_solidos_fixed ? 'val-fixed' : 'water'">➔ {{ Number(data.corrected_data.porcentaje_solidos_corregido).toFixed(1) }}</span>
+          </div>
+          <span class="val-unit">%</span>
+        </div>
+
+        <!-- 3. Flujo Agua -->
         <div class="edge-val-row" title="Flujo Agua (t/h)">
           <div class="val-left">
             <span class="val-bullet bullet-water"></span>
@@ -143,7 +153,7 @@ const edgeStyle = computed(() => {
           <span class="val-unit">t/h</span>
         </div>
 
-        <!-- 3. Flujo Pulpa -->
+        <!-- 4. Flujo Pulpa -->
         <div class="edge-val-row" title="Flujo Pulpa (t/h)">
           <div class="val-left">
             <span class="val-bullet bullet-pulp"></span>
@@ -151,16 +161,6 @@ const edgeStyle = computed(() => {
             <span v-if="data.corrected_data" class="val-rec water">➔ {{ Number(data.corrected_data.tonelaje_pulpa_calculado ?? data.corrected_data.tonelaje_pulpa_corregido ?? 0).toFixed(2) }}</span>
           </div>
           <span class="val-unit">t/h</span>
-        </div>
-
-        <!-- 4. % Sólidos -->
-        <div class="edge-val-row" title="% Sólidos (%)">
-          <div class="val-left">
-            <span class="val-bullet bullet-cp"></span>
-            <span class="val-number">{{ Number(data.porcentaje_solidos).toFixed(1) }}</span>
-            <span v-if="data.corrected_data" class="val-rec water">➔ {{ Number(data.corrected_data.porcentaje_solidos_corregido).toFixed(1) }}</span>
-          </div>
-          <span class="val-unit">%</span>
         </div>
 
         <!-- 5. Caudal Pulpa -->
@@ -252,6 +252,11 @@ const edgeStyle = computed(() => {
   color: #1e293b;
 }
 
+.val-fixed {
+  color: #16a34a !important;
+  font-weight: 700;
+}
+
 .val-rec {
   font-weight: 700;
   margin-left: 2px;
@@ -295,14 +300,14 @@ const edgeStyle = computed(() => {
 }
 
 .edge-fixed-badge {
-  background: #fef3c7;
-  color: #92400e;
+  background: #dcfce7;
+  color: #15803d;
   font-size: 8.5px;
   font-weight: bold;
   border-radius: 3px;
   padding: 1px 4px;
   display: inline-block;
-  border: 1px solid #fde68a;
+  border: 1px solid #86efac;
 }
 
 .edge-unmeasured-badge {
@@ -317,14 +322,14 @@ const edgeStyle = computed(() => {
 }
 
 .edge-solidos-badge {
-  background: #e0e7ff;
-  color: #3730a3;
+  background: #dcfce7;
+  color: #15803d;
   font-size: 8.5px;
   font-weight: bold;
   border-radius: 3px;
   padding: 1px 4px;
   display: inline-block;
-  border: 1px solid #c7d2fe;
+  border: 1px solid #86efac;
 }
 
 .edge-water-badge {
