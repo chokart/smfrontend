@@ -64,10 +64,12 @@
           @verify-equations="handleVerifyEquations"
           @open-excel="isExcelModalVisible = true"
           @reset-circuit="handleResetDiagram"
+          @toggle-reconciled-only="showOnlyReconciled = !showOnlyReconciled"
           :reportAvailable="!!reconciliationReport"
           :showConfig="activeModule === 'metallurgical'"
           :showAddWater="activeModule === 'water'"
           :addNodeLabel="activeModule === 'water' ? 'Añadir Cajón' : 'Añadir Celda'"
+          :show-only-reconciled="showOnlyReconciled"
         />
       </div>
       
@@ -102,6 +104,7 @@
             :edges="initialEdges"
             :active-module="activeModule"
             :element-names="elementNames"
+            :show-only-reconciled="showOnlyReconciled"
             @connect="onConnect"
             @element-click="handleSelection"
             @change="scheduleSave"
@@ -211,6 +214,7 @@ const reconciliationReport = ref(null)
 const isEquationsModalVisible = ref(false);
 const equationsList = ref([]);
 const isSummaryExpanded = ref(false);
+const showOnlyReconciled = ref(false);
 
 const diagramRef = ref(null); // Ref to the MetallurgicalDiagram component
 

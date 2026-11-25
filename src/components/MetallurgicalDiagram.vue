@@ -9,6 +9,7 @@ const props = defineProps({
   edges: { type: Array, default: () => [] },
   activeModule: { type: String, default: 'metallurgical' },
   elementNames: { type: Array, default: () => ['Cu'] },
+  showOnlyReconciled: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['element-click', 'connect', 'change'])
@@ -261,8 +262,12 @@ const getNodeStyle = (node) => {
         </div>
       </template>
 
-      <template #edge-custom="props">
-        <CustomEdge v-bind="props" @click="onEdgeClick({ edge: props })" />
+      <template #edge-custom="edgeProps">
+        <CustomEdge
+          v-bind="edgeProps"
+          :show-only-reconciled="showOnlyReconciled"
+          @click="onEdgeClick({ edge: edgeProps })"
+        />
       </template>
     </VueFlow>
 

@@ -5,6 +5,13 @@
     <button v-if="showConfig" @click="$emit('open-config')">Configurar Elementos</button>
     <button @click="$emit('open-diagrams')" class="diagrams-button">📁 Guardar / Cargar</button>
     <button @click="$emit('export')" class="export-button">Reconciliar</button>
+    <button 
+      @click="$emit('toggle-reconciled-only')" 
+      :class="['reconciled-toggle-btn', { active: showOnlyReconciled }]"
+      title="Mostrar únicamente los valores reconciliados en las tarjetas del diagrama"
+    >
+      {{ showOnlyReconciled ? '✓ Solo Reconciliados' : '👁️ Solo Reconciliados' }}
+    </button>
     <button @click="$emit('verify-equations')" class="verify-button">Verificar Ecuaciones</button>
     <button @click="$emit('open-excel')" class="excel-button" title="Copiar y pegar propiedades de flujos desde Excel">📊 Copiar / Pegar Excel</button>
     <button @click="$emit('reset-circuit')" class="reset-button" title="Reiniciar circuito actual a valores por defecto">↺ Reiniciar</button>
@@ -23,14 +30,16 @@ const emit = defineEmits([
   'view-report', 
   'verify-equations',
   'open-excel',
-  'reset-circuit'
+  'reset-circuit',
+  'toggle-reconciled-only'
 ]);
 
 const props = defineProps({
   reportAvailable: { type: Boolean, default: false },
   showConfig: { type: Boolean, default: true },
   showAddWater: { type: Boolean, default: false },
-  addNodeLabel: { type: String, default: 'Añadir Celda' }
+  addNodeLabel: { type: String, default: 'Añadir Celda' },
+  showOnlyReconciled: { type: Boolean, default: false }
 });
 </script>
 
@@ -119,5 +128,20 @@ const props = defineProps({
 .reset-button:hover {
   background-color: #ffe4e6 !important;
   border-color: #fda4af !important;
+}
+
+.reconciled-toggle-btn {
+  background-color: #f8fafc !important;
+  color: #334155 !important;
+  border-color: #cbd5e1 !important;
+}
+.reconciled-toggle-btn:hover {
+  background-color: #f1f5f9 !important;
+}
+.reconciled-toggle-btn.active {
+  background-color: #dcfce7 !important;
+  color: #15803d !important;
+  border-color: #4ade80 !important;
+  font-weight: 700 !important;
 }
 </style>

@@ -13,6 +13,7 @@ const props = defineProps({
   data: { type: Object, required: false },
   markerEnd: { type: String, required: false },
   style: { type: Object, required: false },
+  showOnlyReconciled: { type: Boolean, default: false },
 })
 
 const path = computed(() => getBezierPath(props))
@@ -106,8 +107,8 @@ const edgeStyle = computed(() => {
             <span class="val-bullet bullet-water"></span>
             <span v-if="data.not_measured && !data.corrected_data" class="val-number unmeasured">🚫 Deducir</span>
             <template v-else>
-              <span class="val-number">{{ (data.tonelaje_agua || 0).toFixed(2) }}</span>
-              <span v-if="data.corrected_data" class="val-rec water">➔ {{ Number(data.corrected_data.tonelaje_agua_calculado ?? 0).toFixed(2) }}</span>
+              <span v-if="!showOnlyReconciled || !data.corrected_data" class="val-number" :class="{ 'val-fixed': data.tonelaje_agua_fixed }">{{ (data.tonelaje_agua || 0).toFixed(2) }}</span>
+              <span v-if="data.corrected_data" class="val-rec" :class="data.tonelaje_agua_fixed ? 'val-fixed' : 'water'">{{ showOnlyReconciled ? '' : '➔ ' }}{{ Number(data.corrected_data.tonelaje_agua_calculado ?? 0).toFixed(2) }}</span>
             </template>
           </div>
           <span class="val-unit">t/h</span>
@@ -127,8 +128,8 @@ const edgeStyle = computed(() => {
         <div class="edge-val-row" title="Sólido Seco (t/h)">
           <div class="val-left">
             <span class="val-bullet bullet-solid"></span>
-            <span class="val-number" :class="{ 'val-fixed': data.tonelaje_solido_fixed || data.tonelaje_pulpa_fixed }">{{ getSolidValue(data).toFixed(2) }}</span>
-            <span v-if="data.corrected_data" class="val-rec" :class="(data.tonelaje_solido_fixed || data.tonelaje_pulpa_fixed) ? 'val-fixed' : 'water'">➔ {{ Number(data.corrected_data.tonelaje_solido_corregido ?? data.corrected_data.tonelaje_solido_calculado ?? 0).toFixed(2) }}</span>
+            <span v-if="!showOnlyReconciled || !data.corrected_data" class="val-number" :class="{ 'val-fixed': data.tonelaje_solido_fixed || data.tonelaje_pulpa_fixed }">{{ getSolidValue(data).toFixed(2) }}</span>
+            <span v-if="data.corrected_data" class="val-rec" :class="(data.tonelaje_solido_fixed || data.tonelaje_pulpa_fixed) ? 'val-fixed' : 'water'">{{ showOnlyReconciled ? '' : '➔ ' }}{{ Number(data.corrected_data.tonelaje_solido_corregido ?? data.corrected_data.tonelaje_solido_calculado ?? 0).toFixed(2) }}</span>
           </div>
           <span class="val-unit">t/h</span>
         </div>
@@ -137,8 +138,8 @@ const edgeStyle = computed(() => {
         <div class="edge-val-row" title="% Sólidos (%)">
           <div class="val-left">
             <span class="val-bullet bullet-cp"></span>
-            <span class="val-number" :class="{ 'val-fixed': data.porcentaje_solidos_fixed }">{{ Number(data.porcentaje_solidos).toFixed(1) }}</span>
-            <span v-if="data.corrected_data" class="val-rec" :class="data.porcentaje_solidos_fixed ? 'val-fixed' : 'water'">➔ {{ Number(data.corrected_data.porcentaje_solidos_corregido).toFixed(1) }}</span>
+            <span v-if="!showOnlyReconciled || !data.corrected_data" class="val-number" :class="{ 'val-fixed': data.porcentaje_solidos_fixed }">{{ Number(data.porcentaje_solidos).toFixed(1) }}</span>
+            <span v-if="data.corrected_data" class="val-rec" :class="data.porcentaje_solidos_fixed ? 'val-fixed' : 'water'">{{ showOnlyReconciled ? '' : '➔ ' }}{{ Number(data.corrected_data.porcentaje_solidos_corregido).toFixed(1) }}</span>
           </div>
           <span class="val-unit">%</span>
         </div>
@@ -147,8 +148,8 @@ const edgeStyle = computed(() => {
         <div class="edge-val-row" title="Flujo Agua (t/h)">
           <div class="val-left">
             <span class="val-bullet bullet-water"></span>
-            <span class="val-number">{{ getWaterValue(data).toFixed(2) }}</span>
-            <span v-if="data.corrected_data" class="val-rec water">➔ {{ Number(data.corrected_data.tonelaje_agua_calculado).toFixed(2) }}</span>
+            <span v-if="!showOnlyReconciled || !data.corrected_data" class="val-number">{{ getWaterValue(data).toFixed(2) }}</span>
+            <span v-if="data.corrected_data" class="val-rec water">{{ showOnlyReconciled ? '' : '➔ ' }}{{ Number(data.corrected_data.tonelaje_agua_calculado).toFixed(2) }}</span>
           </div>
           <span class="val-unit">t/h</span>
         </div>
@@ -157,8 +158,8 @@ const edgeStyle = computed(() => {
         <div class="edge-val-row" title="Flujo Pulpa (t/h)">
           <div class="val-left">
             <span class="val-bullet bullet-pulp"></span>
-            <span class="val-number">{{ getPulpValue(data).toFixed(2) }}</span>
-            <span v-if="data.corrected_data" class="val-rec water">➔ {{ Number(data.corrected_data.tonelaje_pulpa_calculado ?? data.corrected_data.tonelaje_pulpa_corregido ?? 0).toFixed(2) }}</span>
+            <span v-if="!showOnlyReconciled || !data.corrected_data" class="val-number">{{ getPulpValue(data).toFixed(2) }}</span>
+            <span v-if="data.corrected_data" class="val-rec water">{{ showOnlyReconciled ? '' : '➔ ' }}{{ Number(data.corrected_data.tonelaje_pulpa_calculado ?? data.corrected_data.tonelaje_pulpa_corregido ?? 0).toFixed(2) }}</span>
           </div>
           <span class="val-unit">t/h</span>
         </div>
@@ -167,8 +168,8 @@ const edgeStyle = computed(() => {
         <div class="edge-val-row row-highlight-caudal" title="Caudal Pulpa (m³/h)">
           <div class="val-left">
             <span class="val-bullet bullet-flow"></span>
-            <span class="val-number">{{ getPulpFlowM3h(data).toFixed(2) }}</span>
-            <span v-if="data.corrected_data" class="val-rec water">➔ {{ Number(data.corrected_data.caudal_pulpa_m3h ?? getPulpFlowM3h({ ...data, tonelaje_solido: data.corrected_data.tonelaje_solido_corregido, porcentaje_solidos: data.corrected_data.porcentaje_solidos_corregido })).toFixed(2) }}</span>
+            <span v-if="!showOnlyReconciled || !data.corrected_data" class="val-number">{{ getPulpFlowM3h(data).toFixed(2) }}</span>
+            <span v-if="data.corrected_data" class="val-rec water">{{ showOnlyReconciled ? '' : '➔ ' }}{{ Number(data.corrected_data.caudal_pulpa_m3h ?? getPulpFlowM3h({ ...data, tonelaje_solido: data.corrected_data.tonelaje_solido_corregido, porcentaje_solidos: data.corrected_data.porcentaje_solidos_corregido })).toFixed(2) }}</span>
           </div>
           <span class="val-unit">m³/h</span>
         </div>
@@ -185,8 +186,8 @@ const edgeStyle = computed(() => {
         <div class="edge-val-row" title="Tonelaje Seco (t/h)">
           <div class="val-left">
             <span class="val-bullet bullet-ton"></span>
-            <span class="val-number" :class="{ 'val-fixed': data.tonelaje_fixed }">{{ Number(data.tonelaje).toFixed(2) }}</span>
-            <span v-if="data.corrected_tonelaje != null" class="val-rec metal">➔ {{ Number(data.corrected_tonelaje).toFixed(2) }}</span>
+            <span v-if="!showOnlyReconciled || data.corrected_tonelaje == null" class="val-number" :class="{ 'val-fixed': data.tonelaje_fixed }">{{ Number(data.tonelaje).toFixed(2) }}</span>
+            <span v-if="data.corrected_tonelaje != null" class="val-rec" :class="data.tonelaje_fixed ? 'val-fixed' : 'metal'">{{ showOnlyReconciled ? '' : '➔ ' }}{{ Number(data.corrected_tonelaje).toFixed(2) }}</span>
           </div>
           <span class="val-unit">t/h</span>
         </div>
@@ -200,8 +201,8 @@ const edgeStyle = computed(() => {
         >
           <div class="val-left">
             <span class="val-bullet" :style="{ backgroundColor: getElementColor(idx) }"></span>
-            <span class="val-number" :class="{ 'val-fixed': el.ley_fixed }">{{ Number(el.ley).toFixed(2) }}</span>
-            <span v-if="el.corrected_data" class="val-rec metal">➔ {{ Number(el.corrected_data.ley_corregida).toFixed(2) }}</span>
+            <span v-if="!showOnlyReconciled || !el.corrected_data" class="val-number" :class="{ 'val-fixed': el.ley_fixed }">{{ Number(el.ley).toFixed(2) }}</span>
+            <span v-if="el.corrected_data" class="val-rec" :class="el.ley_fixed ? 'val-fixed' : 'metal'">{{ showOnlyReconciled ? '' : '➔ ' }}{{ Number(el.corrected_data.ley_corregida).toFixed(2) }}</span>
           </div>
           <span class="val-unit">%</span>
         </div>
